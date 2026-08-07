@@ -1,0 +1,55 @@
+{
+  "resourceType": "Bundle",
+  "id": "mock-patient-bundle-001",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "PAT-88291",
+        "name": [
+          {
+            "use": "official",
+            "family": "Doe",
+            "given": ["John"]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1968-04-12"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "alg-001",
+        "patient": {
+          "reference": "Patient/PAT-88291"
+        },
+        "code": {
+          "text": "Penicillin"
+        },
+        "criticality": "high"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "med-001",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "text": "Warfarin 5mg daily"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "med-002",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "text": "Ibuprofen 400mg PRN"
+        }
+      }
+    }
+  ]
+}

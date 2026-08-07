@@ -1,0 +1,24 @@
+CLINICAL PROGRESS NOTE
+Patient ID: PAT-88291
+Age: 58 | Gender: Male
+Date of Encounter: 2026-08-07
+
+CHIEF COMPLAINT:
+Sudden onset pleuritic chest pain and shortness of breath starting 2 hours prior to arrival.
+
+HISTORY OF PRESENT ILLNESS:
+The patient is a 58-year-old male with a history of hypertension and recent right knee arthroscopy 2 weeks ago who presents to the ED complaining of acute left-sided chest pain exacerbated by deep inspiration. He reports mild leg swelling on the right side over the past 3 days. Denies fever, cough, or diaphoresis.
+
+VITAL SIGNS:
+- HR: 108 bpm (Tachycardia)
+- BP: 135/85 mmHg
+- RR: 22 breaths/min
+- SpO2: 91% on room air
+- Temp: 37.1 °C
+
+ACTIVE MEDICATIONS:
+1. Warfarin 5mg daily
+2. Ibuprofen 400mg PRN chest discomfort
+
+ALLERGIES:
+1. Penicillin (Anaphylaxis)

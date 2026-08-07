@@ -1,0 +1,23 @@
+# PulseGraph AI - Core Dependencies
+
+# Agent & Graph Framework
+langgraph>=0.2.0
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-openai>=0.1.0
+langchain-anthropic>=0.1.0
+langchain-community>=0.2.0
+
+# Protocol & Data Models
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+fhir.resources>=7.1.0
+fastmcp>=0.1.0
+
+# Utilities & Runtime
+python-dotenv>=1.0.1
+typing-extensions>=4.10.0
+
+# Testing & Quality
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
