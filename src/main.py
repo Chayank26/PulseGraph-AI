@@ -16,9 +16,8 @@ logger = logging.getLogger("PulseGraph.Main")
 
 
 def load_mock_patient():
-    """Utility to load mock patient data for baseline execution test."""
+    """Utility to load mock patient data for Phase 2 execution test."""
     notes_path = os.path.join("data", "mock_patients", "patient_001_notes.txt")
-    fhir_path = os.path.join("data", "mock_patients", "patient_001.json")
 
     raw_notes = []
     if os.path.exists(notes_path):
@@ -48,7 +47,7 @@ def load_mock_patient():
 
 
 def main():
-    logger.info("=== Starting PulseGraph AI Execution Verification ===")
+    logger.info("=== Starting PulseGraph AI Phase 2 HITL Execution Verification ===")
     
     # 1. Load patient state
     demographics, vitals, raw_notes = load_mock_patient()
@@ -67,49 +66,67 @@ def main():
         "error_logs": []
     }
 
-    # 2. Build graph
+    # 2. Build graph with stateful MemorySaver & HITL interrupt
     graph = build_clinical_graph()
+    thread_config = {"configurable": {"thread_id": "session_pat_88291"}}
 
-    # 3. Execute graph state machine
-    logger.info("Invoking multi-agent workflow...")
-    final_state = graph.invoke(initial_state)
-    logger.info("Workflow execution complete.")
+    # 3. Stage 1 Execution: Automated Agent Workflow (Pauses before 'human_review')
+    logger.info("Executing Stage 1: Running automated agent workflow until HITL breakpoint...")
+    graph.invoke(initial_state, config=thread_config)
+    
+    # 4. Checkpoint State Inspection at Breakpoint
+    snapshot = graph.get_state(thread_config)
+    paused_state = snapshot.values
+    logger.info(f"Graph execution paused at breakpoint! Next step pending: {snapshot.next}")
 
-    # 4. Display Results
-    print("\n" + "="*60)
-    print("         PULSEGRAPH AI CLINICAL DECISION SUMMARY")
-    print("="*60)
-    print(f"\n[PATIENT ID]: {final_state['patient_id']}")
+    print("\n" + "="*65)
+    print("      PULSEGRAPH AI CLINICAL DECISION SUPPORT - HITL AUDIT")
+    print("="*65)
+    print(f"\n[PATIENT ID]: {paused_state['patient_id']} | Thread ID: session_pat_88291")
     print(f"Demographics: Age {demographics.age}, {demographics.gender} | Allergies: {demographics.allergies}")
     
     print("\n--- CALCULATED RISK SCORES ---")
-    for score in final_state["risk_scores"]:
+    for score in paused_state["risk_scores"]:
         print(f"• {score.score_name}: {score.value} {score.unit or ''} -> {score.interpretation}")
 
     print("\n--- DIAGNOSTIC DIFFERENTIALS ---")
-    for diff in final_state["differentials"]:
+    for diff in paused_state["differentials"]:
         print(f"• [{diff.likelihood}] {diff.condition_name} (ICD: {diff.icd10_code})")
         print(f"  Rationale: {diff.rationale}")
-        print(f"  Workup: {', '.join(diff.recommended_workup)}")
+        print(f"  Recommended Workup: {', '.join(diff.recommended_workup)}")
 
     print("\n--- RETRIEVED CLINICAL EVIDENCE ---")
-    for ev in final_state["evidence"]:
-        print(f"• Source: {ev.source} | Score: {ev.relevance_score}")
+    for ev in paused_state["evidence"]:
+        print(f"• Source: {ev.source} | Relevance: {ev.relevance_score}")
         print(f"  Title: {ev.title}")
-        print(f"  Snippet: {ev.snippet}")
 
     print("\n--- SAFETY GUARDRAIL FLAGS ---")
-    for flag in final_state["safety_flags"]:
+    for flag in paused_state["safety_flags"]:
         print(f"• [{flag.severity}] ({flag.category}) {flag.title}")
-        print(f"  Description: {flag.description}")
+        print(f"  Source: {flag.source_agent} | Description: {flag.description}")
 
-    print("\n--- AUDIT TRAIL ---")
-    for entry in final_state["audit_trail"]:
-        print(f"• [{entry.agent_name}] Action: {entry.action} | Summary: {entry.summary}")
+    print("\n--- AUDIT TRAIL (STAGE 1) ---")
+    for entry in paused_state["audit_trail"]:
+        print(f"• [{entry.agent_name}] Action: {entry.action} -> {entry.summary}")
 
-    print("\n" + "="*60)
-    print("Status: SUCCESS - Multi-Agent Workflow Executed Cleanly")
-    print("="*60 + "\n")
+    print("\n" + "-"*65)
+    print(f"⏸️ WORKFLOW PAUSED: Human Clinician Review Required before node '{snapshot.next[0]}'")
+    print("-"*65)
+
+    # 5. Stage 2 Execution: Clinician Validation Signal
+    print("\n[CLINICIAN INPUT]: Attending Physician reviewed recommendations and granted APPROVAL.")
+    logger.info("Executing Stage 2: Resuming graph after clinician validation signal...")
+    
+    final_output = graph.invoke(None, config=thread_config)
+    final_snapshot = graph.get_state(thread_config)
+
+    print("\n--- FINAL AUDIT TRAIL (STAGE 2 COMPLETE) ---")
+    for entry in final_snapshot.values["audit_trail"]:
+        print(f"• [{entry.agent_name}] Action: {entry.action} -> {entry.summary}")
+
+    print("\n" + "="*65)
+    print("Status: SUCCESS - Stateful MemorySaver & HITL Breakpoint Verified")
+    print("="*65 + "\n")
 
 
 if __name__ == "__main__":
