@@ -16,7 +16,7 @@ logger = logging.getLogger("PulseGraph.Main")
 
 
 def load_mock_patient():
-    """Utility to load mock patient data for Phase 2 execution test."""
+    """Utility to load mock patient data for Phase 3 execution test."""
     notes_path = os.path.join("data", "mock_patients", "patient_001_notes.txt")
 
     raw_notes = []
@@ -30,12 +30,12 @@ def load_mock_patient():
         gender="Male",
         blood_type="A+",
         allergies=["Penicillin"],
-        chronic_conditions=["Hypertension", "Recent Right Knee Surgery"],
-        current_medications=["Warfarin 5mg daily", "Ibuprofen 400mg PRN"]
+        chronic_conditions=["Hypertension", "Recent Right Knee Surgery", "Chronic Kidney Disease"],
+        current_medications=["Warfarin 5mg daily", "Ibuprofen 400mg PRN", "Metoprolol 25mg daily"]
     )
 
     vitals = VitalSigns(
-        heart_rate_bpm=108.0,
+        heart_rate_bpm=48.0,  # Severe Bradycardia (<50 bpm) to test RULE_001
         blood_pressure_sys=135.0,
         blood_pressure_dia=85.0,
         temperature_c=37.1,
@@ -47,7 +47,7 @@ def load_mock_patient():
 
 
 def main():
-    logger.info("=== Starting PulseGraph AI Phase 2 HITL Execution Verification ===")
+    logger.info("=== Starting PulseGraph AI Phase 3 Multimodal & Neuro-Symbolic Verification ===")
     
     # 1. Load patient state
     demographics, vitals, raw_notes = load_mock_patient()
@@ -59,7 +59,9 @@ def main():
         "vitals": vitals,
         "risk_scores": [],
         "differentials": [],
+        "imaging_data": None,
         "safety_flags": [],
+        "symbolic_overrides": [],
         "evidence": [],
         "audit_trail": [],
         "current_step": "initialized",
@@ -68,10 +70,10 @@ def main():
 
     # 2. Build graph with stateful MemorySaver & HITL interrupt
     graph = build_clinical_graph()
-    thread_config = {"configurable": {"thread_id": "session_pat_88291"}}
+    thread_config = {"configurable": {"thread_id": "session_phase3_pat_88291"}}
 
     # 3. Stage 1 Execution: Automated Agent Workflow (Pauses before 'human_review')
-    logger.info("Executing Stage 1: Running automated agent workflow until HITL breakpoint...")
+    logger.info("Executing Stage 1: Running 6-Node Neuro-Symbolic agent workflow until HITL breakpoint...")
     graph.invoke(initial_state, config=thread_config)
     
     # 4. Checkpoint State Inspection at Breakpoint
@@ -79,15 +81,24 @@ def main():
     paused_state = snapshot.values
     logger.info(f"Graph execution paused at breakpoint! Next step pending: {snapshot.next}")
 
-    print("\n" + "="*65)
-    print("      PULSEGRAPH AI CLINICAL DECISION SUPPORT - HITL AUDIT")
-    print("="*65)
-    print(f"\n[PATIENT ID]: {paused_state['patient_id']} | Thread ID: session_pat_88291")
+    print("\n" + "="*70)
+    print("      PULSEGRAPH AI CLINICAL DECISION SUPPORT - NEURO-SYMBOLIC AUDIT")
+    print("="*70)
+    print(f"\n[PATIENT ID]: {paused_state['patient_id']} | Thread ID: session_phase3_pat_88291")
     print(f"Demographics: Age {demographics.age}, {demographics.gender} | Allergies: {demographics.allergies}")
-    
+    print(f"Vitals: HR {vitals.heart_rate_bpm} bpm | BP {vitals.blood_pressure_sys}/{vitals.blood_pressure_dia} | SpO2 {vitals.spo2_percent}%")
+
     print("\n--- CALCULATED RISK SCORES ---")
     for score in paused_state["risk_scores"]:
         print(f"• {score.score_name}: {score.value} {score.unit or ''} -> {score.interpretation}")
+
+    print("\n--- MULTIMODAL CHEST X-RAY ANALYSIS ---")
+    img = paused_state.get("imaging_data")
+    if img:
+        print(f"• Modality: {img.modality} | Image: {img.image_path}")
+        print(f"  Impression: {img.impression}")
+        for finding in img.findings:
+            print(f"  Finding: {finding.finding_name} ({finding.region}) | Confidence: {finding.confidence} | Severity: {finding.clinical_significance}")
 
     print("\n--- DIAGNOSTIC DIFFERENTIALS ---")
     for diff in paused_state["differentials"]:
@@ -105,28 +116,35 @@ def main():
         print(f"• [{flag.severity}] ({flag.category}) {flag.title}")
         print(f"  Source: {flag.source_agent} | Description: {flag.description}")
 
-    print("\n--- AUDIT TRAIL (STAGE 1) ---")
+    print("\n--- DETERMINISTIC SYMBOLIC OVERRIDES (NEURO-SYMBOLIC RULES) ---")
+    for rule in paused_state["symbolic_overrides"]:
+        print(f"🚨 [{rule.severity}] {rule.rule_id}")
+        print(f"   Message: {rule.message}")
+        print(f"   Rule Logic: {rule.deterministic_rule}")
+        print(f"   Required Action: {rule.action_required}")
+
+    print("\n--- AUDIT TRAIL (STAGE 1 COMPLETE) ---")
     for entry in paused_state["audit_trail"]:
         print(f"• [{entry.agent_name}] Action: {entry.action} -> {entry.summary}")
 
-    print("\n" + "-"*65)
-    print(f"⏸️ WORKFLOW PAUSED: Human Clinician Review Required before node '{snapshot.next[0]}'")
-    print("-"*65)
+    print("\n" + "-"*70)
+    print(f"⏸️ WORKFLOW PAUSED: Clinician Verification Required before node '{snapshot.next[0]}'")
+    print("-"*70)
 
-    # 5. Stage 2 Execution: Clinician Validation Signal
-    print("\n[CLINICIAN INPUT]: Attending Physician reviewed recommendations and granted APPROVAL.")
+    # 5. Stage 2 Execution: Clinician Approval Signal
+    print("\n[CLINICIAN INPUT]: Attending Physician reviewed differential + symbolic overrides and granted APPROVAL.")
     logger.info("Executing Stage 2: Resuming graph after clinician validation signal...")
     
-    final_output = graph.invoke(None, config=thread_config)
+    graph.invoke(None, config=thread_config)
     final_snapshot = graph.get_state(thread_config)
 
     print("\n--- FINAL AUDIT TRAIL (STAGE 2 COMPLETE) ---")
     for entry in final_snapshot.values["audit_trail"]:
         print(f"• [{entry.agent_name}] Action: {entry.action} -> {entry.summary}")
 
-    print("\n" + "="*65)
-    print("Status: SUCCESS - Stateful MemorySaver & HITL Breakpoint Verified")
-    print("="*65 + "\n")
+    print("\n" + "="*70)
+    print("Status: SUCCESS - Phase 3 Multimodal Vision & Symbolic Rules Verified")
+    print("="*70 + "\n")
 
 
 if __name__ == "__main__":

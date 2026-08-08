@@ -28,7 +28,7 @@ class VitalSigns(BaseModel):
 
 
 class RiskScore(BaseModel):
-    """Calculated clinical risk score (e.g. Wells, CHA2DS2-VASc, GFR)."""
+    """Calculated clinical risk score (e.g. Wells, HEART, CURB-65)."""
     score_name: str
     value: float
     unit: Optional[str] = None
@@ -50,7 +50,7 @@ class DiagnosticDifferential(BaseModel):
 class SafetyFlag(BaseModel):
     """Flag for drug interaction, contraindication, or clinical safety warning."""
     severity: str = Field(description="CRITICAL, HIGH, MEDIUM, LOW")
-    category: str = Field(description="DRUG_INTERACTION, CONTRAINDICATION, DOSAGE, ALLERGY_ALERT")
+    category: str = Field(description="DRUG_INTERACTION, CONTRAINDICATION, DOSAGE, ALLERGY_ALERT, VITAL_ALERT")
     title: str
     description: str
     source_agent: str
@@ -65,6 +65,33 @@ class ClinicalEvidence(BaseModel):
     url_or_doi: Optional[str] = None
     snippet: str
     relevance_score: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class ImagingFinding(BaseModel):
+    """Detected abnormality or observation from medical imaging analysis."""
+    finding_name: str = Field(description="e.g. Cardiomegaly, Pleural Effusion, Infiltrate, Pneumothorax")
+    confidence: float = Field(ge=0.0, le=1.0, description="Model prediction confidence score")
+    region: Optional[str] = Field(default=None, description="Anatomical location e.g. Left Lower Lobe")
+    clinical_significance: str = Field(default="MODERATE", description="CRITICAL, HIGH, MODERATE, LOW")
+
+
+class ImagingData(BaseModel):
+    """Ingested medical image metadata and model diagnostic output."""
+    image_path: str
+    modality: str = Field(default="CHEST_XRAY_PA", description="e.g. CHEST_XRAY_PA, CT_CHEST")
+    findings: List[ImagingFinding] = Field(default_factory=list)
+    impression: str = Field(default="Normal imaging study")
+    analyzed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SymbolicOverrideFlag(BaseModel):
+    """Non-negotiable deterministic rule override flag."""
+    rule_id: str = Field(description="e.g. RULE_001_BRADYCARDIA_BETA_BLOCKER")
+    severity: str = Field(default="CRITICAL_OVERRIDE", description="CRITICAL_OVERRIDE, HARD_CONTRAINDICATION")
+    message: str
+    deterministic_rule: str
+    action_required: str
+    triggered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AuditEntry(BaseModel):
@@ -85,7 +112,7 @@ class ClinicalState(TypedDict):
     """
     Central state definition for PulseGraph AI multi-agent workflow graph.
     Maintains immutable audit records, running diagnostic differentials,
-    retrieved evidence, and safety guardrail flags.
+    imaging analysis, symbolic override flags, retrieved evidence, and safety guardrails.
     """
     patient_id: str
     demographics: Optional[PatientDemographics]
@@ -93,7 +120,9 @@ class ClinicalState(TypedDict):
     vitals: Optional[VitalSigns]
     risk_scores: Annotated[List[RiskScore], merge_list]
     differentials: Annotated[List[DiagnosticDifferential], merge_list]
+    imaging_data: Optional[ImagingData]
     safety_flags: Annotated[List[SafetyFlag], merge_list]
+    symbolic_overrides: Annotated[List[SymbolicOverrideFlag], merge_list]
     evidence: Annotated[List[ClinicalEvidence], merge_list]
     audit_trail: Annotated[List[AuditEntry], merge_list]
     current_step: str
