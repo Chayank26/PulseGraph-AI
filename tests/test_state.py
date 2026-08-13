@@ -7,8 +7,11 @@ from src.core.state import (
     DiagnosticDifferential,
     SafetyFlag,
     ClinicalEvidence,
-    AuditEntry
+    AuditEntry,
+    ClinicalFieldRequirement,
+    ClinicalDataRequest
 )
+
 
 
 def test_patient_demographics_validation():
@@ -52,3 +55,29 @@ def test_clinical_state_structure():
     }
     assert state["patient_id"] == "TEST-001"
     assert state["current_step"] == "init"
+
+
+def test_clinical_data_request_models():
+    req_field = ClinicalFieldRequirement(
+        field_key="troponin_score",
+        label="Troponin Level",
+        data_type="int",
+        required=True,
+        description="Troponin level score for HEART assessment"
+    )
+    request = ClinicalDataRequest(
+        request_id="REQ-TRIAGE-HEART-001",
+        requesting_agent="triage",
+        pathway_name="HEART Score Assessment",
+        reason="Troponin level is required to calculate HEART score",
+        priority="HIGH",
+        required_fields=[req_field],
+        status="PENDING"
+    )
+    assert request.request_id == "REQ-TRIAGE-HEART-001"
+    assert request.requesting_agent == "triage"
+    assert len(request.required_fields) == 1
+    assert request.required_fields[0].field_key == "troponin_score"
+    assert request.required_fields[0].required is True
+    assert request.status == "PENDING"
+

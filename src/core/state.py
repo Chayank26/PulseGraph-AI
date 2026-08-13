@@ -106,6 +106,31 @@ class SymbolicOverrideFlag(BaseModel):
     originating_patient_id: Optional[str] = Field(default=None, description="Patient ID associated with rule proposal")
 
 
+class ClinicalFieldRequirement(BaseModel):
+    """Specification of a single requested clinical data field."""
+    field_key: str = Field(description="System identifier e.g. ecg_score, troponin_score, cardiac_risk_factors_count")
+    label: str = Field(description="Human-readable label for UI form rendering")
+    data_type: str = Field(description="float, int, bool, str, enum, file")
+    required: bool = Field(default=True, description="True if mandatory for clinical assessment; False if optional")
+    description: Optional[str] = Field(default=None, description="Clinical rationale for requesting this field")
+    options: Optional[List[str]] = Field(default=None, description="Valid choices for select/enum inputs")
+
+
+class ClinicalDataRequest(BaseModel):
+    """Structured data acquisition request created by any clinical agent when required data is missing."""
+    request_id: str = Field(description="Unique request ID e.g. REQ-TRIAGE-HEART-001")
+    requesting_agent: str = Field(description="Node name of requesting agent e.g. triage, imaging, safety, diagnostic, symbolic_guardrail")
+    pathway_name: str = Field(description="Clinical pathway or score requiring data e.g. HEART Score Assessment")
+    reason: str = Field(description="Explanation of missing information requiring clinician input")
+    priority: str = Field(default="HIGH", description="CRITICAL, HIGH, ROUTINE")
+    required_fields: List[ClinicalFieldRequirement] = Field(default_factory=list)
+    optional_fields: List[ClinicalFieldRequirement] = Field(default_factory=list)
+    status: str = Field(default="PENDING", description="PENDING, RESOLVED, SKIPPED, EXPIRED")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    resolved_at: Optional[datetime] = Field(default=None)
+    clinician_response: Optional[Dict[str, Any]] = Field(default=None)
+
+
 class AuditEntry(BaseModel):
     """Audit log entry capturing state mutations and agent actions."""
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -145,4 +170,9 @@ class ClinicalState(TypedDict):
     iteration_count: int
     re_evaluation_requested: bool
     clinician_notes: Optional[str]
+    # Conditional Clinical Data Acquisition
+    pending_data_requests: Annotated[List[ClinicalDataRequest], merge_list]
+    resolved_data_requests: Annotated[List[ClinicalDataRequest], merge_list]
+    active_data_request_id: Optional[str]
+
 
