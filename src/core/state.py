@@ -84,6 +84,15 @@ class ImagingData(BaseModel):
     analyzed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class ClinicianIdentity(BaseModel):
+    """Authenticated physician profile for candidate rule logging and audit attribution."""
+    doctor_id: str = Field(description="e.g. DOC-88204")
+    full_name: str = Field(description="e.g. Dr. Sarah Chen")
+    department: str = Field(description="e.g. Emergency Medicine")
+    role: str = Field(default="Attending Physician")
+    authenticated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class SymbolicOverrideFlag(BaseModel):
     """Non-negotiable deterministic rule override flag."""
     rule_id: str = Field(description="e.g. RULE_001_BRADYCARDIA_BETA_BLOCKER")
@@ -92,6 +101,9 @@ class SymbolicOverrideFlag(BaseModel):
     deterministic_rule: str
     action_required: str
     triggered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    authored_by: Optional[ClinicianIdentity] = Field(default=None, description="Physician who proposed or logged this rule candidate")
+    governance_status: str = Field(default="PENDING_PEER_REVIEW", description="PENDING_PEER_REVIEW, APPROVED, REJECTED")
+    originating_patient_id: Optional[str] = Field(default=None, description="Patient ID associated with rule proposal")
 
 
 class AuditEntry(BaseModel):
@@ -127,3 +139,10 @@ class ClinicalState(TypedDict):
     audit_trail: Annotated[List[AuditEntry], merge_list]
     current_step: str
     error_logs: Annotated[List[str], merge_list]
+    # Clinician Authentication & HITL Loop Management
+    authenticated_clinician: Optional[ClinicianIdentity]
+    approved_by_clinician: Optional[bool]
+    iteration_count: int
+    re_evaluation_requested: bool
+    clinician_notes: Optional[str]
+

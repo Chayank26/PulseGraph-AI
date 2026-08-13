@@ -4,7 +4,7 @@ import logging
 from pprint import pprint
 
 from config.settings import settings
-from src.core.state import ClinicalState, PatientDemographics, VitalSigns
+from src.core.state import ClinicalState, PatientDemographics, VitalSigns, ClinicianIdentity
 from src.core.graph import build_clinical_graph
 
 # Configure logging
@@ -132,15 +132,29 @@ def main():
     print("-"*70)
 
     # 5. Stage 2 Execution: Clinician Approval Signal
-    print("\n[CLINICIAN INPUT]: Attending Physician reviewed differential + symbolic overrides and granted APPROVAL.")
+    print("\n[CLINICIAN INPUT]: Attending Physician Dr. Sarah Chen (DOC-88204) reviewed differential + symbolic overrides and granted APPROVAL.")
     logger.info("Executing Stage 2: Resuming graph after clinician validation signal...")
     
+    clinician = ClinicianIdentity(
+        doctor_id="DOC-88204",
+        full_name="Dr. Sarah Chen",
+        department="Emergency Medicine"
+    )
+    graph.update_state(
+        thread_config,
+        {
+            "authenticated_clinician": clinician,
+            "approved_by_clinician": True,
+            "re_evaluation_requested": False
+        }
+    )
     graph.invoke(None, config=thread_config)
     final_snapshot = graph.get_state(thread_config)
 
     print("\n--- FINAL AUDIT TRAIL (STAGE 2 COMPLETE) ---")
     for entry in final_snapshot.values["audit_trail"]:
         print(f"• [{entry.agent_name}] Action: {entry.action} -> {entry.summary}")
+
 
     print("\n" + "="*70)
     print("Status: SUCCESS - Phase 3 Multimodal Vision & Symbolic Rules Verified")

@@ -46,10 +46,12 @@ def test_clinical_graph_neuro_symbolic_execution():
     assert len(snapshot.values["differentials"]) > 0
     assert len(snapshot.values["symbolic_overrides"]) > 0
 
-    # 2. Second invocation resumes to END
+    # 2. Second invocation: clinician approves and graph resumes to ehr_export
+    graph.update_state(thread_config, {"approved_by_clinician": True})
     graph.invoke(None, config=thread_config)
     final_snapshot = graph.get_state(thread_config)
 
     assert final_snapshot.next == ()
-    assert final_snapshot.values["current_step"] == "clinician_approved"
-    assert len(final_snapshot.values["audit_trail"]) == 7  # 6 agent nodes + 1 human_review
+    assert final_snapshot.values["current_step"] == "ehr_exported"
+    assert len(final_snapshot.values["audit_trail"]) == 8  # 6 agent nodes + 1 human_review + 1 ehr_export
+

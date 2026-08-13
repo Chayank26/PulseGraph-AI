@@ -17,7 +17,11 @@ fastmcp>=0.1.0
 # Utilities & Runtime
 python-dotenv>=1.0.1
 typing-extensions>=4.10.0
+bcrypt>=4.1.0
+pyjwt>=2.8.0
+streamlit>=1.35.0
 
 # Testing & Quality
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
+
