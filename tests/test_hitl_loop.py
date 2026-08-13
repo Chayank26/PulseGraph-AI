@@ -233,5 +233,7 @@ def test_data_request_interrupt_and_resume(initial_test_state):
     graph.invoke(None, config=config)
     snapshot2 = graph.get_state(config)
     assert snapshot2.next == ("human_review",)
-    assert any(a.agent_name == "DataRequestReviewNode" for a in snapshot2.values["audit_trail"])
+    audit_names = [a.agent_name if hasattr(a, "agent_name") else a.get("agent_name") for a in snapshot2.values["audit_trail"]]
+    assert "DataRequestReviewNode" in audit_names
+
 
