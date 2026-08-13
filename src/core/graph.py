@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.core.state import ClinicalState, AuditEntry
+from src.core.data_requests import get_pending_requests
 from src.agents.triage import triage_agent_node
 from src.agents.imaging import imaging_agent_node
 from src.agents.diagnostic import diagnostic_agent_node
@@ -59,6 +60,29 @@ def human_review_node(state: ClinicalState) -> Dict[str, Any]:
     }
 
 
+def data_request_review_node(state: ClinicalState) -> Dict[str, Any]:
+    """
+    Data Request Review Node:
+    Explicit pause/checkpoint node executed when clinical agents require additional
+    patient information before completing analysis.
+    """
+    logger.info("Executing Clinical Data Request Review Node...")
+    pending = get_pending_requests(state)
+    req_summary = f"Pending clinical data requests: {len(pending)}" if pending else "Clinical data acquisition resolved."
+
+    audit_entry = AuditEntry(
+        agent_name="DataRequestReviewNode",
+        action="CLINICAL_DATA_ACQUISITION",
+        summary=req_summary,
+        metadata={"pending_count": len(pending)}
+    )
+
+    return {
+        "audit_trail": [audit_entry],
+        "current_step": "data_request_processed"
+    }
+
+
 def ehr_export_node(state: ClinicalState) -> Dict[str, Any]:
     """
     EHR Export Node:
@@ -111,6 +135,56 @@ def feedback_processor_node(state: ClinicalState) -> Dict[str, Any]:
     }
 
 
+def _check_data_request_routing(state: ClinicalState, default_next_node: str) -> str:
+    """Helper router checking if pending data requests exist after an agent node."""
+    pending = get_pending_requests(state)
+    if pending:
+        iteration_count = state.get("iteration_count", 0)
+        if iteration_count < MAX_ITERATIONS * 3:
+            logger.info(f"Pending ClinicalDataRequest detected ({pending[0].request_id}). Routing to 'data_request_review'.")
+            return "data_request_review"
+        else:
+            logger.warning(f"Data request loop hit iteration safety limit. Routing to END.")
+            return END
+    return default_next_node
+
+
+def route_after_triage(state: ClinicalState) -> str:
+    return _check_data_request_routing(state, "imaging")
+
+
+def route_after_imaging(state: ClinicalState) -> str:
+    return _check_data_request_routing(state, "diagnostic")
+
+
+def route_after_diagnostic(state: ClinicalState) -> str:
+    return _check_data_request_routing(state, "evidence")
+
+
+def route_after_safety(state: ClinicalState) -> str:
+    return _check_data_request_routing(state, "symbolic_guardrail")
+
+
+def route_after_symbolic_guardrail(state: ClinicalState) -> str:
+    return _check_data_request_routing(state, "human_review")
+
+
+def route_after_data_request_review(state: ClinicalState) -> str:
+    """
+    Conditional routing executed after clinician resolves data acquisition request.
+    Routes execution DIRECTLY BACK to the requesting agent node.
+    """
+    all_requests = state.get("pending_data_requests", []) + state.get("resolved_data_requests", [])
+    if all_requests:
+        last_req = all_requests[-1]
+        agent_node = last_req.requesting_agent
+        if agent_node in ["triage", "imaging", "diagnostic", "evidence", "safety", "symbolic_guardrail"]:
+            logger.info(f"Data request resolved. Resuming execution directly at requesting agent node '{agent_node}'.")
+            return agent_node
+    logger.info("Resuming execution at default node 'triage'.")
+    return "triage"
+
+
 def route_after_review(state: ClinicalState) -> str:
     """
     Conditional routing function executed after human_review node.
@@ -146,19 +220,17 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     
     Workflow Topology:
     [START] -> triage -> imaging -> diagnostic -> evidence -> safety -> symbolic_guardrail -> human_review
-               │                                                                                │
-               │                                      ┌─────────────────────────────────────────┴───────────────┐
-               │                                      ▼                                 ▼                       ▼
-               │                            [feedback_processor]                  [ehr_export]                [END]
-               └──────────────────────────────────────┘                                 │
-                                                                                        ▼
-                                                                                      [END]
+               │          │          │                          │          │                    │
+               ▼          ▼          ▼                          ▼          ▼                    ▼
+        [data_request_review] ◄─────────────────────────────────────────────────────────────────┘
+               │
+               ▼ (Resumes directly at requesting agent node e.g. triage/diagnostic/safety)
     """
-    logger.info("Initializing PulseGraph AI Neuro-Symbolic StateGraph with HITL Re-evaluation Routing...")
+    logger.info("Initializing PulseGraph AI Neuro-Symbolic StateGraph with Data Acquisition & HITL Routing...")
     
     workflow = StateGraph(ClinicalState)
 
-    # 1. Register agent, review, export, and feedback nodes
+    # 1. Register agent, review, data request, export, and feedback nodes
     workflow.add_node("triage", triage_agent_node)
     workflow.add_node("imaging", imaging_agent_node)
     workflow.add_node("diagnostic", diagnostic_agent_node)
@@ -168,15 +240,34 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     workflow.add_node("human_review", human_review_node)
     workflow.add_node("ehr_export", ehr_export_node)
     workflow.add_node("feedback_processor", feedback_processor_node)
+    workflow.add_node("data_request_review", data_request_review_node)
 
     # 2. Define workflow topology
     workflow.add_edge(START, "triage")
-    workflow.add_edge("triage", "imaging")
-    workflow.add_edge("imaging", "diagnostic")
-    workflow.add_edge("diagnostic", "evidence")
+
+    # Conditional data request routing after each agent node
+    workflow.add_conditional_edges("triage", route_after_triage, {"data_request_review": "data_request_review", "imaging": "imaging", END: END})
+    workflow.add_conditional_edges("imaging", route_after_imaging, {"data_request_review": "data_request_review", "diagnostic": "diagnostic", END: END})
+    workflow.add_conditional_edges("diagnostic", route_after_diagnostic, {"data_request_review": "data_request_review", "evidence": "evidence", END: END})
     workflow.add_edge("evidence", "safety")
-    workflow.add_edge("safety", "symbolic_guardrail")
-    workflow.add_edge("symbolic_guardrail", "human_review")
+    workflow.add_conditional_edges("safety", route_after_safety, {"data_request_review": "data_request_review", "symbolic_guardrail": "symbolic_guardrail", END: END})
+    workflow.add_conditional_edges("symbolic_guardrail", route_after_symbolic_guardrail, {"data_request_review": "data_request_review", "human_review": "human_review", END: END})
+
+    # Resumption routing from data_request_review back to requesting agent
+    workflow.add_conditional_edges(
+        "data_request_review",
+        route_after_data_request_review,
+        {
+            "triage": "triage",
+            "imaging": "imaging",
+            "diagnostic": "diagnostic",
+            "evidence": "evidence",
+            "safety": "safety",
+            "symbolic_guardrail": "symbolic_guardrail",
+            "human_review": "human_review",
+            END: END
+        }
+    )
 
     # Feedback loop routing back to diagnostic
     workflow.add_edge("feedback_processor", "diagnostic")
@@ -197,12 +288,13 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     if checkpointer is None:
         checkpointer = MemorySaver()
 
-    # 4. Compile with checkpointer & HITL interrupt
+    # 4. Compile with checkpointer & HITL interrupts
     compiled_graph = workflow.compile(
         checkpointer=checkpointer,
-        interrupt_before=["human_review"]
+        interrupt_before=["human_review", "data_request_review"]
     )
-    logger.info("PulseGraph AI StateGraph compiled successfully with HITL interrupt_before=['human_review'].")
+    logger.info("PulseGraph AI StateGraph compiled successfully with interrupt_before=['human_review', 'data_request_review'].")
     
     return compiled_graph
+
 

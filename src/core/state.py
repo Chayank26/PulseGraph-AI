@@ -145,6 +145,25 @@ def merge_list(left: List[Any], right: List[Any]) -> List[Any]:
     return left + right
 
 
+def merge_requests(left: List[ClinicalDataRequest], right: List[ClinicalDataRequest]) -> List[ClinicalDataRequest]:
+    """Reducer helper to merge ClinicalDataRequest lists by request_id, updating statuses."""
+    if not left:
+        return right or []
+    if not right:
+        return left or []
+
+    req_map = {}
+    for item in left:
+        req_id = item.request_id if hasattr(item, "request_id") else item.get("request_id")
+        req_map[req_id] = item
+
+    for item in right:
+        req_id = item.request_id if hasattr(item, "request_id") else item.get("request_id")
+        req_map[req_id] = item
+
+    return list(req_map.values())
+
+
 class ClinicalState(TypedDict):
     """
     Central state definition for PulseGraph AI multi-agent workflow graph.
@@ -171,8 +190,9 @@ class ClinicalState(TypedDict):
     re_evaluation_requested: bool
     clinician_notes: Optional[str]
     # Conditional Clinical Data Acquisition
-    pending_data_requests: Annotated[List[ClinicalDataRequest], merge_list]
-    resolved_data_requests: Annotated[List[ClinicalDataRequest], merge_list]
+    pending_data_requests: Annotated[List[ClinicalDataRequest], merge_requests]
+    resolved_data_requests: Annotated[List[ClinicalDataRequest], merge_requests]
     active_data_request_id: Optional[str]
+
 
 

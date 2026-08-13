@@ -191,3 +191,47 @@ def test_candidate_rule_attribution(initial_test_state):
     assert flag.authored_by.full_name == "Dr. Sarah Chen"
     assert flag.governance_status == "PENDING_PEER_REVIEW"
     assert flag.originating_patient_id == "PAT-TEST-001"
+
+
+def test_data_request_interrupt_and_resume(initial_test_state):
+    """Test that creating a ClinicalDataRequest pauses graph at data_request_review and resumes directly to requesting agent."""
+    from src.core.data_requests import create_data_request, resolve_request
+    from src.core.state import ClinicalFieldRequirement
+
+    graph = build_clinical_graph()
+    config = {"configurable": {"thread_id": "test_data_req_interrupt"}}
+
+    req = create_data_request(
+        requesting_agent="triage",
+        pathway_name="HEART Score Assessment",
+        reason="Missing troponin score",
+        required_fields=[
+            ClinicalFieldRequirement(field_key="troponin_score", label="Troponin Score", data_type="int")
+        ]
+    )
+
+    # State has a pending data request
+    initial_test_state["pending_data_requests"] = [req]
+
+    # Graph invocation should pause at data_request_review
+    graph.invoke(initial_test_state, config=config)
+    snapshot = graph.get_state(config)
+    assert snapshot.next == ("data_request_review",)
+
+    # Clinician supplies data and resolves request
+    resolved = resolve_request(req, {"troponin_score": 0})
+    graph.update_state(
+        config,
+        {
+            "pending_data_requests": [resolved],
+            "resolved_data_requests": [resolved]
+        }
+    )
+
+
+    # Resuming graph should route to human_review (after running triage -> imaging -> diagnostic -> evidence -> safety -> symbolic)
+    graph.invoke(None, config=config)
+    snapshot2 = graph.get_state(config)
+    assert snapshot2.next == ("human_review",)
+    assert any(a.agent_name == "DataRequestReviewNode" for a in snapshot2.values["audit_trail"])
+
