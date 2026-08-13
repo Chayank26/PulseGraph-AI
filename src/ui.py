@@ -15,6 +15,8 @@ from src.auth.database import authenticate_doctor, init_db
 from src.auth.session import save_persistent_session, load_persistent_session, clear_persistent_session
 from src.core.state import ClinicalState, PatientDemographics, VitalSigns, ClinicianIdentity, SymbolicOverrideFlag
 from src.core.graph import build_clinical_graph, MAX_ITERATIONS
+from src.core.data_requests import get_pending_requests, validate_response, resolve_request, apply_response_to_state
+
 
 # Page Configuration
 st.set_page_config(
@@ -321,6 +323,52 @@ def main_dashboard():
 
         st.markdown("---")
 
+        # Conditional Clinical Data Acquisition UI Panel
+        pending_requests = get_pending_requests(paused_state)
+        if pending_requests:
+            req = pending_requests[0]
+            st.markdown(f"""
+                <div class="alert-high" style="background-color:#451a03; border:2px solid #f97316;">
+                    <h3 style="margin:0; color:#fbbf24;">⚠️ Additional Clinical Data Required</h3>
+                    <p style="margin:4px 0 0 0; color:#fed7aa;"><b>Requesting Agent:</b> <code style="color:#60a5fa;">{req.requesting_agent.upper()}</code> | <b>Pathway:</b> <b>{req.pathway_name}</b></p>
+                    <p style="margin:4px 0 0 0; color:#ffedd5;"><b>Clinical Rationale:</b> {req.reason}</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            with st.form(key=f"data_acquisition_form_{req.request_id}"):
+                st.write("📋 **Provide Missing Clinical Parameters:**")
+                form_responses = {}
+                for field in req.required_fields + req.optional_fields:
+                    field_label = f"{field.label} {'*' if field.required else '(Optional)'}"
+                    if field.options:
+                        selected_opt = st.selectbox(field_label, options=field.options, help=field.description)
+                        # Extract value e.g. "0 (Normal)" -> 0
+                        val_part = selected_opt.split()[0] if (selected_opt and "(" in selected_opt) else selected_opt
+                        form_responses[field.field_key] = val_part
+                    elif field.data_type in ["int", "float"]:
+                        form_responses[field.field_key] = st.number_input(field_label, value=0, help=field.description)
+                    else:
+                        form_responses[field.field_key] = st.text_input(field_label, help=field.description)
+
+                submit_btn = st.form_submit_button("Submit Clinical Data", type="primary", use_container_width=True)
+                if submit_btn:
+                    is_valid, errors = validate_response(req, form_responses)
+                    if not is_valid:
+                        for err in errors:
+                            st.error(f"⚠️ {err}")
+                    else:
+                        resolved = resolve_request(req, form_responses)
+                        state_updates = apply_response_to_state(paused_state, form_responses)
+                        state_updates["pending_data_requests"] = [resolved]
+                        state_updates["resolved_data_requests"] = [resolved]
+
+                        st.session_state["graph"].update_state(thread_config, state_updates)
+                        st.session_state["graph"].invoke(None, config=thread_config)
+                        st.session_state["flash_message"] = ("success", f"Clinical data submitted for {req.pathway_name}. Workflow resuming...")
+                        st.rerun()
+
+            st.markdown("---")
+
         # HITL Interactive Decision Panel
         st.subheader("⚡ Human-in-the-Loop Decision Panel")
         st.caption(f"Current Re-evaluation Loop Iteration: **{paused_state.get('iteration_count', 0)} / {MAX_ITERATIONS}**")
@@ -343,9 +391,13 @@ def main_dashboard():
         elif current_step.startswith("clinician_rejected") or (paused_state.get("approved_by_clinician") is False and not paused_state.get("re_evaluation_requested")):
             st.error("🛑 **Care Plan Terminated for Manual Doctor Takeover**.")
         elif snapshot.next:
-            st.info(f"⏸️ Graph Execution Paused before node: `{snapshot.next[0]}`")
+            if snapshot.next[0] == "data_request_review":
+                st.warning("⚠️ **Workflow Paused**: Awaiting missing clinical parameters above.")
+            else:
+                st.info(f"⏸️ Graph Execution Paused before node: `{snapshot.next[0]}`")
 
         notes_input = st.text_area("Clinician Notes & Feedback Guidance", placeholder="Enter clinical rationale, feedback for re-evaluation, or candidate override notes...", key="clinician_notes_input", disabled=is_finished)
+
 
         clinician_identity = ClinicianIdentity(
             doctor_id=doctor_info["doctor_id"],
