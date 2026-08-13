@@ -1,7 +1,8 @@
 import os
 import logging
 from typing import Dict, Any, List
-from src.core.state import ClinicalState, ImagingData, ImagingFinding, AuditEntry
+from src.core.state import ClinicalState, ImagingData, ImagingFinding, AuditEntry, ClinicalFieldRequirement
+from src.core.data_requests import create_data_request
 
 logger = logging.getLogger("PulseGraph.ImagingAgent")
 
@@ -71,19 +72,70 @@ def imaging_agent_node(state: ClinicalState) -> Dict[str, Any]:
     Multimodal Vision Agent Node:
     Ingests chest X-ray image paths, executes vision neural net diagnostic prediction,
     and updates state with structured imaging findings and impression notes.
+    
+    Conditional Data Acquisition:
+    If image path is explicitly missing or unrecorded when chest imaging is requested,
+    creates a ClinicalDataRequest.
     """
     logger.info("Executing Multimodal Vision Agent Node...")
     
-    # Check if image path is present in raw notes or metadata
     notes = state.get("raw_notes", [])
     combined_notes = " ".join(notes)
     
-    # Check if a custom image path was set in state or default mock path
-    image_path = "data/mock_patients/patient_001_cxr.png"
-    if "cxr_path=" in combined_notes:
+    # Parse acquired data notes
+    acquired_data: Dict[str, Any] = {}
+    for note in notes:
+        if note.startswith("[ACQUIRED CLINICAL DATA]: "):
+            kv = note.replace("[ACQUIRED CLINICAL DATA]: ", "").split(" = ")
+            if len(kv) == 2:
+                acquired_data[kv[0].strip()] = kv[1].strip()
+
+    # Determine image path
+    image_path = None
+    if "cxr_path" in acquired_data:
+        image_path = acquired_data["cxr_path"]
+    elif "cxr_path=" in combined_notes:
         for word in combined_notes.split():
             if word.startswith("cxr_path="):
                 image_path = word.split("=")[1]
+    
+    # Check if explicitly requested or default mock patient image exists
+    if "cxr_path=missing" in combined_notes or "cxr_required=true" in combined_notes:
+        image_path = None
+
+    # If no custom image path specified, use standard mock patient path by default
+    if image_path is None and "cxr_required=true" not in combined_notes and "cxr_path=missing" not in combined_notes:
+        image_path = "data/mock_patients/patient_001_cxr.png"
+
+    # If image path is missing when explicitly required:
+    if not image_path or image_path.lower() == "missing":
+        logger.info("Chest X-ray study indicated but DICOM/image file path missing. Generating ClinicalDataRequest.")
+        req = create_data_request(
+            requesting_agent="imaging",
+            pathway_name="Chest Radiography Vision Analysis",
+            reason="Chest imaging analysis requires an accessible DICOM or PNG image file path.",
+            required_fields=[
+                ClinicalFieldRequirement(
+                    field_key="cxr_path",
+                    label="Chest X-Ray DICOM/Image Path",
+                    data_type="file",
+                    required=True,
+                    description="File system path to Chest X-ray image (PNG/DICOM)"
+                )
+            ],
+            priority="HIGH"
+        )
+        audit_entry = AuditEntry(
+            agent_name="ImagingAgent",
+            action="DATA_REQUEST_CREATED",
+            summary="Chest X-Ray image file missing. Created ClinicalDataRequest.",
+            metadata={"request_id": req.request_id}
+        )
+        return {
+            "pending_data_requests": [req],
+            "audit_trail": [audit_entry],
+            "current_step": "imaging_data_requested"
+        }
 
     # Run vision analysis tool
     imaging_result = analyze_chest_xray(image_path)
@@ -103,3 +155,4 @@ def imaging_agent_node(state: ClinicalState) -> Dict[str, Any]:
         "audit_trail": [audit_entry],
         "current_step": "imaging_analyzed"
     }
+
