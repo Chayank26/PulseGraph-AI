@@ -1,0 +1,135 @@
+import logging
+from datetime import datetime, timezone
+from typing import List, Dict, Any, Optional, Tuple
+
+from src.core.state import (
+    ClinicalState,
+    ClinicalDataRequest,
+    ClinicalFieldRequirement,
+    AuditEntry
+)
+
+logger = logging.getLogger("PulseGraph.DataRequests")
+
+
+def create_data_request(
+    requesting_agent: str,
+    pathway_name: str,
+    reason: str,
+    required_fields: List[ClinicalFieldRequirement],
+    optional_fields: Optional[List[ClinicalFieldRequirement]] = None,
+    priority: str = "HIGH"
+) -> ClinicalDataRequest:
+    """
+    Creates a structured ClinicalDataRequest object to ask for missing patient information.
+    """
+    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    clean_agent = requesting_agent.upper().replace("_AGENT", "").replace("_NODE", "")
+    request_id = f"REQ-{clean_agent}-{timestamp_str}"
+
+    request = ClinicalDataRequest(
+        request_id=request_id,
+        requesting_agent=requesting_agent,
+        pathway_name=pathway_name,
+        reason=reason,
+        priority=priority,
+        required_fields=required_fields,
+        optional_fields=optional_fields or [],
+        status="PENDING",
+        created_at=datetime.now(timezone.utc)
+    )
+    logger.info(f"Created ClinicalDataRequest [{request_id}] for agent '{requesting_agent}' (Pathway: {pathway_name})")
+    return request
+
+
+def get_pending_requests(state: ClinicalState) -> List[ClinicalDataRequest]:
+    """Retrieve all pending data requests from clinical state."""
+    all_requests = state.get("pending_data_requests", [])
+    return [r for r in all_requests if r.status == "PENDING"]
+
+
+def validate_response(
+    request: ClinicalDataRequest,
+    response_data: Dict[str, Any]
+) -> Tuple[bool, List[str]]:
+    """
+    Validates a clinician's response dictionary against the request's required_fields.
+    Returns (is_valid, list_of_error_messages).
+    """
+    errors: List[str] = []
+    if not response_data:
+        return False, ["Response data cannot be empty."]
+
+    for req_field in request.required_fields:
+        val = response_data.get(req_field.field_key)
+        if val is None or (isinstance(val, str) and not val.strip()):
+            errors.append(f"Missing required field '{req_field.label}' ({req_field.field_key}).")
+
+    return len(errors) == 0, errors
+
+
+def resolve_request(
+    request: ClinicalDataRequest,
+    response_data: Dict[str, Any]
+) -> ClinicalDataRequest:
+    """
+    Marks a request as RESOLVED and attaches the clinician response.
+    """
+    request.status = "RESOLVED"
+    request.resolved_at = datetime.now(timezone.utc)
+    request.clinician_response = response_data
+    logger.info(f"ClinicalDataRequest [{request.request_id}] resolved successfully.")
+    return request
+
+
+def has_resolved_request_for_pathway(
+    state: ClinicalState,
+    requesting_agent: str,
+    pathway_name: str
+) -> bool:
+    """
+    Checks if a request for a specific clinical pathway was already resolved or processed.
+    Used by agents to avoid duplicate data requests.
+    """
+    resolved = state.get("resolved_data_requests", [])
+    for r in resolved:
+        if r.requesting_agent == requesting_agent and r.pathway_name == pathway_name:
+            return True
+    return False
+
+
+def apply_response_to_state(
+    state: ClinicalState,
+    response_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Applies validated clinician responses to state vitals, demographics, and clinical notes.
+    """
+    vitals = state.get("vitals")
+    notes_to_add = []
+
+    # Map vital signs if provided in response
+    if vitals:
+        if "heart_rate_bpm" in response_data and response_data["heart_rate_bpm"] is not None:
+            vitals.heart_rate_bpm = float(response_data["heart_rate_bpm"])
+        if "blood_pressure_sys" in response_data and response_data["blood_pressure_sys"] is not None:
+            vitals.blood_pressure_sys = float(response_data["blood_pressure_sys"])
+        if "blood_pressure_dia" in response_data and response_data["blood_pressure_dia"] is not None:
+            vitals.blood_pressure_dia = float(response_data["blood_pressure_dia"])
+        if "spo2_percent" in response_data and response_data["spo2_percent"] is not None:
+            vitals.spo2_percent = float(response_data["spo2_percent"])
+        if "respiratory_rate" in response_data and response_data["respiratory_rate"] is not None:
+            vitals.respiratory_rate = float(response_data["respiratory_rate"])
+
+    # Append structured clinical observations to raw_notes for downstream context
+    for key, val in response_data.items():
+        if key not in ["heart_rate_bpm", "blood_pressure_sys", "blood_pressure_dia", "spo2_percent", "respiratory_rate"]:
+            notes_to_add.append(f"[ACQUIRED CLINICAL DATA]: {key} = {val}")
+
+    updates: Dict[str, Any] = {}
+    if vitals:
+        updates["vitals"] = vitals
+    if notes_to_add:
+        updates["raw_notes"] = notes_to_add
+
+    return updates
