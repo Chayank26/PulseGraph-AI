@@ -74,8 +74,23 @@ def validate_response(
                         errors.append(f"Invalid age '{val}'. Age must be an integer between 0 and 130.")
                 except (ValueError, TypeError):
                     errors.append(f"Invalid age '{val}'. Age must be a valid integer between 0 and 130.")
+            elif req_field.field_key in ["history_score", "ecg_score", "troponin_score"]:
+                try:
+                    num_val = int(str(val)[0]) if isinstance(val, str) else int(val)
+                    if num_val not in [0, 1, 2]:
+                        errors.append(f"Invalid {req_field.label} '{val}'. Value must be 0, 1, or 2.")
+                except (ValueError, TypeError, IndexError):
+                    errors.append(f"Invalid {req_field.label} '{val}'. Must be 0, 1, or 2.")
+            elif req_field.field_key == "cardiac_risk_factors_count":
+                try:
+                    rf_val = int(val)
+                    if rf_val < 0:
+                        errors.append(f"Invalid risk factor count '{val}'. Value must be a non-negative integer.")
+                except (ValueError, TypeError):
+                    errors.append(f"Invalid risk factor count '{val}'. Must be a non-negative integer.")
 
     return len(errors) == 0, errors
+
 
 
 

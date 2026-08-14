@@ -85,6 +85,38 @@ def test_triage_chest_pain_with_acquired_data_calculates_heart_score(base_clinic
     assert heart_scores[0].value == 5.0  # History(2) + ECG(1) + Age 55(1) + Risk Factors 2(1) + Trop(0) = 5
 
 
+def test_triage_heart_parameter_validation():
+    """Test that validate_response rejects invalid HEART score parameters."""
+    from src.core.data_requests import create_data_request, validate_response
+    from src.core.state import ClinicalFieldRequirement
+
+    req = create_data_request(
+        requesting_agent="triage",
+        pathway_name="HEART Score Assessment",
+        reason="HEART parameters required",
+        required_fields=[
+            ClinicalFieldRequirement(field_key="history_score", label="History Score", data_type="enum", required=True),
+            ClinicalFieldRequirement(field_key="ecg_score", label="ECG Score", data_type="enum", required=True),
+            ClinicalFieldRequirement(field_key="troponin_score", label="Troponin Score", data_type="enum", required=True),
+            ClinicalFieldRequirement(field_key="cardiac_risk_factors_count", label="Risk Factors Count", data_type="int", required=True)
+        ]
+    )
+
+    # Invalid history score (> 2)
+    is_valid, errors = validate_response(req, {"history_score": 5, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2})
+    assert is_valid is False
+
+    # Negative risk factors count
+    is_valid, errors = validate_response(req, {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": -1})
+    assert is_valid is False
+
+    # Valid HEART parameters
+    is_valid, errors = validate_response(req, {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2})
+    assert is_valid is True
+    assert len(errors) == 0
+
+
+
 
 def test_triage_missing_age_creates_intake_request(base_clinical_state):
     """Test that missing age creates a mandatory Patient Intake ClinicalDataRequest and pauses triage."""
@@ -131,5 +163,48 @@ def test_triage_invalid_age_validation(base_clinical_state):
     is_valid, errors = validate_response(req, {"age": 42})
     assert is_valid is True
     assert len(errors) == 0
+
+
+def test_triage_curb65_missing_inputs_creates_request(base_clinical_state):
+    """Test that shortness of breath without confusion and BUN creates a CURB-65 ClinicalDataRequest and omits score."""
+    base_clinical_state["raw_notes"] = ["Patient presenting with acute shortness of breath."]
+    result = triage_agent_node(base_clinical_state)
+
+    assert "pending_data_requests" in result
+    curb_reqs = [r for r in result["pending_data_requests"] if r.pathway_name == "CURB-65 Pneumonia Assessment"]
+    assert len(curb_reqs) == 1
+
+    req = curb_reqs[0]
+    field_keys = [f.field_key for f in req.required_fields]
+    assert "confusion" in field_keys
+    assert "bun_mg_dl" in field_keys
+
+    # Confirm CURB-65 score was not calculated
+    curb_scores = [s for s in result["risk_scores"] if s.score_name == "CURB-65 Score"]
+    assert len(curb_scores) == 0
+
+
+def test_triage_curb65_with_acquired_data_calculates_score(base_clinical_state):
+    """Test that shortness of breath with complete acquired CURB-65 data calculates score accurately."""
+    base_clinical_state["raw_notes"] = [
+        "Patient presenting with acute shortness of breath.",
+        "[ACQUIRED CLINICAL DATA]: confusion = False",
+        "[ACQUIRED CLINICAL DATA]: bun_mg_dl = 22.0",
+        "[ACQUIRED CLINICAL DATA]: pe_most_likely = False",
+        "[ACQUIRED CLINICAL DATA]: clinical_signs_dvt = False",
+        "[ACQUIRED CLINICAL DATA]: immobilization_surgery = False",
+        "[ACQUIRED CLINICAL DATA]: previous_dvt_pe = False",
+        "[ACQUIRED CLINICAL DATA]: hemoptysis = False",
+        "[ACQUIRED CLINICAL DATA]: malignancy = False"
+    ]
+    result = triage_agent_node(base_clinical_state)
+    curb_reqs = [r for r in result.get("pending_data_requests", []) if r.pathway_name == "CURB-65 Pneumonia Assessment"]
+    assert len(curb_reqs) == 0
+
+    curb_scores = [s for s in result["risk_scores"] if s.score_name == "CURB-65 Score"]
+    assert len(curb_scores) == 1
+    # BUN 22.0 > 19 (+1), RR 18 (<30), SBP 125 / DBP 82 (normal), Age 55 (<65), Confusion False (0) -> total 1.0
+    assert curb_scores[0].value == 1.0
+
 
 

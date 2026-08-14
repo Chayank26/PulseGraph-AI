@@ -30,10 +30,15 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             kv = note.replace("[ACQUIRED CLINICAL DATA]: ", "").split(" = ")
             if len(kv) == 2:
                 key, val = kv[0].strip(), kv[1].strip()
-                try:
-                    acquired_data[key] = int(val) if val.isdigit() else float(val)
-                except ValueError:
-                    acquired_data[key] = val
+                if val.lower() == "true":
+                    acquired_data[key] = True
+                elif val.lower() == "false":
+                    acquired_data[key] = False
+                else:
+                    try:
+                        acquired_data[key] = int(val) if val.isdigit() else float(val)
+                    except ValueError:
+                        acquired_data[key] = val
 
     all_reqs = state.get("resolved_data_requests", []) + state.get("pending_data_requests", [])
     for r in all_reqs:
@@ -41,10 +46,16 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
         if resp and isinstance(resp, dict):
             for k, v in resp.items():
                 if k not in acquired_data and v is not None:
-                    try:
-                        acquired_data[k] = int(v) if str(v).isdigit() else float(v)
-                    except (ValueError, TypeError):
-                        acquired_data[k] = v
+                    if isinstance(v, str) and v.lower() == "true":
+                        acquired_data[k] = True
+                    elif isinstance(v, str) and v.lower() == "false":
+                        acquired_data[k] = False
+                    else:
+                        try:
+                            acquired_data[k] = int(v) if str(v).isdigit() else float(v)
+                        except (ValueError, TypeError):
+                            acquired_data[k] = v
+
 
     # Determine age from demographics or acquired data
     age = None
@@ -168,14 +179,20 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             )
             pending_requests.append(req)
         else:
+            history_val = int(str(history_score)[0]) if isinstance(history_score, str) else int(history_score)
+            ecg_val = int(str(ecg_score)[0]) if isinstance(ecg_score, str) else int(ecg_score)
+            trop_val = int(str(troponin_score)[0]) if isinstance(troponin_score, str) else int(troponin_score)
+            rf_val = int(cardiac_rf_count)
+
             heart_score = calculate_heart_score(
-                history_score=int(history_score),
-                ecg_score=int(ecg_score),
+                history_score=history_val,
+                ecg_score=ecg_val,
                 age=age,
-                risk_factors_count=int(cardiac_rf_count),
-                troponin_score=int(troponin_score)
+                risk_factors_count=rf_val,
+                troponin_score=trop_val
             )
             new_risk_scores.append(heart_score)
+
 
     # 2. CURB-65 Score for Pneumonia / Respiratory Distress
     if sob:
