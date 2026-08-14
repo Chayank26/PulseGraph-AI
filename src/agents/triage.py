@@ -17,15 +17,13 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     If required clinical parameters for an assessment pathway (e.g. ECG score / Troponin level for HEART Score)
     are missing, creates a structured ClinicalDataRequest instead of assuming false/normal values.
     """
-    logger.info(f"Running TriageAgent for Patient ID: {state.get('patient_id')}")
-    
     raw_notes = state.get("raw_notes", [])
     combined_notes = " ".join(raw_notes).lower()
     vitals = state.get("vitals")
     demographics = state.get("demographics")
-    age = demographics.age if demographics else None
+
     
-    # Parse any acquired clinical parameters from notes
+    # Parse any acquired clinical parameters from raw_notes and resolved_data_requests
     acquired_data: Dict[str, Any] = {}
     for note in raw_notes:
         if note.startswith("[ACQUIRED CLINICAL DATA]: "):
@@ -37,10 +35,72 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 except ValueError:
                     acquired_data[key] = val
 
+    all_reqs = state.get("resolved_data_requests", []) + state.get("pending_data_requests", [])
+    for r in all_reqs:
+        resp = r.clinician_response if hasattr(r, "clinician_response") else (r.get("clinician_response") if isinstance(r, dict) else None)
+        if resp and isinstance(resp, dict):
+            for k, v in resp.items():
+                if k not in acquired_data and v is not None:
+                    try:
+                        acquired_data[k] = int(v) if str(v).isdigit() else float(v)
+                    except (ValueError, TypeError):
+                        acquired_data[k] = v
+
+    # Determine age from demographics or acquired data
+    age = None
+    if demographics and demographics.age is not None:
+        try:
+            val = int(demographics.age)
+            if 0 <= val <= 130:
+                age = val
+        except (ValueError, TypeError):
+            pass
+
+    if age is None and "age" in acquired_data and acquired_data["age"] is not None:
+        try:
+            val = int(acquired_data["age"])
+            if 0 <= val <= 130:
+                age = val
+        except (ValueError, TypeError):
+            pass
+
+
+    # Global Mandatory Patient Intake Check (Phase 1)
+    if age is None:
+        logger.warning("Patient age is missing or invalid. Creating mandatory Patient Intake ClinicalDataRequest.")
+        req = create_data_request(
+            requesting_agent="triage",
+            pathway_name="Patient Intake",
+            reason="Patient age is mandatory for initial intake, clinical risk assessment pathways, and dosing/safety algorithms.",
+            required_fields=[
+                ClinicalFieldRequirement(
+                    field_key="age",
+                    label="Patient Age",
+                    data_type="int",
+                    required=True,
+                    description="Patient age in years (must be an integer between 0 and 130)"
+                )
+            ],
+            priority="CRITICAL"
+        )
+        audit_entry = AuditEntry(
+            agent_name="TriageAgent",
+            action="MANDATORY_INTAKE_CHECK",
+            summary="Intake paused. Patient age is missing and mandatory before clinical triage analysis.",
+            metadata={"pending_requests_count": 1}
+        )
+        return {
+            "risk_scores": [],
+            "pending_data_requests": [req],
+            "audit_trail": [audit_entry],
+            "current_step": "intake_age_required"
+        }
+
     # Baseline symptom indicators
     chest_pain = "chest pain" in combined_notes or "chest discomfort" in combined_notes
     sob = "shortness of breath" in combined_notes or "dyspnea" in combined_notes
     dvt_signs = "leg swelling" in combined_notes or "dvt" in combined_notes
+
 
     # Heart rate gt 100 evaluation without assuming chest pain equals tachycardia
     hr_val = vitals.heart_rate_bpm if (vitals and vitals.heart_rate_bpm is not None) else None

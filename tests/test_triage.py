@@ -80,3 +80,51 @@ def test_triage_chest_pain_with_acquired_data_calculates_heart_score(base_clinic
     assert len(heart_scores) == 1
     assert heart_scores[0].value == 5.0  # History(2) + ECG(1) + Age 55(1) + Risk Factors(1) + Trop(0) = 5
 
+
+def test_triage_missing_age_creates_intake_request(base_clinical_state):
+    """Test that missing age creates a mandatory Patient Intake ClinicalDataRequest and pauses triage."""
+    base_clinical_state["demographics"].age = None
+    result = triage_agent_node(base_clinical_state)
+
+    assert "pending_data_requests" in result
+    assert len(result["pending_data_requests"]) == 1
+
+    req = result["pending_data_requests"][0]
+    assert req.requesting_agent == "triage"
+    assert req.pathway_name == "Patient Intake"
+    assert len(req.required_fields) == 1
+    assert req.required_fields[0].field_key == "age"
+    assert req.required_fields[0].required is True
+    assert len(result["risk_scores"]) == 0
+
+
+def test_triage_invalid_age_validation(base_clinical_state):
+    """Test that validate_response rejects invalid patient ages."""
+    from src.core.data_requests import create_data_request, validate_response
+    from src.core.state import ClinicalFieldRequirement
+
+    req = create_data_request(
+        requesting_agent="triage",
+        pathway_name="Patient Intake",
+        reason="Age required",
+        required_fields=[
+            ClinicalFieldRequirement(field_key="age", label="Patient Age", data_type="int", required=True)
+        ]
+    )
+
+    # Negative age
+    is_valid, errors = validate_response(req, {"age": -5})
+    assert is_valid is False
+    assert any("0 and 130" in e for e in errors)
+
+    # Age > 130
+    is_valid, errors = validate_response(req, {"age": 150})
+    assert is_valid is False
+    assert any("0 and 130" in e for e in errors)
+
+    # Valid age
+    is_valid, errors = validate_response(req, {"age": 42})
+    assert is_valid is True
+    assert len(errors) == 0
+
+

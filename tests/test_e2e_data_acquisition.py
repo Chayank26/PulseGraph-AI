@@ -113,7 +113,8 @@ def test_e2e_conditional_clinical_data_acquisition_flow():
     state_updates["pending_data_requests"] = [resolved_req]
     state_updates["resolved_data_requests"] = [resolved_req]
 
-    graph.update_state(thread_config, state_updates)
+    graph.update_state(thread_config, state_updates, as_node="data_request_review")
+
 
     # STEP 3: Resume graph -> Triage re-evaluates with complete data, calculates HEART score, completes pipeline -> Pauses at human_review
     graph.invoke(None, config=thread_config)

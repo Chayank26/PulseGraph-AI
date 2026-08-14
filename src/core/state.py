@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 class PatientDemographics(BaseModel):
     """Demographics information for a patient."""
     patient_id: str
-    age: int = Field(ge=0, le=130, description="Age in years")
+    age: Optional[int] = Field(default=None, ge=0, le=130, description="Age in years")
     gender: str = Field(description="Gender identity or biological sex")
+
     blood_type: Optional[str] = Field(default=None, description="ABO/Rh blood type")
     allergies: List[str] = Field(default_factory=list, description="Known drug or food allergies")
     chronic_conditions: List[str] = Field(default_factory=list, description="Pre-existing diagnoses")

@@ -4,10 +4,12 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from src.core.state import (
     ClinicalState,
+    PatientDemographics,
     ClinicalDataRequest,
     ClinicalFieldRequirement,
     AuditEntry
 )
+
 
 logger = logging.getLogger("PulseGraph.DataRequests")
 
@@ -64,8 +66,17 @@ def validate_response(
         val = response_data.get(req_field.field_key)
         if val is None or (isinstance(val, str) and not val.strip()):
             errors.append(f"Missing required field '{req_field.label}' ({req_field.field_key}).")
+        else:
+            if req_field.field_key == "age":
+                try:
+                    age_val = int(val)
+                    if age_val < 0 or age_val > 130:
+                        errors.append(f"Invalid age '{val}'. Age must be an integer between 0 and 130.")
+                except (ValueError, TypeError):
+                    errors.append(f"Invalid age '{val}'. Age must be a valid integer between 0 and 130.")
 
     return len(errors) == 0, errors
+
 
 
 def resolve_request(
@@ -127,9 +138,40 @@ def apply_response_to_state(
             notes_to_add.append(f"[ACQUIRED CLINICAL DATA]: {key} = {val}")
 
     updates: Dict[str, Any] = {}
+    demographics = state.get("demographics")
+
+
+
+    # Map demographics (e.g. age) if provided in response
+    if "age" in response_data and response_data["age"] is not None:
+        try:
+            age_val = int(response_data["age"])
+            if 0 <= age_val <= 130:
+                if demographics:
+                    demographics.age = age_val
+                else:
+                    demographics = PatientDemographics(
+                        patient_id=state.get("patient_id", "PAT-UNKNOWN"),
+                        age=age_val,
+                        gender="Unknown"
+                    )
+                updates["demographics"] = demographics
+        except (ValueError, TypeError):
+            pass
+
     if vitals:
         updates["vitals"] = vitals
     if notes_to_add:
         updates["raw_notes"] = notes_to_add
 
+
+    audit_entry = AuditEntry(
+        agent_name="DataRequestReviewNode",
+        action="CLINICAL_DATA_ACQUISITION",
+        summary=f"Acquired missing clinical parameters ({len(response_data)} items).",
+        metadata={"response_keys": list(response_data.keys())}
+    )
+    updates["audit_trail"] = [audit_entry]
+
     return updates
+

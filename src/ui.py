@@ -362,8 +362,9 @@ def main_dashboard():
                         state_updates["pending_data_requests"] = [resolved]
                         state_updates["resolved_data_requests"] = [resolved]
 
-                        st.session_state["graph"].update_state(thread_config, state_updates)
+                        st.session_state["graph"].update_state(thread_config, state_updates, as_node="data_request_review")
                         st.session_state["graph"].invoke(None, config=thread_config)
+
                         st.session_state["flash_message"] = ("success", f"Clinical data submitted for {req.pathway_name}. Workflow resuming...")
                         st.rerun()
 
