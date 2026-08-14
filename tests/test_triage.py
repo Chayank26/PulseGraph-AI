@@ -47,7 +47,7 @@ def base_clinical_state() -> ClinicalState:
 
 
 def test_triage_chest_pain_missing_data_creates_request(base_clinical_state):
-    """Test that chest pain without ECG/Troponin creates a ClinicalDataRequest and omits HEART score."""
+    """Test that chest pain without complete HEART parameters creates a ClinicalDataRequest and omits HEART score."""
     result = triage_agent_node(base_clinical_state)
     assert "pending_data_requests" in result
     assert len(result["pending_data_requests"]) == 1
@@ -55,11 +55,13 @@ def test_triage_chest_pain_missing_data_creates_request(base_clinical_state):
     req = result["pending_data_requests"][0]
     assert req.requesting_agent == "triage"
     assert req.pathway_name == "HEART Score Assessment"
-    assert len(req.required_fields) == 2
+    assert len(req.required_fields) == 4
 
     field_keys = [f.field_key for f in req.required_fields]
+    assert "history_score" in field_keys
     assert "ecg_score" in field_keys
     assert "troponin_score" in field_keys
+    assert "cardiac_risk_factors_count" in field_keys
 
     # Confirm HEART score was not calculated prematurely
     heart_scores = [s for s in result["risk_scores"] if s.score_name == "HEART Score"]
@@ -67,18 +69,21 @@ def test_triage_chest_pain_missing_data_creates_request(base_clinical_state):
 
 
 def test_triage_chest_pain_with_acquired_data_calculates_heart_score(base_clinical_state):
-    """Test that chest pain with acquired ECG and Troponin data calculates HEART score accurately."""
+    """Test that chest pain with acquired HEART parameters calculates HEART score accurately."""
     base_clinical_state["raw_notes"] = [
         "Patient presenting with acute chest pain.",
+        "[ACQUIRED CLINICAL DATA]: history_score = 2",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 1",
-        "[ACQUIRED CLINICAL DATA]: troponin_score = 0"
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 2"
     ]
     result = triage_agent_node(base_clinical_state)
     assert "pending_data_requests" not in result
 
     heart_scores = [s for s in result["risk_scores"] if s.score_name == "HEART Score"]
     assert len(heart_scores) == 1
-    assert heart_scores[0].value == 5.0  # History(2) + ECG(1) + Age 55(1) + Risk Factors(1) + Trop(0) = 5
+    assert heart_scores[0].value == 5.0  # History(2) + ECG(1) + Age 55(1) + Risk Factors 2(1) + Trop(0) = 5
+
 
 
 def test_triage_missing_age_creates_intake_request(base_clinical_state):

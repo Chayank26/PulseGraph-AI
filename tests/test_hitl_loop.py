@@ -24,7 +24,19 @@ def initial_test_state() -> ClinicalState:
     return {
         "patient_id": demographics.patient_id,
         "demographics": demographics,
-        "raw_notes": ["Patient presenting with shortness of breath."],
+        "raw_notes": [
+            "Patient presenting with shortness of breath.",
+            "[ACQUIRED CLINICAL DATA]: confusion = False",
+            "[ACQUIRED CLINICAL DATA]: bun_mg_dl = 14.0",
+            "[ACQUIRED CLINICAL DATA]: pe_most_likely = False",
+            "[ACQUIRED CLINICAL DATA]: clinical_signs_dvt = False",
+            "[ACQUIRED CLINICAL DATA]: immobilization_surgery = False",
+            "[ACQUIRED CLINICAL DATA]: previous_dvt_pe = False",
+            "[ACQUIRED CLINICAL DATA]: hemoptysis = False",
+            "[ACQUIRED CLINICAL DATA]: malignancy = False"
+        ],
+
+
         "vitals": vitals,
         "risk_scores": [],
         "differentials": [],

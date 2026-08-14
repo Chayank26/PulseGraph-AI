@@ -113,87 +113,225 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     new_risk_scores: List[RiskScore] = []
     pending_requests = []
 
-    # 1. Wells PE Score (evaluated if DVT signs, tachycardia, or dyspnea present)
-    if hr_gt_100 or dvt_signs or sob:
-        wells_score = calculate_wells_pe_score(
-            clinical_signs_dvt=dvt_signs,
-            pe_most_likely=True,
-            heart_rate_gt_100=hr_gt_100
-        )
-        new_risk_scores.append(wells_score)
-
-    # 2. HEART Score for Chest Pain Risk Assessment
+    # 1. HEART Score for Chest Pain Risk Assessment
     if chest_pain:
+        history_score = acquired_data.get("history_score")
         ecg_score = acquired_data.get("ecg_score")
         troponin_score = acquired_data.get("troponin_score")
+        cardiac_rf_count = acquired_data.get("cardiac_risk_factors_count")
 
-        # Check if ECG score or Troponin score is missing
-        if ecg_score is None or troponin_score is None:
-            logger.info("Chest pain identified but mandatory ECG/Troponin scores missing. Generating ClinicalDataRequest.")
+        heart_missing = []
+        if history_score is None:
+            heart_missing.append(ClinicalFieldRequirement(
+                field_key="history_score",
+                label="Clinical History Suspicion Score",
+                data_type="enum",
+                required=True,
+                description="0 = Slightly suspicious, 1 = Moderately suspicious, 2 = Highly suspicious",
+                options=["0 (Slightly suspicious)", "1 (Moderately suspicious)", "2 (Highly suspicious)"]
+            ))
+        if ecg_score is None:
+            heart_missing.append(ClinicalFieldRequirement(
+                field_key="ecg_score",
+                label="ECG Findings Score",
+                data_type="enum",
+                required=True,
+                description="0 = Normal, 1 = Nonspecific repolarization disturbance, 2 = Significant ST depression",
+                options=["0 (Normal)", "1 (Nonspecific ST/T changes)", "2 (ST depression)"]
+            ))
+        if troponin_score is None:
+            heart_missing.append(ClinicalFieldRequirement(
+                field_key="troponin_score",
+                label="Troponin Level Score",
+                data_type="enum",
+                required=True,
+                description="0 = Normal (<1x limit), 1 = 1-3x normal limit, 2 = >3x normal limit",
+                options=["0 (<1x normal)", "1 (1-3x normal limit)", "2 (>3x normal limit)"]
+            ))
+        if cardiac_rf_count is None:
+            heart_missing.append(ClinicalFieldRequirement(
+                field_key="cardiac_risk_factors_count",
+                label="Cardiac Risk Factors Count",
+                data_type="int",
+                required=True,
+                description="Count of risk factors: HTN, Hyperlipidemia, DM, Obesity, Smoking, Family History"
+            ))
+
+        if heart_missing:
+            logger.info("Chest pain identified but mandatory HEART score parameters missing. Generating ClinicalDataRequest.")
             req = create_data_request(
                 requesting_agent="triage",
                 pathway_name="HEART Score Assessment",
-                reason="Chest pain presentation requires ECG classification and Troponin lab levels to calculate HEART MACE risk score.",
-                required_fields=[
-                    ClinicalFieldRequirement(
-                        field_key="ecg_score",
-                        label="ECG Findings Score",
-                        data_type="enum",
-                        required=True,
-                        description="0 = Normal, 1 = Nonspecific repolarization disturbance, 2 = Significant ST depression",
-                        options=["0 (Normal)", "1 (Nonspecific ST/T changes)", "2 (ST depression)"]
-                    ),
-                    ClinicalFieldRequirement(
-                        field_key="troponin_score",
-                        label="Troponin Level Score",
-                        data_type="enum",
-                        required=True,
-                        description="0 = Normal (<1x limit), 1 = 1-3x normal limit, 2 = >3x normal limit",
-                        options=["0 (<1x normal)", "1 (1-3x normal limit)", "2 (>3x normal limit)"]
-                    )
-                ],
-                optional_fields=[
-                    ClinicalFieldRequirement(
-                        field_key="cardiac_risk_factors_count",
-                        label="Cardiac Risk Factors Count",
-                        data_type="int",
-                        required=False,
-                        description="Count of risk factors: HTN, Hyperlipidemia, DM, Obesity, Smoking, Family History"
-                    )
-                ],
+                reason="Chest pain presentation requires complete HEART score parameters (History, ECG, Troponin, and Risk Factors).",
+                required_fields=heart_missing,
                 priority="HIGH"
             )
             pending_requests.append(req)
         else:
-            # Complete data present -> Calculate deterministic HEART score
-            patient_age = age if age is not None else 50
-            risk_factors = acquired_data.get("cardiac_risk_factors_count", 2)
             heart_score = calculate_heart_score(
-                history_score=2,  # Suspicious clinical history
+                history_score=int(history_score),
                 ecg_score=int(ecg_score),
-                age=patient_age,
-                risk_factors_count=int(risk_factors),
+                age=age,
+                risk_factors_count=int(cardiac_rf_count),
                 troponin_score=int(troponin_score)
             )
             new_risk_scores.append(heart_score)
 
-    # 3. CURB-65 Score for Pneumonia / Respiratory Distress
+    # 2. CURB-65 Score for Pneumonia / Respiratory Distress
     if sob:
-        sys_bp = vitals.blood_pressure_sys if (vitals and vitals.blood_pressure_sys is not None) else 120.0
-        dia_bp = vitals.blood_pressure_dia if (vitals and vitals.blood_pressure_dia is not None) else 80.0
-        rr_val = vitals.respiratory_rate if (vitals and vitals.respiratory_rate is not None) else 20.0
-        patient_age = age if age is not None else 50
-        
-        curb_score = calculate_curb65_score(
-            confusion=False,
-            bun_mg_dl=14.0,
-            respiratory_rate=rr_val,
-            systolic_bp=sys_bp,
-            diastolic_bp=dia_bp,
-            age=patient_age
-        )
-        new_risk_scores.append(curb_score)
-        
+        confusion = acquired_data.get("confusion")
+        bun_val = acquired_data.get("bun_mg_dl")
+        rr_val = vitals.respiratory_rate if (vitals and vitals.respiratory_rate is not None) else acquired_data.get("respiratory_rate")
+        sys_bp = vitals.blood_pressure_sys if (vitals and vitals.blood_pressure_sys is not None) else acquired_data.get("blood_pressure_sys")
+        dia_bp = vitals.blood_pressure_dia if (vitals and vitals.blood_pressure_dia is not None) else acquired_data.get("blood_pressure_dia")
+
+        curb_missing = []
+        if confusion is None:
+            curb_missing.append(ClinicalFieldRequirement(
+                field_key="confusion",
+                label="New Disorientation / Confusion",
+                data_type="bool",
+                required=True,
+                description="True if acute disorientation or AMT score <= 8, False otherwise"
+            ))
+        if bun_val is None:
+            curb_missing.append(ClinicalFieldRequirement(
+                field_key="bun_mg_dl",
+                label="Blood Urea Nitrogen (BUN)",
+                data_type="float",
+                required=True,
+                description="BUN level in mg/dL (>19 mg/dL is 1 point)"
+            ))
+        if rr_val is None:
+            curb_missing.append(ClinicalFieldRequirement(
+                field_key="respiratory_rate",
+                label="Respiratory Rate",
+                data_type="float",
+                required=True,
+                description="Breaths per minute (>= 30 is 1 point)"
+            ))
+        if sys_bp is None:
+            curb_missing.append(ClinicalFieldRequirement(
+                field_key="blood_pressure_sys",
+                label="Systolic Blood Pressure",
+                data_type="float",
+                required=True,
+                description="Systolic BP in mmHg (<90 mmHg is 1 point)"
+            ))
+        if dia_bp is None:
+            curb_missing.append(ClinicalFieldRequirement(
+                field_key="blood_pressure_dia",
+                label="Diastolic Blood Pressure",
+                data_type="float",
+                required=True,
+                description="Diastolic BP in mmHg (<=60 mmHg is 1 point)"
+            ))
+
+        if curb_missing:
+            logger.info("Dyspnea identified but mandatory CURB-65 parameters missing. Generating ClinicalDataRequest.")
+            req = create_data_request(
+                requesting_agent="triage",
+                pathway_name="CURB-65 Pneumonia Assessment",
+                reason="Respiratory distress requires complete CURB-65 parameters (Confusion, BUN, Respiratory Rate, BP).",
+                required_fields=curb_missing,
+                priority="HIGH"
+            )
+            pending_requests.append(req)
+        else:
+            curb_score = calculate_curb65_score(
+                confusion=bool(confusion),
+                bun_mg_dl=float(bun_val),
+                respiratory_rate=float(rr_val),
+                systolic_bp=float(sys_bp),
+                diastolic_bp=float(dia_bp),
+                age=age
+            )
+            new_risk_scores.append(curb_score)
+
+    # 3. Wells PE Score (evaluated if DVT signs, tachycardia, or dyspnea present)
+    if hr_gt_100 or dvt_signs or sob:
+        pe_most_likely = acquired_data.get("pe_most_likely")
+        clinical_dvt = acquired_data.get("clinical_signs_dvt")
+        if clinical_dvt is None and dvt_signs:
+            clinical_dvt = True
+
+        immob = acquired_data.get("immobilization_surgery")
+        prev_dvt = acquired_data.get("previous_dvt_pe")
+        hemoptysis = acquired_data.get("hemoptysis")
+        malignancy = acquired_data.get("malignancy")
+
+        wells_missing = []
+        if pe_most_likely is None:
+            wells_missing.append(ClinicalFieldRequirement(
+                field_key="pe_most_likely",
+                label="Pulmonary Embolism Most Likely Diagnosis",
+                data_type="bool",
+                required=True,
+                description="True if PE is the primary differential or equally likely as alternative diagnosis"
+            ))
+        if clinical_dvt is None:
+            wells_missing.append(ClinicalFieldRequirement(
+                field_key="clinical_signs_dvt",
+                label="Clinical Signs/Symptoms of DVT",
+                data_type="bool",
+                required=True,
+                description="True if leg swelling or deep pain on palpation is present"
+            ))
+        if immob is None:
+            wells_missing.append(ClinicalFieldRequirement(
+                field_key="immobilization_surgery",
+                label="Immobilization >= 3 Days or Surgery in Past 4 Weeks",
+                data_type="bool",
+                required=True,
+                description="True if bedridden >=3 days or surgery within 4 weeks"
+            ))
+        if prev_dvt is None:
+            wells_missing.append(ClinicalFieldRequirement(
+                field_key="previous_dvt_pe",
+                label="Previous Documented DVT or PE",
+                data_type="bool",
+                required=True,
+                description="True if patient has history of DVT or PE"
+            ))
+        if hemoptysis is None:
+            wells_missing.append(ClinicalFieldRequirement(
+                field_key="hemoptysis",
+                label="Hemoptysis (Coughing Blood)",
+                data_type="bool",
+                required=True,
+                description="True if coughing up blood"
+            ))
+        if malignancy is None:
+            wells_missing.append(ClinicalFieldRequirement(
+                field_key="malignancy",
+                label="Active Malignancy",
+                data_type="bool",
+                required=True,
+                description="True if active cancer treated within 6 months"
+            ))
+
+        if wells_missing:
+            logger.info("PE risk pathway active but mandatory Wells criteria missing. Generating ClinicalDataRequest.")
+            req = create_data_request(
+                requesting_agent="triage",
+                pathway_name="Wells PE Assessment",
+                reason="Pulmonary Embolism risk assessment requires explicit determination of all Wells criteria.",
+                required_fields=wells_missing,
+                priority="HIGH"
+            )
+            pending_requests.append(req)
+        else:
+            wells_score = calculate_wells_pe_score(
+                clinical_signs_dvt=bool(clinical_dvt),
+                pe_most_likely=bool(pe_most_likely),
+                heart_rate_gt_100=bool(hr_gt_100),
+                immobilization_surgery=bool(immob),
+                previous_dvt_pe=bool(prev_dvt),
+                hemoptysis=bool(hemoptysis),
+                malignancy=bool(malignancy)
+            )
+            new_risk_scores.append(wells_score)
+
     summary_msg = f"Triage complete. Evaluated {len(new_risk_scores)} risk scores."
     if pending_requests:
         summary_msg += f" Created {len(pending_requests)} clinical data request(s)."
@@ -218,4 +356,5 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
         result["pending_data_requests"] = pending_requests
 
     return result
+
 

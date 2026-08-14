@@ -56,7 +56,7 @@ def test_e2e_conditional_clinical_data_acquisition_flow():
     initial_state: ClinicalState = {
         "patient_id": demographics.patient_id,
         "demographics": demographics,
-        "raw_notes": ["Patient presents with acute chest pain, shortness of breath, and leg swelling. cxr_path=data/mock_patients/patient_001_cxr.png"],
+        "raw_notes": ["Patient presents with acute chest pain. cxr_path=data/mock_patients/patient_001_cxr.png"],
         "vitals": vitals,
         "risk_scores": [],
         "differentials": [],
@@ -77,7 +77,7 @@ def test_e2e_conditional_clinical_data_acquisition_flow():
         "active_data_request_id": None
     }
 
-    # STEP 1: Initial invocation -> Triage detects chest pain with missing ECG/Troponin -> Pauses at data_request_review
+    # STEP 1: Initial invocation -> Triage detects chest pain with missing HEART parameters -> Pauses at data_request_review
     graph.invoke(initial_state, config=thread_config)
     snapshot1 = graph.get_state(thread_config)
 
@@ -94,12 +94,14 @@ def test_e2e_conditional_clinical_data_acquisition_flow():
     premature_heart = [s for s in snapshot1.values["risk_scores"] if _get_field(s, "score_name") == "HEART Score"]
     assert len(premature_heart) == 0
 
-    # STEP 2: Clinician submits missing ECG and Troponin data
+    # STEP 2: Clinician submits missing HEART parameters
     clinician_response = {
+        "history_score": 2,                 # 2 = Highly suspicious history
         "ecg_score": 1,                     # 1 = Nonspecific repolarization disturbance
         "troponin_score": 0,                # 0 = Normal
         "cardiac_risk_factors_count": 2     # HTN + Hyperlipidemia
     }
+
 
     is_valid, errors = validate_response(req, clinician_response)
     assert is_valid is True

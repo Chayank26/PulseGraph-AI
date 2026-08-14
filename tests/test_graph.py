@@ -27,7 +27,7 @@ def test_clinical_graph_neuro_symbolic_execution():
     initial_state: ClinicalState = {
         "patient_id": demographics.patient_id,
         "demographics": demographics,
-        "raw_notes": ["Patient presents with chest pain, dyspnea, and leg swelling. cxr_path=data/mock_patients/patient_001_cxr.png"],
+        "raw_notes": ["Patient presents with chest pain. cxr_path=data/mock_patients/patient_001_cxr.png"],
         "vitals": vitals,
         "risk_scores": [],
         "differentials": [],
@@ -40,7 +40,7 @@ def test_clinical_graph_neuro_symbolic_execution():
         "error_logs": []
     }
 
-    # 1. First invocation detects chest pain with missing ECG/Troponin -> pauses at 'data_request_review'
+    # 1. First invocation detects chest pain with missing HEART parameters -> pauses at 'data_request_review'
     graph.invoke(initial_state, config=thread_config)
     snapshot = graph.get_state(thread_config)
 
@@ -49,14 +49,15 @@ def test_clinical_graph_neuro_symbolic_execution():
     req = snapshot.values["pending_data_requests"][0]
     assert req.requesting_agent == "triage"
 
-    # 2. Clinician supplies missing ECG & Troponin scores and resolves request
-    resp = {"ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2}
+    # 2. Clinician supplies missing HEART score parameters and resolves request
+    resp = {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2}
     resolved = resolve_request(req, resp)
     state_updates = apply_response_to_state(snapshot.values, resp)
     state_updates["pending_data_requests"] = [resolved]
     state_updates["resolved_data_requests"] = [resolved]
 
     graph.update_state(thread_config, state_updates)
+
     graph.invoke(None, config=thread_config)
     snapshot2 = graph.get_state(thread_config)
 
