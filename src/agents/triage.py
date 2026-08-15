@@ -8,6 +8,112 @@ from src.tools.calculators import calculate_wells_pe_score, calculate_heart_scor
 logger = logging.getLogger("PulseGraph.TriageAgent")
 
 
+def parse_boolean(val: Any) -> Optional[bool]:
+    """
+    Safely parses a clinical boolean value.
+    Returns True/False if valid, or None if missing or invalid.
+    """
+    if val is None:
+        return None
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        if val == 1:
+            return True
+        elif val == 0:
+            return False
+        return None
+    val_str = str(val).strip().lower()
+    if val_str in ("true", "1", "yes"):
+        return True
+    if val_str in ("false", "0", "no"):
+        return False
+    return None
+
+
+def parse_enum_score(val: Any) -> Optional[int]:
+    """
+    Safely parses an enum score (e.g. history_score, ecg_score, troponin_score).
+    Returns int 0, 1, or 2 if valid, or None if missing or invalid.
+    """
+    if val is None:
+        return None
+    if isinstance(val, int) and val in (0, 1, 2):
+        return val
+    val_str = str(val).strip()
+    if not val_str:
+        return None
+    first_char = val_str[0]
+    if first_char in ("0", "1", "2"):
+        return int(first_char)
+    return None
+
+
+def parse_number(val: Any) -> Optional[float]:
+    """
+    Safely parses a numeric clinical measurement.
+    Returns float if valid number, or None if missing or invalid.
+    """
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    try:
+        val_str = str(val).strip()
+        if not val_str:
+            return None
+        return float(val_str)
+    except (ValueError, TypeError):
+        return None
+
+
+def get_acquired_data(raw_notes: List[str], resolved_reqs: List[Any]) -> Dict[str, Any]:
+    """
+    Extracts acquired clinical parameters from raw_notes tags and resolved ClinicalDataRequests.
+    """
+    acquired: Dict[str, Any] = {}
+    for note in raw_notes:
+        if note.startswith("[ACQUIRED CLINICAL DATA]: "):
+            kv = note.replace("[ACQUIRED CLINICAL DATA]: ", "").split(" = ")
+            if len(kv) == 2:
+                k, v = kv[0].strip(), kv[1].strip()
+                b_val = parse_boolean(v)
+                if b_val is not None:
+                    acquired[k] = b_val
+                else:
+                    num_val = parse_number(v)
+                    acquired[k] = num_val if num_val is not None else v
+
+    for r in resolved_reqs:
+        resp = r.clinician_response if hasattr(r, "clinician_response") else (r.get("clinician_response") if isinstance(r, dict) else None)
+        if resp and isinstance(resp, dict):
+            for k, v in resp.items():
+                if k not in acquired and v is not None:
+                    b_val = parse_boolean(v)
+                    if b_val is not None:
+                        acquired[k] = b_val
+                    else:
+                        num_val = parse_number(v)
+                        acquired[k] = num_val if num_val is not None else v
+    return acquired
+
+
+def get_validated_age(demographics: Any, acquired_data: Dict[str, Any]) -> Optional[int]:
+    """
+    Retrieves and validates patient age from demographics or acquired data.
+    Must be an integer between 0 and 130. Returns None if invalid or missing.
+    """
+    raw_age = demographics.age if (demographics and demographics.age is not None) else acquired_data.get("age")
+    if raw_age is None:
+        return None
+    parsed = parse_number(raw_age)
+    if parsed is not None and parsed.is_integer():
+        age_int = int(parsed)
+        if 0 <= age_int <= 130:
+            return age_int
+    return None
+
+
 def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     """
     Triage Agent Node:
@@ -15,67 +121,17 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     (Wells PE Score, HEART Score for chest pain MACE risk, CURB-65 for respiratory risk).
     
     Conditional Data Acquisition:
-    If required clinical parameters for an assessment pathway (e.g. ECG score / Troponin level for HEART Score)
-    are missing, creates a structured ClinicalDataRequest instead of assuming false/normal values.
+    If required clinical parameters for an assessment pathway are missing, creates a structured
+    ClinicalDataRequest instead of assuming false/normal values.
     """
     raw_notes = state.get("raw_notes", [])
     combined_notes = " ".join(raw_notes).lower()
     vitals = state.get("vitals")
     demographics = state.get("demographics")
 
-    
-    # Parse any acquired clinical parameters from raw_notes and resolved_data_requests
-    acquired_data: Dict[str, Any] = {}
-    for note in raw_notes:
-        if note.startswith("[ACQUIRED CLINICAL DATA]: "):
-            kv = note.replace("[ACQUIRED CLINICAL DATA]: ", "").split(" = ")
-            if len(kv) == 2:
-                key, val = kv[0].strip(), kv[1].strip()
-                if val.lower() == "true":
-                    acquired_data[key] = True
-                elif val.lower() == "false":
-                    acquired_data[key] = False
-                else:
-                    try:
-                        acquired_data[key] = int(val) if val.isdigit() else float(val)
-                    except ValueError:
-                        acquired_data[key] = val
-
-    all_reqs = state.get("resolved_data_requests", []) + state.get("pending_data_requests", [])
-    for r in all_reqs:
-        resp = r.clinician_response if hasattr(r, "clinician_response") else (r.get("clinician_response") if isinstance(r, dict) else None)
-        if resp and isinstance(resp, dict):
-            for k, v in resp.items():
-                if k not in acquired_data and v is not None:
-                    if isinstance(v, str) and v.lower() == "true":
-                        acquired_data[k] = True
-                    elif isinstance(v, str) and v.lower() == "false":
-                        acquired_data[k] = False
-                    else:
-                        try:
-                            acquired_data[k] = int(v) if str(v).isdigit() else float(v)
-                        except (ValueError, TypeError):
-                            acquired_data[k] = v
-
-
-    # Determine age from demographics or acquired data
-    age = None
-    if demographics and demographics.age is not None:
-        try:
-            val = int(demographics.age)
-            if 0 <= val <= 130:
-                age = val
-        except (ValueError, TypeError):
-            pass
-
-    if age is None and "age" in acquired_data and acquired_data["age"] is not None:
-        try:
-            val = int(acquired_data["age"])
-            if 0 <= val <= 130:
-                age = val
-        except (ValueError, TypeError):
-            pass
-
+    resolved_reqs = state.get("resolved_data_requests", [])
+    acquired_data = get_acquired_data(raw_notes, resolved_reqs)
+    age = get_validated_age(demographics, acquired_data)
 
     # Global Mandatory Patient Intake Check (Phase 1)
     if age is None:
@@ -108,6 +164,7 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             "current_step": "intake_age_required"
         }
 
+
     # Baseline symptom indicators
     chest_pain = "chest pain" in combined_notes or "chest discomfort" in combined_notes
     sob = "shortness of breath" in combined_notes or "dyspnea" in combined_notes
@@ -129,13 +186,14 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
 
     # 1. HEART Score for Chest Pain Risk Assessment
     if chest_pain:
-        history_score = acquired_data.get("history_score")
-        ecg_score = acquired_data.get("ecg_score")
-        troponin_score = acquired_data.get("troponin_score")
-        cardiac_rf_count = acquired_data.get("cardiac_risk_factors_count")
+        history_val = parse_enum_score(acquired_data.get("history_score"))
+        ecg_val = parse_enum_score(acquired_data.get("ecg_score"))
+        trop_val = parse_enum_score(acquired_data.get("troponin_score"))
+        rf_num = parse_number(acquired_data.get("cardiac_risk_factors_count"))
+        rf_val = int(rf_num) if (rf_num is not None and rf_num >= 0 and rf_num.is_integer()) else None
 
         heart_missing = []
-        if history_score is None:
+        if history_val is None:
             heart_missing.append(ClinicalFieldRequirement(
                 field_key="history_score",
                 label="Clinical History Suspicion Score",
@@ -144,7 +202,7 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 description="0 = Slightly suspicious, 1 = Moderately suspicious, 2 = Highly suspicious",
                 options=["0 (Slightly suspicious)", "1 (Moderately suspicious)", "2 (Highly suspicious)"]
             ))
-        if ecg_score is None:
+        if ecg_val is None:
             heart_missing.append(ClinicalFieldRequirement(
                 field_key="ecg_score",
                 label="ECG Findings Score",
@@ -153,7 +211,7 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 description="0 = Normal, 1 = Nonspecific repolarization disturbance, 2 = Significant ST depression",
                 options=["0 (Normal)", "1 (Nonspecific ST/T changes)", "2 (ST depression)"]
             ))
-        if troponin_score is None:
+        if trop_val is None:
             heart_missing.append(ClinicalFieldRequirement(
                 field_key="troponin_score",
                 label="Troponin Level Score",
@@ -162,7 +220,7 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 description="0 = Normal (<1x limit), 1 = 1-3x normal limit, 2 = >3x normal limit",
                 options=["0 (<1x normal)", "1 (1-3x normal limit)", "2 (>3x normal limit)"]
             ))
-        if cardiac_rf_count is None:
+        if rf_val is None:
             heart_missing.append(ClinicalFieldRequirement(
                 field_key="cardiac_risk_factors_count",
                 label="Cardiac Risk Factors Count",
@@ -172,7 +230,7 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             ))
 
         if heart_missing:
-            logger.info("Chest pain identified but mandatory HEART score parameters missing. Generating ClinicalDataRequest.")
+            logger.info("Chest pain identified but mandatory HEART score parameters missing or invalid. Generating ClinicalDataRequest.")
             req = create_data_request(
                 requesting_agent="triage",
                 pathway_name="HEART Score Assessment",
@@ -193,11 +251,6 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 "current_step": "waiting_for_clinical_data"
             }
         else:
-            history_val = int(str(history_score)[0]) if isinstance(history_score, str) else int(history_score)
-            ecg_val = int(str(ecg_score)[0]) if isinstance(ecg_score, str) else int(ecg_score)
-            trop_val = int(str(troponin_score)[0]) if isinstance(troponin_score, str) else int(troponin_score)
-            rf_val = int(cardiac_rf_count)
-
             heart_score = calculate_heart_score(
                 history_score=history_val,
                 ecg_score=ecg_val,
@@ -208,13 +261,14 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             new_risk_scores.append(heart_score)
 
 
+
     # 2. CURB-65 Score for Pneumonia / Respiratory Distress
     if sob:
-        confusion = acquired_data.get("confusion")
-        bun_val = acquired_data.get("bun_mg_dl")
-        rr_val = vitals.respiratory_rate if (vitals and vitals.respiratory_rate is not None) else acquired_data.get("respiratory_rate")
-        sys_bp = vitals.blood_pressure_sys if (vitals and vitals.blood_pressure_sys is not None) else acquired_data.get("blood_pressure_sys")
-        dia_bp = vitals.blood_pressure_dia if (vitals and vitals.blood_pressure_dia is not None) else acquired_data.get("blood_pressure_dia")
+        confusion = parse_boolean(acquired_data.get("confusion"))
+        bun_val = parse_number(acquired_data.get("bun_mg_dl"))
+        rr_val = vitals.respiratory_rate if (vitals and vitals.respiratory_rate is not None) else parse_number(acquired_data.get("respiratory_rate"))
+        sys_bp = vitals.blood_pressure_sys if (vitals and vitals.blood_pressure_sys is not None) else parse_number(acquired_data.get("blood_pressure_sys"))
+        dia_bp = vitals.blood_pressure_dia if (vitals and vitals.blood_pressure_dia is not None) else parse_number(acquired_data.get("blood_pressure_dia"))
 
         curb_missing = []
         if confusion is None:
@@ -281,23 +335,24 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             }
         else:
             curb_score = calculate_curb65_score(
-                confusion=bool(confusion),
-                bun_mg_dl=float(bun_val),
-                respiratory_rate=float(rr_val),
-                systolic_bp=float(sys_bp),
-                diastolic_bp=float(dia_bp),
+                confusion=confusion,
+                bun_mg_dl=bun_val,
+                respiratory_rate=rr_val,
+                systolic_bp=sys_bp,
+                diastolic_bp=dia_bp,
                 age=age
             )
             new_risk_scores.append(curb_score)
 
     # 3. Wells PE Score (evaluated if DVT signs, tachycardia, or dyspnea present)
     if (hr_gt_100 is True) or dvt_signs or sob:
-        pe_most_likely = acquired_data.get("pe_most_likely")
-        clinical_dvt = acquired_data.get("clinical_signs_dvt")
-        immob = acquired_data.get("immobilization_surgery")
-        prev_dvt = acquired_data.get("previous_dvt_pe")
-        hemoptysis = acquired_data.get("hemoptysis")
-        malignancy = acquired_data.get("malignancy")
+        pe_most_likely = parse_boolean(acquired_data.get("pe_most_likely"))
+        clinical_dvt = parse_boolean(acquired_data.get("clinical_signs_dvt"))
+        immob = parse_boolean(acquired_data.get("immobilization_surgery"))
+        prev_dvt = parse_boolean(acquired_data.get("previous_dvt_pe"))
+        hemoptysis = parse_boolean(acquired_data.get("hemoptysis"))
+        malignancy = parse_boolean(acquired_data.get("malignancy"))
+
 
         wells_missing = []
         if hr_gt_100 is None:
