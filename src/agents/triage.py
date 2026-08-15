@@ -114,15 +114,18 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
 
 
     # Heart rate gt 100 evaluation without assuming chest pain equals tachycardia
-    hr_val = vitals.heart_rate_bpm if (vitals and vitals.heart_rate_bpm is not None) else None
-    hr_gt_100 = False
+    hr_val = vitals.heart_rate_bpm if (vitals and vitals.heart_rate_bpm is not None) else acquired_data.get("heart_rate_bpm")
+    hr_gt_100: Optional[bool] = None
     if hr_val is not None:
-        hr_gt_100 = hr_val > 100.0
+        hr_gt_100 = float(hr_val) > 100.0
     elif "tachycardia" in combined_notes:
         hr_gt_100 = True
+    elif "heart_rate_gt_100" in acquired_data:
+        hr_gt_100 = bool(acquired_data["heart_rate_gt_100"])
 
     new_risk_scores: List[RiskScore] = []
     pending_requests = []
+
 
     # 1. HEART Score for Chest Pain Risk Assessment
     if chest_pain:
@@ -266,7 +269,7 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             new_risk_scores.append(curb_score)
 
     # 3. Wells PE Score (evaluated if DVT signs, tachycardia, or dyspnea present)
-    if hr_gt_100 or dvt_signs or sob:
+    if (hr_gt_100 is True) or dvt_signs or sob:
         pe_most_likely = acquired_data.get("pe_most_likely")
         clinical_dvt = acquired_data.get("clinical_signs_dvt")
         immob = acquired_data.get("immobilization_surgery")
@@ -274,8 +277,15 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
         hemoptysis = acquired_data.get("hemoptysis")
         malignancy = acquired_data.get("malignancy")
 
-
         wells_missing = []
+        if hr_gt_100 is None:
+            wells_missing.append(ClinicalFieldRequirement(
+                field_key="heart_rate_gt_100",
+                label="Heart Rate > 100 bpm",
+                data_type="bool",
+                required=True,
+                description="True if heart rate is greater than 100 beats per minute"
+            ))
         if pe_most_likely is None:
             wells_missing.append(ClinicalFieldRequirement(
                 field_key="pe_most_likely",
@@ -284,6 +294,7 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 required=True,
                 description="True if PE is the primary differential or equally likely as alternative diagnosis"
             ))
+
         if clinical_dvt is None:
             wells_missing.append(ClinicalFieldRequirement(
                 field_key="clinical_signs_dvt",

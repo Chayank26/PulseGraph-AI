@@ -50,3 +50,24 @@ def test_drug_safety_allergy_alert():
     
     assert len(flags) > 0
     assert any(f.category == "ALLERGY_ALERT" for f in flags)
+
+
+def test_wells_pe_score_explicit_parameters():
+    from src.tools.calculators import calculate_wells_pe_score
+    # All 7 parameters explicitly supplied
+    score = calculate_wells_pe_score(
+        clinical_signs_dvt=True,
+        pe_most_likely=True,
+        heart_rate_gt_100=True,
+        immobilization_surgery=False,
+        previous_dvt_pe=False,
+        hemoptysis=False,
+        malignancy=False
+    )
+    assert score.value == 7.5  # 3.0 + 3.0 + 1.5 = 7.5
+    assert "High Risk" in score.interpretation
+
+    # Omission of required parameter raises TypeError
+    with pytest.raises(TypeError):
+        calculate_wells_pe_score(clinical_signs_dvt=True, pe_most_likely=True)
+

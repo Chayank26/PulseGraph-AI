@@ -210,6 +210,7 @@ def test_triage_curb65_with_acquired_data_calculates_score(base_clinical_state):
 def test_triage_wells_missing_inputs_creates_request(base_clinical_state):
     """Test that suspected PE without explicit Wells criteria creates a ClinicalDataRequest and omits score."""
     base_clinical_state["raw_notes"] = ["Patient presenting with leg swelling."]
+    base_clinical_state["vitals"] = None  # Unknown heart rate
     result = triage_agent_node(base_clinical_state)
 
     assert "pending_data_requests" in result
@@ -218,6 +219,7 @@ def test_triage_wells_missing_inputs_creates_request(base_clinical_state):
 
     req = wells_reqs[0]
     field_keys = [f.field_key for f in req.required_fields]
+    assert "heart_rate_gt_100" in field_keys
     assert "pe_most_likely" in field_keys
     assert "clinical_signs_dvt" in field_keys
     assert "immobilization_surgery" in field_keys
@@ -228,6 +230,7 @@ def test_triage_wells_missing_inputs_creates_request(base_clinical_state):
     # Confirm Wells score was not calculated prematurely
     wells_scores = [s for s in result["risk_scores"] if s.score_name == "Wells Score (PE)"]
     assert len(wells_scores) == 0
+
 
 
 def test_triage_wells_with_acquired_data_calculates_score(base_clinical_state):

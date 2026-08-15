@@ -27,14 +27,15 @@ def calculate_bmi(weight_kg: float, height_m: float) -> RiskScore:
 
 
 def calculate_wells_pe_score(
-    clinical_signs_dvt: bool = False,
-    pe_most_likely: bool = False,
-    heart_rate_gt_100: bool = False,
-    immobilization_surgery: bool = False,
-    previous_dvt_pe: bool = False,
-    hemoptysis: bool = False,
-    malignancy: bool = False
+    clinical_signs_dvt: bool,
+    pe_most_likely: bool,
+    heart_rate_gt_100: bool,
+    immobilization_surgery: bool,
+    previous_dvt_pe: bool,
+    hemoptysis: bool,
+    malignancy: bool
 ) -> RiskScore:
+
     """Calculate Wells' Criteria for Pulmonary Embolism (PE)."""
     score = 0.0
     if clinical_signs_dvt:
