@@ -207,4 +207,49 @@ def test_triage_curb65_with_acquired_data_calculates_score(base_clinical_state):
     assert curb_scores[0].value == 1.0
 
 
+def test_triage_wells_missing_inputs_creates_request(base_clinical_state):
+    """Test that suspected PE without explicit Wells criteria creates a ClinicalDataRequest and omits score."""
+    base_clinical_state["raw_notes"] = ["Patient presenting with leg swelling."]
+    result = triage_agent_node(base_clinical_state)
+
+    assert "pending_data_requests" in result
+    wells_reqs = [r for r in result["pending_data_requests"] if r.pathway_name == "Wells PE Assessment"]
+    assert len(wells_reqs) == 1
+
+    req = wells_reqs[0]
+    field_keys = [f.field_key for f in req.required_fields]
+    assert "pe_most_likely" in field_keys
+    assert "clinical_signs_dvt" in field_keys
+    assert "immobilization_surgery" in field_keys
+    assert "previous_dvt_pe" in field_keys
+    assert "hemoptysis" in field_keys
+    assert "malignancy" in field_keys
+
+    # Confirm Wells score was not calculated prematurely
+    wells_scores = [s for s in result["risk_scores"] if s.score_name == "Wells Score (PE)"]
+    assert len(wells_scores) == 0
+
+
+def test_triage_wells_with_acquired_data_calculates_score(base_clinical_state):
+    """Test that complete acquired Wells criteria calculates Wells PE score accurately."""
+    base_clinical_state["raw_notes"] = [
+        "Patient presenting with leg swelling.",
+        "[ACQUIRED CLINICAL DATA]: pe_most_likely = True",
+        "[ACQUIRED CLINICAL DATA]: clinical_signs_dvt = True",
+        "[ACQUIRED CLINICAL DATA]: immobilization_surgery = False",
+        "[ACQUIRED CLINICAL DATA]: previous_dvt_pe = False",
+        "[ACQUIRED CLINICAL DATA]: hemoptysis = False",
+        "[ACQUIRED CLINICAL DATA]: malignancy = False"
+    ]
+    result = triage_agent_node(base_clinical_state)
+    wells_reqs = [r for r in result.get("pending_data_requests", []) if r.pathway_name == "Wells PE Assessment"]
+    assert len(wells_reqs) == 0
+
+    wells_scores = [s for s in result["risk_scores"] if s.score_name == "Wells Score (PE)"]
+    assert len(wells_scores) == 1
+    # DVT signs (3.0) + PE most likely (3.0) = 6.0
+    assert wells_scores[0].value == 6.0
+
+
+
 

@@ -269,13 +269,11 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     if hr_gt_100 or dvt_signs or sob:
         pe_most_likely = acquired_data.get("pe_most_likely")
         clinical_dvt = acquired_data.get("clinical_signs_dvt")
-        if clinical_dvt is None and dvt_signs:
-            clinical_dvt = True
-
         immob = acquired_data.get("immobilization_surgery")
         prev_dvt = acquired_data.get("previous_dvt_pe")
         hemoptysis = acquired_data.get("hemoptysis")
         malignancy = acquired_data.get("malignancy")
+
 
         wells_missing = []
         if pe_most_likely is None:

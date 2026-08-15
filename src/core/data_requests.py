@@ -88,8 +88,15 @@ def validate_response(
                         errors.append(f"Invalid risk factor count '{val}'. Value must be a non-negative integer.")
                 except (ValueError, TypeError):
                     errors.append(f"Invalid risk factor count '{val}'. Must be a non-negative integer.")
+            elif req_field.data_type == "bool":
+                if isinstance(val, str):
+                    if val.lower() not in ["true", "false"]:
+                        errors.append(f"Invalid boolean value '{val}' for field '{req_field.label}'. Must be True or False.")
+                elif not isinstance(val, bool):
+                    errors.append(f"Invalid boolean value '{val}' for field '{req_field.label}'. Must be True or False.")
 
     return len(errors) == 0, errors
+
 
 
 
