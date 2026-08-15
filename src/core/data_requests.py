@@ -107,12 +107,17 @@ def resolve_request(
 ) -> ClinicalDataRequest:
     """
     Marks a request as RESOLVED and attaches the clinician response.
+    Raises ValueError if response_data is incomplete or invalid.
     """
+    is_valid, errors = validate_response(request, response_data)
+    if not is_valid:
+        raise ValueError(f"Cannot resolve ClinicalDataRequest [{request.request_id}]: {'; '.join(errors)}")
     request.status = "RESOLVED"
     request.resolved_at = datetime.now(timezone.utc)
     request.clinician_response = response_data
     logger.info(f"ClinicalDataRequest [{request.request_id}] resolved successfully.")
     return request
+
 
 
 def has_resolved_request_for_pathway(

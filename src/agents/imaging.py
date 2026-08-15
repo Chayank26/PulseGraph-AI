@@ -99,13 +99,10 @@ def imaging_agent_node(state: ClinicalState) -> Dict[str, Any]:
             if word.startswith("cxr_path="):
                 image_path = word.split("=")[1]
     
-    # Check if explicitly requested or default mock patient image exists
+    # Check if image path was explicitly specified as missing
     if "cxr_path=missing" in combined_notes or "cxr_required=true" in combined_notes:
         image_path = None
 
-    # If no custom image path specified, use standard mock patient path by default
-    if image_path is None and "cxr_required=true" not in combined_notes and "cxr_path=missing" not in combined_notes:
-        image_path = "data/mock_patients/patient_001_cxr.png"
 
     # If image path is missing when explicitly required:
     if not image_path or image_path.lower() == "missing":

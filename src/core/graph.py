@@ -173,16 +173,23 @@ def route_after_data_request_review(state: ClinicalState) -> str:
     """
     Conditional routing executed after clinician resolves data acquisition request.
     Routes execution DIRECTLY BACK to the requesting agent node.
+    If pending requests remain unresolved, keeps execution paused at data_request_review.
     """
-    all_requests = state.get("pending_data_requests", []) + state.get("resolved_data_requests", [])
-    if all_requests:
-        last_req = all_requests[-1]
+    pending = get_pending_requests(state)
+    if pending:
+        logger.warning(f"Data request [{pending[0].request_id}] remains unresolved/PENDING. Pausing graph at 'data_request_review'.")
+        return "data_request_review"
+
+    resolved = state.get("resolved_data_requests", [])
+    if resolved:
+        last_req = resolved[-1]
         agent_node = last_req.requesting_agent if hasattr(last_req, "requesting_agent") else (last_req.get("requesting_agent") if isinstance(last_req, dict) else None)
         if agent_node in ["triage", "imaging", "diagnostic", "evidence", "safety", "symbolic_guardrail"]:
             logger.info(f"Data request resolved. Resuming execution directly at requesting agent node '{agent_node}'.")
             return agent_node
     logger.info("Resuming execution at default node 'triage'.")
     return "triage"
+
 
 
 

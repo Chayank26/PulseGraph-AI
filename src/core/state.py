@@ -1,16 +1,36 @@
 import operator
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any, Annotated
+from typing import List, Optional, Dict, Any, Annotated, Literal
 from typing_extensions import TypedDict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+WorkflowStep = Literal[
+    "init",
+    "initialized",
+    "intake_age_required",
+    "waiting_for_clinical_data",
+    "triage_completed",
+    "imaging_data_requested",
+    "imaging_analyzed",
+    "diagnostic_completed",
+    "evidence_retrieved",
+    "safety_data_requested",
+    "safety_audited",
+    "symbolic_guardrails_evaluated",
+    "data_request_processed",
+    "clinician_approved",
+    "clinician_rejected_manual_takeover",
+    "clinician_re_evaluation_requested",
+    "ehr_exported",
+    "error"
+]
 
 
 class PatientDemographics(BaseModel):
     """Demographics information for a patient."""
     patient_id: str
     age: Optional[int] = Field(default=None, ge=0, le=130, description="Age in years")
-    gender: str = Field(description="Gender identity or biological sex")
-
+    gender: Optional[str] = Field(default=None, description="Gender identity or biological sex")
     blood_type: Optional[str] = Field(default=None, description="ABO/Rh blood type")
     allergies: List[str] = Field(default_factory=list, description="Known drug or food allergies")
     chronic_conditions: List[str] = Field(default_factory=list, description="Pre-existing diagnoses")
@@ -65,7 +85,7 @@ class ClinicalEvidence(BaseModel):
     source: str = Field(description="PubMed, Medical Guideline, UpToDate, internal KB")
     url_or_doi: Optional[str] = None
     snippet: str
-    relevance_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    relevance_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 class ImagingFinding(BaseModel):
@@ -73,7 +93,7 @@ class ImagingFinding(BaseModel):
     finding_name: str = Field(description="e.g. Cardiomegaly, Pleural Effusion, Infiltrate, Pneumothorax")
     confidence: float = Field(ge=0.0, le=1.0, description="Model prediction confidence score")
     region: Optional[str] = Field(default=None, description="Anatomical location e.g. Left Lower Lobe")
-    clinical_significance: str = Field(default="MODERATE", description="CRITICAL, HIGH, MODERATE, LOW")
+    clinical_significance: Optional[str] = Field(default=None, description="CRITICAL, HIGH, MODERATE, LOW")
 
 
 class ImagingData(BaseModel):
@@ -81,7 +101,7 @@ class ImagingData(BaseModel):
     image_path: str
     modality: str = Field(default="CHEST_XRAY_PA", description="e.g. CHEST_XRAY_PA, CT_CHEST")
     findings: List[ImagingFinding] = Field(default_factory=list)
-    impression: str = Field(default="Normal imaging study")
+    impression: Optional[str] = Field(default=None, description="Clinical impression notes")
     analyzed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -90,14 +110,14 @@ class ClinicianIdentity(BaseModel):
     doctor_id: str = Field(description="e.g. DOC-88204")
     full_name: str = Field(description="e.g. Dr. Sarah Chen")
     department: str = Field(description="e.g. Emergency Medicine")
-    role: str = Field(default="Attending Physician")
+    role: Optional[str] = Field(default=None, description="Role e.g. Attending Physician, Resident, Nurse")
     authenticated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class SymbolicOverrideFlag(BaseModel):
     """Non-negotiable deterministic rule override flag."""
     rule_id: str = Field(description="e.g. RULE_001_BRADYCARDIA_BETA_BLOCKER")
-    severity: str = Field(default="CRITICAL_OVERRIDE", description="CRITICAL_OVERRIDE, HARD_CONTRAINDICATION")
+    severity: Optional[str] = Field(default=None, description="CRITICAL_OVERRIDE, HARD_CONTRAINDICATION")
     message: str
     deterministic_rule: str
     action_required: str
@@ -131,6 +151,24 @@ class ClinicalDataRequest(BaseModel):
     resolved_at: Optional[datetime] = Field(default=None)
     clinician_response: Optional[Dict[str, Any]] = Field(default=None)
 
+    @model_validator(mode="after")
+    def validate_request_fields_and_status(self) -> "ClinicalDataRequest":
+        if not self.required_fields and not self.optional_fields:
+            raise ValueError(f"ClinicalDataRequest [{self.request_id}] must contain at least one field requirement.")
+
+        if self.status == "RESOLVED":
+            if not self.clinician_response or not isinstance(self.clinician_response, dict):
+                raise ValueError(f"ClinicalDataRequest [{self.request_id}] cannot be RESOLVED without a valid clinician_response dictionary.")
+
+            for req_field in self.required_fields:
+                if req_field.required:
+                    val = self.clinician_response.get(req_field.field_key)
+                    if val is None or (isinstance(val, str) and not val.strip()):
+                        raise ValueError(
+                            f"Cannot resolve request '{self.request_id}': missing required field '{req_field.label}' ({req_field.field_key})."
+                        )
+        return self
+
 
 class AuditEntry(BaseModel):
     """Audit log entry capturing state mutations and agent actions."""
@@ -147,7 +185,7 @@ def merge_list(left: List[Any], right: List[Any]) -> List[Any]:
 
 
 def merge_requests(left: List[ClinicalDataRequest], right: List[ClinicalDataRequest]) -> List[ClinicalDataRequest]:
-    """Reducer helper to merge ClinicalDataRequest lists by request_id, updating statuses."""
+    """Reducer helper to merge ClinicalDataRequest lists by request_id, preserving lifecycle state."""
     if not left:
         return right or []
     if not right:
@@ -160,6 +198,12 @@ def merge_requests(left: List[ClinicalDataRequest], right: List[ClinicalDataRequ
 
     for item in right:
         req_id = item.request_id if hasattr(item, "request_id") else item.get("request_id")
+        existing = req_map.get(req_id)
+        if existing:
+            existing_status = existing.status if hasattr(existing, "status") else existing.get("status")
+            new_status = item.status if hasattr(item, "status") else item.get("status")
+            if existing_status == "RESOLVED" and new_status != "RESOLVED":
+                continue
         req_map[req_id] = item
 
     return list(req_map.values())
@@ -182,18 +226,13 @@ class ClinicalState(TypedDict):
     symbolic_overrides: Annotated[List[SymbolicOverrideFlag], merge_list]
     evidence: Annotated[List[ClinicalEvidence], merge_list]
     audit_trail: Annotated[List[AuditEntry], merge_list]
-    current_step: str
+    current_step: WorkflowStep
     error_logs: Annotated[List[str], merge_list]
-    # Clinician Authentication & HITL Loop Management
     authenticated_clinician: Optional[ClinicianIdentity]
     approved_by_clinician: Optional[bool]
     iteration_count: int
     re_evaluation_requested: bool
     clinician_notes: Optional[str]
-    # Conditional Clinical Data Acquisition
     pending_data_requests: Annotated[List[ClinicalDataRequest], merge_requests]
     resolved_data_requests: Annotated[List[ClinicalDataRequest], merge_requests]
     active_data_request_id: Optional[str]
-
-
-

@@ -33,8 +33,10 @@ def initial_test_state() -> ClinicalState:
             "[ACQUIRED CLINICAL DATA]: immobilization_surgery = False",
             "[ACQUIRED CLINICAL DATA]: previous_dvt_pe = False",
             "[ACQUIRED CLINICAL DATA]: hemoptysis = False",
-            "[ACQUIRED CLINICAL DATA]: malignancy = False"
+            "[ACQUIRED CLINICAL DATA]: malignancy = False",
+            "[ACQUIRED CLINICAL DATA]: cxr_path = data/mock_patients/patient_001_cxr.png"
         ],
+
 
 
         "vitals": vitals,
