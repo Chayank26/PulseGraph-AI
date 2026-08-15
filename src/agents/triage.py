@@ -114,18 +114,17 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     dvt_signs = "leg swelling" in combined_notes or "dvt" in combined_notes
 
 
-    # Heart rate gt 100 evaluation without assuming chest pain equals tachycardia
+    # Heart rate gt 100 evaluation using only structured vitals or explicit acquired data
     hr_val = vitals.heart_rate_bpm if (vitals and vitals.heart_rate_bpm is not None) else acquired_data.get("heart_rate_bpm")
     hr_gt_100: Optional[bool] = None
     if hr_val is not None:
         hr_gt_100 = float(hr_val) > 100.0
-    elif "tachycardia" in combined_notes:
-        hr_gt_100 = True
-    elif "heart_rate_gt_100" in acquired_data:
+    elif "heart_rate_gt_100" in acquired_data and acquired_data["heart_rate_gt_100"] is not None:
         hr_gt_100 = bool(acquired_data["heart_rate_gt_100"])
 
     new_risk_scores: List[RiskScore] = []
     pending_requests = []
+
 
 
     # 1. HEART Score for Chest Pain Risk Assessment
@@ -359,9 +358,12 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             )
             new_risk_scores.append(wells_score)
 
-    summary_msg = f"Triage complete. Evaluated {len(new_risk_scores)} risk scores."
     if pending_requests:
-        summary_msg += f" Created {len(pending_requests)} clinical data request(s)."
+        summary_msg = f"Triage paused waiting for required clinical data. Created {len(pending_requests)} clinical data request(s)."
+        current_step_val = "waiting_for_clinical_data"
+    else:
+        summary_msg = f"Triage complete. Evaluated {len(new_risk_scores)} risk scores."
+        current_step_val = "triage_completed"
 
     audit_entry = AuditEntry(
         agent_name="TriageAgent",
@@ -376,12 +378,13 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "risk_scores": new_risk_scores,
         "audit_trail": [audit_entry],
-        "current_step": "triage_completed"
+        "current_step": current_step_val
     }
 
     if pending_requests:
         result["pending_data_requests"] = pending_requests
 
     return result
+
 
 
