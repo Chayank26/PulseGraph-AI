@@ -180,7 +180,18 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 required_fields=heart_missing,
                 priority="HIGH"
             )
-            pending_requests.append(req)
+            audit_entry = AuditEntry(
+                agent_name="TriageAgent",
+                action="DATA_REQUEST_CREATED",
+                summary="HEART score pathway blocked waiting for missing parameters. Created ClinicalDataRequest.",
+                metadata={"pathway": "HEART Score Assessment", "missing_fields_count": len(heart_missing)}
+            )
+            return {
+                "risk_scores": new_risk_scores,
+                "pending_data_requests": [req],
+                "audit_trail": [audit_entry],
+                "current_step": "waiting_for_clinical_data"
+            }
         else:
             history_val = int(str(history_score)[0]) if isinstance(history_score, str) else int(history_score)
             ecg_val = int(str(ecg_score)[0]) if isinstance(ecg_score, str) else int(ecg_score)
@@ -256,7 +267,18 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 required_fields=curb_missing,
                 priority="HIGH"
             )
-            pending_requests.append(req)
+            audit_entry = AuditEntry(
+                agent_name="TriageAgent",
+                action="DATA_REQUEST_CREATED",
+                summary="CURB-65 pneumonia pathway blocked waiting for missing parameters. Created ClinicalDataRequest.",
+                metadata={"pathway": "CURB-65 Pneumonia Assessment", "missing_fields_count": len(curb_missing)}
+            )
+            return {
+                "risk_scores": new_risk_scores,
+                "pending_data_requests": [req],
+                "audit_trail": [audit_entry],
+                "current_step": "waiting_for_clinical_data"
+            }
         else:
             curb_score = calculate_curb65_score(
                 confusion=bool(confusion),
@@ -345,7 +367,18 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
                 required_fields=wells_missing,
                 priority="HIGH"
             )
-            pending_requests.append(req)
+            audit_entry = AuditEntry(
+                agent_name="TriageAgent",
+                action="DATA_REQUEST_CREATED",
+                summary="Wells PE pathway blocked waiting for missing parameters. Created ClinicalDataRequest.",
+                metadata={"pathway": "Wells PE Assessment", "missing_fields_count": len(wells_missing)}
+            )
+            return {
+                "risk_scores": new_risk_scores,
+                "pending_data_requests": [req],
+                "audit_trail": [audit_entry],
+                "current_step": "waiting_for_clinical_data"
+            }
         else:
             wells_score = calculate_wells_pe_score(
                 clinical_signs_dvt=bool(clinical_dvt),
@@ -358,33 +391,23 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
             )
             new_risk_scores.append(wells_score)
 
-    if pending_requests:
-        summary_msg = f"Triage paused waiting for required clinical data. Created {len(pending_requests)} clinical data request(s)."
-        current_step_val = "waiting_for_clinical_data"
-    else:
-        summary_msg = f"Triage complete. Evaluated {len(new_risk_scores)} risk scores."
-        current_step_val = "triage_completed"
-
+    summary_msg = f"Triage complete. Evaluated {len(new_risk_scores)} risk scores."
     audit_entry = AuditEntry(
         agent_name="TriageAgent",
         action="INTAKE_TRIAGE",
         summary=summary_msg,
         metadata={
             "risk_scores_calculated": len(new_risk_scores),
-            "pending_requests_count": len(pending_requests)
+            "pending_requests_count": 0
         }
     )
 
-    result: Dict[str, Any] = {
+    return {
         "risk_scores": new_risk_scores,
         "audit_trail": [audit_entry],
-        "current_step": current_step_val
+        "current_step": "triage_completed"
     }
 
-    if pending_requests:
-        result["pending_data_requests"] = pending_requests
-
-    return result
 
 
 
