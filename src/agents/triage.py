@@ -1,6 +1,7 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from src.core.state import ClinicalState, VitalSigns, RiskScore, AuditEntry, ClinicalFieldRequirement
+
 from src.core.data_requests import create_data_request
 from src.tools.calculators import calculate_wells_pe_score, calculate_heart_score, calculate_curb65_score
 
