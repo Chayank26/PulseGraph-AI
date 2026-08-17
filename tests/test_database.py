@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -25,7 +26,7 @@ def db_session():
 def test_doctor_repository_lifecycle(db_session):
     """Test DoctorRepository creation, retrieval, and bcrypt authentication."""
     repo = DoctorRepository(db_session)
-    doc_id = "DOC-TEST-999"
+    doc_id = f"DOC-TEST-{uuid.uuid4().hex[:6]}"
 
     # Create doctor
     doc = repo.create(
@@ -51,7 +52,7 @@ def test_doctor_repository_lifecycle(db_session):
 def test_patient_repository_lifecycle(db_session):
     """Test PatientRepository creation, retrieval, and updates."""
     repo = PatientRepository(db_session)
-    pat_id = "PAT-TEST-999"
+    pat_id = f"PAT-TEST-{uuid.uuid4().hex[:6]}"
 
     patient = repo.create(
         patient_id=pat_id,
@@ -77,18 +78,19 @@ def test_session_repository_lifecycle(db_session):
     pat_repo = PatientRepository(db_session)
     sess_repo = SessionRepository(db_session)
 
-    d_id = "DOC-SESS-001"
-    p_id = "PAT-SESS-001"
+    uid = uuid.uuid4().hex[:6]
+    d_id = f"DOC-SESS-{uid}"
+    p_id = f"PAT-SESS-{uid}"
 
     doc_repo.create(doctor_id=d_id, full_name="Dr. Session", department="ER", password="pass")
     pat_repo.create(patient_id=p_id, age=50, gender="Male")
 
-    session_id = "SESS-TEST-001"
+    session_id = f"SESS-TEST-{uid}"
     sess = sess_repo.create_session(
         session_id=session_id,
         patient_id=p_id,
         doctor_id=d_id,
-        thread_id="thread-test-001",
+        thread_id=f"thread-test-{uid}",
         status="IN_PROGRESS",
         current_step="initialized"
     )
@@ -97,13 +99,13 @@ def test_session_repository_lifecycle(db_session):
     # Persist data request
     req = sess_repo.create_data_request(
         session_id=session_id,
-        request_id="REQ-TEST-001",
+        request_id=f"REQ-TEST-{uid}",
         requesting_agent="triage",
         pathway_name="HEART Score",
         reason="Missing ECG",
         required_fields=[{"field_key": "ecg_score", "label": "ECG", "data_type": "enum", "required": True}]
     )
-    assert req.request_id == "REQ-TEST-001"
+    assert req.request_id == f"REQ-TEST-{uid}"
 
     # Add audit log
     audit = sess_repo.add_audit_log(
