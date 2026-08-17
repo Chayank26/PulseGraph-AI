@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Set
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -15,6 +15,15 @@ from src.agents.symbolic_guardrail import symbolic_guardrail_agent_node
 logger = logging.getLogger("PulseGraph.Graph")
 
 MAX_ITERATIONS = 2
+
+ALLOWED_RESUMPTION_NODES: Set[str] = {
+    "triage",
+    "imaging",
+    "diagnostic",
+    "evidence",
+    "safety",
+    "symbolic_guardrail"
+}
 
 
 def human_review_node(state: ClinicalState) -> Dict[str, Any]:
@@ -48,15 +57,21 @@ def human_review_node(state: ClinicalState) -> Dict[str, Any]:
         metadata={
             "status": status_str,
             "doctor_id": doctor_id,
-            "doctor_name": doctor_name,
             "approved": approved,
             "re_evaluation_requested": re_eval
         }
     )
 
+    if approved is True:
+        step_val = "clinician_approved"
+    elif re_eval:
+        step_val = "clinician_re_evaluation_requested"
+    else:
+        step_val = "clinician_rejected_manual_takeover"
+
     return {
         "audit_trail": [audit_entry],
-        "current_step": f"clinician_{status_str.lower()}"
+        "current_step": step_val
     }
 
 
@@ -68,19 +83,29 @@ def data_request_review_node(state: ClinicalState) -> Dict[str, Any]:
     """
     logger.info("Executing Clinical Data Request Review Node...")
     pending = get_pending_requests(state)
+    
+    active_id = pending[0].request_id if pending else state.get("active_data_request_id")
     req_summary = f"Pending clinical data requests: {len(pending)}" if pending else "Clinical data acquisition resolved."
+
+    logger.info(f"Data request checkpoint. Active Request ID: {active_id}. Pending count: {len(pending)}")
 
     audit_entry = AuditEntry(
         agent_name="DataRequestReviewNode",
         action="CLINICAL_DATA_ACQUISITION",
         summary=req_summary,
-        metadata={"pending_count": len(pending)}
+        metadata={
+            "pending_count": len(pending),
+            "active_request_id": active_id
+        }
     )
 
-    return {
+    res: Dict[str, Any] = {
         "audit_trail": [audit_entry],
         "current_step": "data_request_processed"
     }
+    if active_id:
+        res["active_data_request_id"] = active_id
+    return res
 
 
 def ehr_export_node(state: ClinicalState) -> Dict[str, Any]:
@@ -123,7 +148,7 @@ def feedback_processor_node(state: ClinicalState) -> Dict[str, Any]:
         agent_name="FeedbackProcessorNode",
         action="FEEDBACK_RE_EVALUATION",
         summary=f"Feedback loop {current_count}/{MAX_ITERATIONS} initiated by {doctor_id}. Re-analyzing differentials.",
-        metadata={"iteration_count": current_count, "notes": notes}
+        metadata={"iteration_count": current_count}
     )
 
     return {
@@ -131,7 +156,7 @@ def feedback_processor_node(state: ClinicalState) -> Dict[str, Any]:
         "raw_notes": [feedback_text],
         "re_evaluation_requested": False,
         "audit_trail": [audit_entry],
-        "current_step": f"re_evaluation_loop_{current_count}"
+        "current_step": "clinician_re_evaluation_requested"
     }
 
 
@@ -139,12 +164,13 @@ def _check_data_request_routing(state: ClinicalState, default_next_node: str) ->
     """Helper router checking if pending data requests exist after an agent node."""
     pending = get_pending_requests(state)
     if pending:
+        req = pending[0]
         iteration_count = state.get("iteration_count", 0)
         if iteration_count < MAX_ITERATIONS * 3:
-            logger.info(f"Pending ClinicalDataRequest detected ({pending[0].request_id}). Routing to 'data_request_review'.")
+            logger.info(f"Pending ClinicalDataRequest detected ({req.request_id}) from requesting agent '{req.requesting_agent}'. Routing to 'data_request_review'.")
             return "data_request_review"
         else:
-            logger.warning(f"Data request loop hit iteration safety limit. Routing to END.")
+            logger.warning(f"Data request loop hit iteration safety limit ({iteration_count}). Routing to END.")
             return END
     return default_next_node
 
@@ -161,6 +187,10 @@ def route_after_diagnostic(state: ClinicalState) -> str:
     return _check_data_request_routing(state, "evidence")
 
 
+def route_after_evidence(state: ClinicalState) -> str:
+    return _check_data_request_routing(state, "safety")
+
+
 def route_after_safety(state: ClinicalState) -> str:
     return _check_data_request_routing(state, "symbolic_guardrail")
 
@@ -171,26 +201,50 @@ def route_after_symbolic_guardrail(state: ClinicalState) -> str:
 
 def route_after_data_request_review(state: ClinicalState) -> str:
     """
-    Conditional routing executed after clinician resolves data acquisition request.
-    Routes execution DIRECTLY BACK to the requesting agent node.
-    If pending requests remain unresolved, keeps execution paused at data_request_review.
+    Conditional routing executed after data_request_review node.
+    - If pending requests exist, remains at data_request_review.
+    - If active_data_request_id identifies a resolved request, resumes at that requesting agent.
+    - Uses safe fallback logic to latest resolved request or triage if active ID is unpopulated.
     """
     pending = get_pending_requests(state)
     if pending:
         logger.warning(f"Data request [{pending[0].request_id}] remains unresolved/PENDING. Pausing graph at 'data_request_review'.")
         return "data_request_review"
 
+    active_id = state.get("active_data_request_id")
+    all_requests = state.get("resolved_data_requests", []) + state.get("pending_data_requests", [])
+
+    if active_id:
+        target_req = next(
+            (r for r in all_requests if (r.request_id if hasattr(r, "request_id") else r.get("request_id")) == active_id),
+            None
+        )
+        if target_req:
+            status = target_req.status if hasattr(target_req, "status") else target_req.get("status")
+            if status == "PENDING":
+                logger.warning(f"Active data request [{active_id}] is still PENDING. Pausing graph at 'data_request_review'.")
+                return "data_request_review"
+
+            agent_node = target_req.requesting_agent if hasattr(target_req, "requesting_agent") else target_req.get("requesting_agent")
+            if agent_node in ALLOWED_RESUMPTION_NODES:
+                logger.info(f"Data request [{active_id}] resolved. Resuming execution directly at requesting agent node '{agent_node}'.")
+                return agent_node
+            else:
+                logger.warning(f"Active data request [{active_id}] specified unknown agent '{agent_node}'. Falling back to 'triage'.")
+                return "triage"
+        else:
+            logger.warning(f"active_data_request_id [{active_id}] not found in state requests.")
+
     resolved = state.get("resolved_data_requests", [])
     if resolved:
         last_req = resolved[-1]
-        agent_node = last_req.requesting_agent if hasattr(last_req, "requesting_agent") else (last_req.get("requesting_agent") if isinstance(last_req, dict) else None)
-        if agent_node in ["triage", "imaging", "diagnostic", "evidence", "safety", "symbolic_guardrail"]:
-            logger.info(f"Data request resolved. Resuming execution directly at requesting agent node '{agent_node}'.")
+        agent_node = last_req.requesting_agent if hasattr(last_req, "requesting_agent") else last_req.get("requesting_agent")
+        if agent_node in ALLOWED_RESUMPTION_NODES:
+            logger.info(f"Fallback resumption: using latest resolved request ({last_req.request_id}). Resuming execution at '{agent_node}'.")
             return agent_node
+
     logger.info("Resuming execution at default node 'triage'.")
     return "triage"
-
-
 
 
 def route_after_review(state: ClinicalState) -> str:
@@ -198,7 +252,7 @@ def route_after_review(state: ClinicalState) -> str:
     Conditional routing function executed after human_review node.
     - If approved_by_clinician == True -> ehr_export
     - If approved_by_clinician == False AND re_evaluation_requested == True:
-        - If iteration_count < MAX_ITERATIONS -> feedback_processor (which routes to diagnostic)
+        - If iteration_count < MAX_ITERATIONS -> feedback_processor
         - If iteration_count >= MAX_ITERATIONS -> END (max iteration safety cutoff)
     - Otherwise -> END (manual takeover)
     """
@@ -207,18 +261,18 @@ def route_after_review(state: ClinicalState) -> str:
     iteration_count = state.get("iteration_count", 0)
 
     if approved is True:
-        logger.info("Clinician APPROVED plan. Routing to 'ehr_export'.")
+        logger.info("Clinician APPROVED recommendations. Routing to 'ehr_export'.")
         return "ehr_export"
 
     if approved is False and re_eval:
         if iteration_count < MAX_ITERATIONS:
-            logger.info(f"Re-evaluation requested (iteration {iteration_count + 1}/{MAX_ITERATIONS}). Routing to 'feedback_processor'.")
+            logger.info(f"Re-evaluation requested by clinician (iteration {iteration_count + 1}/{MAX_ITERATIONS}). Routing to 'feedback_processor'.")
             return "feedback_processor"
         else:
-            logger.warning(f"Re-evaluation loop reached MAX_ITERATIONS cutoff ({MAX_ITERATIONS}). Terminating graph for manual takeover.")
+            logger.warning(f"Re-evaluation loop reached MAX_ITERATIONS limit ({iteration_count}/{MAX_ITERATIONS}). Terminating graph for manual takeover.")
             return END
 
-    logger.info("Clinician REJECTED plan or manual takeover initiated. Terminating graph.")
+    logger.info("Clinician REJECTED recommendations or manual takeover initiated. Terminating graph.")
     return END
 
 
@@ -228,9 +282,9 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     
     Workflow Topology:
     [START] -> triage -> imaging -> diagnostic -> evidence -> safety -> symbolic_guardrail -> human_review
-               │          │          │                          │          │                    │
-               ▼          ▼          ▼                          ▼          ▼                    ▼
-        [data_request_review] ◄─────────────────────────────────────────────────────────────────┘
+               │          │          │           │          │          │                    │
+               ▼          ▼          ▼           ▼          ▼          ▼                    ▼
+        [data_request_review] ◄─────────────────────────────────────────────────────────────┘
                │
                ▼ (Resumes directly at requesting agent node e.g. triage/diagnostic/safety)
     """
@@ -257,7 +311,7 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     workflow.add_conditional_edges("triage", route_after_triage, {"data_request_review": "data_request_review", "imaging": "imaging", END: END})
     workflow.add_conditional_edges("imaging", route_after_imaging, {"data_request_review": "data_request_review", "diagnostic": "diagnostic", END: END})
     workflow.add_conditional_edges("diagnostic", route_after_diagnostic, {"data_request_review": "data_request_review", "evidence": "evidence", END: END})
-    workflow.add_edge("evidence", "safety")
+    workflow.add_conditional_edges("evidence", route_after_evidence, {"data_request_review": "data_request_review", "safety": "safety", END: END})
     workflow.add_conditional_edges("safety", route_after_safety, {"data_request_review": "data_request_review", "symbolic_guardrail": "symbolic_guardrail", END: END})
     workflow.add_conditional_edges("symbolic_guardrail", route_after_symbolic_guardrail, {"data_request_review": "data_request_review", "human_review": "human_review", END: END})
 
@@ -272,7 +326,7 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
             "evidence": "evidence",
             "safety": "safety",
             "symbolic_guardrail": "symbolic_guardrail",
-            "human_review": "human_review",
+            "data_request_review": "data_request_review",
             END: END
         }
     )
@@ -304,5 +358,3 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     logger.info("PulseGraph AI StateGraph compiled successfully with interrupt_before=['human_review', 'data_request_review'].")
     
     return compiled_graph
-
-
