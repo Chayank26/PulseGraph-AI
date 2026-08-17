@@ -14,6 +14,15 @@ pydantic-settings>=2.2.0
 fhir.resources>=7.1.0
 fastmcp>=0.1.0
 
+# Database & Persistence
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+alembic>=1.13.0
+
+# Backend API Framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
 # Utilities & Runtime
 python-dotenv>=1.0.1
 typing-extensions>=4.10.0
@@ -24,4 +33,3 @@ streamlit>=1.35.0
 # Testing & Quality
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
-

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pulsegraph_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: pulsegraph
+      POSTGRES_USER: pulsegraph_user
+      POSTGRES_PASSWORD: pulsegraph_secret_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsegraph_user -d pulsegraph"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
