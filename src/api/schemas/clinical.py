@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -17,8 +17,7 @@ class ClinicalDataRequestResponse(BaseModel):
     created_at: datetime
     resolved_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuditLogResponse(BaseModel):
@@ -30,8 +29,7 @@ class AuditLogResponse(BaseModel):
     summary: str
     metadata_json: Dict[str, Any]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CDSResultResponse(BaseModel):
@@ -46,5 +44,4 @@ class CDSResultResponse(BaseModel):
     clinician_approval: Optional[Dict[str, Any]] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

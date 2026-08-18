@@ -1,10 +1,9 @@
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class LoginRequest(BaseModel):
-    doctor_id: str = Field(..., example="DOC-88204", description="Clinician identifier")
-    password: str = Field(..., example="password123", description="Clinician password")
+    doctor_id: str = Field(..., json_schema_extra={"example": "DOC-88204"}, description="Clinician identifier")
+    password: str = Field(..., json_schema_extra={"example": "password123"}, description="Clinician password")
 
 
 class TokenResponse(BaseModel):

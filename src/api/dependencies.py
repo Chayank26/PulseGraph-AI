@@ -9,6 +9,7 @@ from config.settings import settings
 from src.db.database import SessionLocal
 from src.db.models import DoctorModel
 from src.db.repositories.doctor_repository import DoctorRepository
+from src.core.state import ClinicianIdentity
 
 logger = logging.getLogger("PulseGraph.API.Dependencies")
 
@@ -31,6 +32,7 @@ def get_current_clinician(
     """
     FastAPI authentication dependency.
     Decodes and validates JWT bearer token and injects authenticated DoctorModel.
+    Never relies on client-supplied doctor_id parameters.
     """
     token = credentials.credentials
     credentials_exception = HTTPException(
@@ -66,3 +68,20 @@ def get_current_clinician(
         )
 
     return doctor
+
+
+def to_clinician_identity(doctor: DoctorModel) -> ClinicianIdentity:
+    """Converts authenticated DoctorModel into domain ClinicianIdentity model for ClinicalState."""
+    return ClinicianIdentity(
+        doctor_id=doctor.doctor_id,
+        full_name=doctor.full_name,
+        department=doctor.department,
+        role=doctor.role
+    )
+
+
+def get_current_clinician_identity(
+    doctor: DoctorModel = Depends(get_current_clinician)
+) -> ClinicianIdentity:
+    """FastAPI dependency returning domain ClinicianIdentity derived directly from authenticated DoctorModel."""
+    return to_clinician_identity(doctor)
