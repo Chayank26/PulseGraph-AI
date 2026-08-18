@@ -1,9 +1,9 @@
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.api.dependencies import get_db, get_current_clinician
+from src.api.dependencies import get_db, get_current_clinician, to_clinician_identity
 from src.api.schemas.sessions import (
     SessionCreateRequest,
     SessionResponse,
@@ -14,6 +14,7 @@ from src.api.schemas.sessions import (
 from src.db.models import DoctorModel
 from src.db.repositories.patient_repository import PatientRepository
 from src.db.repositories.session_repository import SessionRepository
+from src.services.clinical_workflow import ClinicalWorkflowService
 
 router = APIRouter(prefix="/api/clinical/sessions", tags=["Clinical Sessions & Assessment"])
 
@@ -49,6 +50,32 @@ def create_session(
         current_step="initialized"
     )
     return session
+
+
+@router.post("/{session_id}/run", summary="Run/Execute Clinical Session Workflow")
+def run_session(
+    session_id: str,
+    raw_notes: Optional[List[str]] = None,
+    image_path: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_clinician: DoctorModel = Depends(get_current_clinician)
+):
+    """
+    Triggers/executes the multi-agent LangGraph workflow for a session.
+    Automatically pauses at data_request_review or human_review.
+    """
+    workflow_service = ClinicalWorkflowService(db)
+    try:
+        result = workflow_service.run_session(
+            session_id=session_id,
+            raw_notes=raw_notes,
+            image_path=image_path
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Workflow execution error: {e}")
 
 
 @router.get("/{session_id}", response_model=SessionResponse, summary="Get Clinical Session Progress")
