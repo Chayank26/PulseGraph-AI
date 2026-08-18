@@ -1,6 +1,10 @@
 import os
+import logging
 from typing import Optional
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger("PulseGraph.Settings")
 
 
 class Settings(BaseSettings):
@@ -42,6 +46,16 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @model_validator(mode="after")
+    def validate_security_settings(self) -> "Settings":
+        """Ensures default development secrets are not used in production environment."""
+        if self.environment.lower() == "production":
+            if "pulsegraph_secret_2026" in self.database_url or "pulsegraph_secret_2026" in self.postgres_password:
+                raise ValueError("Production environment must not use default database password.")
+            if "pulsegraph_clinical_jwt_secret" in self.pulsegraph_jwt_secret:
+                raise ValueError("Production environment must configure a secure PULSEGRAPH_JWT_SECRET.")
+        return self
 
 
 # Global settings singleton instance
