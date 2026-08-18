@@ -37,12 +37,12 @@ def _to_json_serializable(obj: Any) -> Any:
 
 
 class ClinicalWorkflowService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, checkpointer: Optional[Any] = None):
         self.db = db
         self.sess_repo = SessionRepository(db)
         self.patient_repo = PatientRepository(db)
         self.doctor_repo = DoctorRepository(db)
-        self.graph = build_clinical_graph()
+        self.graph = build_clinical_graph(checkpointer=checkpointer)
 
     def _sync_audit_and_results(self, session: ClinicalSessionModel, state_values: Dict[str, Any]) -> None:
         """Persists audit logs and CDS recommendations from state snapshot into PostgreSQL."""

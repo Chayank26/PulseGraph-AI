@@ -346,9 +346,10 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
         }
     )
 
-    # 3. Default checkpointer to MemorySaver if not provided
+    # 3. Default checkpointer to get_default_checkpointer() if not provided
     if checkpointer is None:
-        checkpointer = MemorySaver()
+        from src.core.checkpointer import get_default_checkpointer
+        checkpointer = get_default_checkpointer()
 
     # 4. Compile with checkpointer & HITL interrupts
     compiled_graph = workflow.compile(
