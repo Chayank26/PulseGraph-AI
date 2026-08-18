@@ -1,6 +1,10 @@
 import logging
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config.settings import settings
 from src.db.database import init_db
@@ -12,6 +16,16 @@ from src.api.routes.clinical import router as clinical_router
 
 logger = logging.getLogger("PulseGraph.API")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI application lifespan event handler."""
+    logger.info("Starting PulseGraph AI Backend API Service...")
+    init_db()
+    yield
+    logger.info("Shutting down PulseGraph AI Backend API Service...")
+
+
 app = FastAPI(
     title="PulseGraph AI — Clinical Decision Support Backend API",
     description=(
@@ -21,7 +35,8 @@ app = FastAPI(
     ),
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # CORS Middleware Setup
@@ -33,18 +48,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Exception Handlers
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    error_msg = "; ".join([f"{'.'.join(str(l) for l in err['loc'])}: {err['msg']}" for err in errors])
+    logger.warning(f"Validation failure on {request.url}: {error_msg}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": f"Request validation failure: {error_msg}"}
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    logger.warning(f"Business logic validation error on {request.url}: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)}
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled internal server error processing request: {request.method} {request.url}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal server error occurred while processing the clinical request."}
+    )
+
+
 # Include Routers
 app.include_router(auth_router)
 app.include_router(doctors_router)
 app.include_router(patients_router)
 app.include_router(sessions_router)
 app.include_router(clinical_router)
-
-
-@app.on_event("startup")
-def startup_event():
-    logger.info("Starting PulseGraph AI Backend API Service...")
-    init_db()
 
 
 @app.get("/health", tags=["Health & Status"])
