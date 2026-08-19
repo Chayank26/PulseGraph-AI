@@ -20,7 +20,7 @@ def test_hitl_api_review_approval_lifecycle():
 
     # Create patient & session
     client.post("/api/patients", json={"patient_id": pat_id, "age": 50, "gender": "Female"}, headers=headers)
-    sess_resp = client.post("/api/clinical/sessions", json={"patient_id": pat_id, "raw_notes": ["Patient with chest pain. cxr_path=data/mock_patients/patient_001_cxr.png, history_score=2, ecg_score=1, troponin_score=0, cardiac_risk_factors_count=2"]}, headers=headers)
+    sess_resp = client.post("/api/clinical/sessions", json={"patient_id": pat_id, "raw_notes": ["Patient with chest pain.", "[ACQUIRED CLINICAL DATA]: cxr_path = data/mock_patients/patient_001_cxr.png", "[ACQUIRED CLINICAL DATA]: history_score = 2", "[ACQUIRED CLINICAL DATA]: ecg_score = 1", "[ACQUIRED CLINICAL DATA]: troponin_score = 0", "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 2"]}, headers=headers)
     session_id = sess_resp.json()["session_id"]
 
     # Execute workflow (runs directly to human_review breakpoint since no missing data requests are created)
@@ -64,7 +64,7 @@ def test_hitl_reevaluation_loop_and_max_iterations():
     headers = {"Authorization": f"Bearer {token}"}
 
     client.post("/api/patients", json={"patient_id": pat_id, "age": 45, "gender": "Male"}, headers=headers)
-    sess_resp = client.post("/api/clinical/sessions", json={"patient_id": pat_id, "raw_notes": ["Patient with chest pain. cxr_path=data/mock_patients/patient_001_cxr.png, history_score=2, ecg_score=1, troponin_score=0, cardiac_risk_factors_count=2"]}, headers=headers)
+    sess_resp = client.post("/api/clinical/sessions", json={"patient_id": pat_id, "raw_notes": ["Patient with chest pain.", "[ACQUIRED CLINICAL DATA]: cxr_path = data/mock_patients/patient_001_cxr.png", "[ACQUIRED CLINICAL DATA]: history_score = 2", "[ACQUIRED CLINICAL DATA]: ecg_score = 1", "[ACQUIRED CLINICAL DATA]: troponin_score = 0", "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 2"]}, headers=headers)
     session_id = sess_resp.json()["session_id"]
 
     client.post(f"/api/clinical/sessions/{session_id}/run", headers=headers)

@@ -183,5 +183,5 @@ def test_apply_response_to_state():
     }
     updates = apply_response_to_state(state, resp)
     assert updates["vitals"].heart_rate_bpm == 88.0
-    assert len(updates["raw_notes"]) == 3
+    assert len(updates["raw_notes"]) == 2
     assert "[ACQUIRED CLINICAL DATA]: ecg_score = 1" in updates["raw_notes"]

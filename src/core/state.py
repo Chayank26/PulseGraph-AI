@@ -184,29 +184,27 @@ def merge_list(left: List[Any], right: List[Any]) -> List[Any]:
     return left + right
 
 
-def merge_requests(left: List[ClinicalDataRequest], right: List[ClinicalDataRequest]) -> List[ClinicalDataRequest]:
+def merge_requests(left: List[ClinicalDataRequest], right: Optional[List[ClinicalDataRequest]]) -> List[ClinicalDataRequest]:
     """Reducer helper to merge ClinicalDataRequest lists by request_id, preserving lifecycle state."""
-    if not left:
-        return right or []
-    if not right:
-        return left or []
+    if not left and not right:
+        return []
 
     req_map = {}
-    for item in left:
+    for item in (left or []):
         req_id = item.request_id if hasattr(item, "request_id") else item.get("request_id")
         req_map[req_id] = item
 
-    for item in right:
+    for item in (right or []):
         req_id = item.request_id if hasattr(item, "request_id") else item.get("request_id")
-        existing = req_map.get(req_id)
-        if existing:
-            existing_status = existing.status if hasattr(existing, "status") else existing.get("status")
-            new_status = item.status if hasattr(item, "status") else item.get("status")
-            if existing_status == "RESOLVED" and new_status != "RESOLVED":
-                continue
         req_map[req_id] = item
 
-    return list(req_map.values())
+    pending = []
+    for item in req_map.values():
+        status = item.status if hasattr(item, "status") else item.get("status")
+        if status != "RESOLVED":
+            pending.append(item)
+
+    return pending
 
 
 class ClinicalState(TypedDict):

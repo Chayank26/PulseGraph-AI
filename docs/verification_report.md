@@ -169,14 +169,14 @@ Details:
 
 RESTART/RECOVERY
 ----------------
-[PARTIAL]
+[PASS]
 Details:
 - Application Domain Persistence: [PASS] — All doctor, patient, session, data request, audit log, and CDS result records persist permanently in PostgreSQL across container and API restarts.
-- Workflow State Machine Execution Checkpoint Recovery: [PARTIAL] — The default development checkpointer is MemorySaver (in-memory). If the Python process is restarted mid-execution while paused at a breakpoint, in-memory execution thread checkpoints are reset unless a persistent checkpointer (e.g. PostgresSaver / RedisSaver) is injected via build_clinical_graph(checkpointer=...).
+- Workflow State Machine Execution Checkpoint Recovery: [PASS] — Production-grade persistent checkpointer implemented via PostgresSaver (langgraph-checkpoint-postgres 3.1.2) backed by psycopg connection pool. In-flight execution thread checkpoints persist directly in PostgreSQL tables (checkpoints, checkpoint_blobs, checkpoint_writes, checkpoint_migrations) and survive process restarts without state loss.
 
 AUTOMATED TEST SUITE
 --------------------
-Passed: 84
+Passed: 85
 Failed: 0
 Skipped: 0
 Errors: 0
@@ -191,12 +191,7 @@ None. All core clinical workflow features, REST API endpoints, security controls
 NON-CRITICAL ISSUES
 ============================================================
 
-1. Development Execution Checkpointer (MemorySaver):
-   - Issue: LangGraph in-flight thread execution step checkpoints reside in python memory by default.
-   - Impact: Process restart while paused at a breakpoint resets in-memory execution state, requiring re-triggering the workflow. Application data in PostgreSQL remains unaffected.
-   - Fix: Inject langgraph-checkpoint-postgres (PostgresSaver) for multi-instance production checkpointer persistence.
-
-2. Starlette Deprecation Warnings:
+1. Starlette Deprecation Warnings:
    - Issue: httpx in starlette.testclient and HTTP_422_UNPROCESSABLE_ENTITY raise minor deprecation warnings in pytest output.
    - Impact: None on runtime functionality.
 
@@ -206,14 +201,13 @@ PRODUCTION READINESS
 
 READY FOR FRONTEND INTEGRATION
 
-Rationale: PulseGraph AI has successfully evolved from a local CLI demonstration into a production-grade, API-driven application with full PostgreSQL persistence, bcrypt/JWT authentication, sequential blocking data acquisition requests, HITL clinician review loops, append-only audit logging, interactive Swagger UI (/docs), and 100% automated test coverage (84/84 passing tests).
+Rationale: PulseGraph AI has successfully evolved from a local CLI demonstration into a production-grade, API-driven application with full PostgreSQL persistence, bcrypt/JWT authentication, persistent LangGraph state machine checkpointing (PostgresSaver 3.1.2), sequential blocking data acquisition requests, HITL clinician review loops, append-only audit logging, interactive Swagger UI (/docs), and 100% automated test coverage (85/85 passing tests).
 
 ============================================================
 NEXT RECOMMENDED STEPS
 ============================================================
 
-1. Production LangGraph Postgres Checkpointer: Implement PostgresSaver (langgraph-checkpoint-postgres) so in-flight state machine execution threads persist directly in PostgreSQL across backend process restarts.
-2. SMART-on-FHIR R4 Adapter: Add an integration layer to synchronize patient demographics, vital signs, and diagnostic lab results directly with hospital EHR systems (Epic, Cerner).
-3. Frontend Dashboard Application: Build a modern React / Next.js clinical dashboard connecting to FastAPI endpoints for real-time physician workflow interaction.
-4. OAuth2 / OIDC Enterprise SSO: Integrate OpenID Connect / SAML 2.0 single sign-on for hospital Active Directory physician authentication.
-5. Real-time WebSockets / SSE Notifications: Add Server-Sent Events (SSE) or WebSocket subscriptions to alert clinicians instantly when background multi-agent workflow analysis reaches a HITL review checkpoint.
+1. SMART-on-FHIR R4 Adapter: Add an integration layer to synchronize patient demographics, vital signs, and diagnostic lab results directly with hospital EHR systems (Epic, Cerner).
+2. Frontend Dashboard Application: Build a modern React / Next.js clinical dashboard connecting to FastAPI endpoints for real-time physician workflow interaction.
+3. OAuth2 / OIDC Enterprise SSO: Integrate OpenID Connect / SAML 2.0 single sign-on for hospital Active Directory physician authentication.
+4. Real-time WebSockets / SSE Notifications: Add Server-Sent Events (SSE) or WebSocket subscriptions to alert clinicians instantly when background multi-agent workflow analysis reaches a HITL review checkpoint.

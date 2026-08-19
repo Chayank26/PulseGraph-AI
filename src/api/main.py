@@ -24,6 +24,8 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
     logger.info("Shutting down PulseGraph AI Backend API Service...")
+    from src.core.checkpointer import close_checkpointer_pool
+    close_checkpointer_pool()
 
 
 app = FastAPI(

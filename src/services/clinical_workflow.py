@@ -211,7 +211,7 @@ class ClinicalWorkflowService:
 
         # Apply response data to state and update checkpoint
         state_updates = apply_response_to_state(snapshot.values, response_data)
-        state_updates["pending_data_requests"] = [r for r in pending_requests if (r.request_id if hasattr(r, "request_id") else r.get("request_id")) != request_id]
+        state_updates["pending_data_requests"] = [r if (r.request_id if hasattr(r, "request_id") else r.get("request_id")) != request_id else resolved_req for r in pending_requests]
         
         resolved_list = snapshot.values.get("resolved_data_requests", []) + [resolved_req]
         state_updates["resolved_data_requests"] = resolved_list

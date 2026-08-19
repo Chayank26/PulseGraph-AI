@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     database_url: str = "postgresql://pulsegraph_user:pulsegraph_secret_2026@localhost:5432/pulsegraph"
 
+    # LangGraph Execution Checkpointer Configuration
+    checkpoint_backend: str = "postgres"  # Options: 'postgres', 'memory'
+
     # Authentication & Security
     pulsegraph_jwt_secret: str = "pulsegraph_clinical_jwt_secret_key_2026"
     jwt_algorithm: str = "HS256"
@@ -55,6 +58,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production environment must not use default database password.")
             if "pulsegraph_clinical_jwt_secret" in self.pulsegraph_jwt_secret:
                 raise ValueError("Production environment must configure a secure PULSEGRAPH_JWT_SECRET.")
+            if self.checkpoint_backend.lower() != "postgres":
+                raise ValueError("Production environment must use 'postgres' checkpointer backend.")
         return self
 
 
