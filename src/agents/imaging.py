@@ -96,8 +96,8 @@ def imaging_agent_node(state: ClinicalState) -> Dict[str, Any]:
         image_path = acquired_data["cxr_path"]
     elif "cxr_path=" in combined_notes:
         for word in combined_notes.split():
-            if word.startswith("cxr_path="):
-                image_path = word.split("=")[1]
+            if "cxr_path=" in word:
+                image_path = word.split("cxr_path=")[1].strip(",;\"'")
     
     # Check if image path was explicitly specified as missing
     if "cxr_path=missing" in combined_notes or "cxr_required=true" in combined_notes:

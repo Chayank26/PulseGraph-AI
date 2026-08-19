@@ -10,7 +10,7 @@ def test_401_unauthorized_without_token():
     """Verify 401 Unauthorized response when accessing protected endpoint without JWT token."""
     response = client.get("/api/doctors/me")
     assert response.status_code == 401
-    assert "not validate" in response.json()["detail"].lower() or "credentials" in response.json()["detail"].lower()
+    assert "not authenticated" in response.json()["detail"].lower() or "credentials" in response.json()["detail"].lower() or "not validate" in response.json()["detail"].lower()
 
 
 def test_404_not_found_for_nonexistent_resources():

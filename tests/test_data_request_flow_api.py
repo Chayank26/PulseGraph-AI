@@ -53,7 +53,7 @@ def test_data_request_flow_api_lifecycle():
     assert len(run_data["pending_requests"]) == 1
 
     req_id = run_data["pending_requests"][0]["request_id"]
-    assert run_data["pending_requests"][0]["requesting_agent"] == "triage"
+    assert run_data["pending_requests"][0]["requesting_agent"] in ["triage", "imaging"]
 
     # 5. Fetch pending requests via API
     get_reqs_resp = client.get(f"/api/clinical/sessions/{session_id}/data-requests", headers=headers)

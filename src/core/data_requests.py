@@ -189,7 +189,7 @@ def apply_response_to_state(
     if vitals:
         updates["vitals"] = vitals
     if notes_to_add:
-        updates["raw_notes"] = notes_to_add
+        updates["raw_notes"] = list(state.get("raw_notes", [])) + notes_to_add
 
 
     audit_entry = AuditEntry(
