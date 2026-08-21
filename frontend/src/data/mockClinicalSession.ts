@@ -24,13 +24,13 @@ export const mockClinicalSession: ClinicalSession = {
       age: 68,
       gender: 'Male',
       chief_complaint: 'Acute retrosternal chest pain radiating to left jaw, severe diaphoresis',
-      relevant_history: [
+      chronic_conditions: [
         'Hypertension (10+ yrs)',
         'Type 2 Diabetes Mellitus',
         'Hyperlipidemia',
         'Prior 30 pack-year smoking history'
       ],
-      known_allergies: [
+      allergies: [
         'Penicillin (Rash)',
         'Shellfish (Mild Utricaria)'
       ],

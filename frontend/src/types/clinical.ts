@@ -11,21 +11,28 @@ export type SessionStatusType =
   | 'REJECTED_MANUAL_TAKEOVER';
 
 export interface Doctor {
+  id?: number;
   doctor_id: string;
   full_name: string;
-  email: string;
   department: string;
-  role?: string;
+  role: string;
+  email?: string;
+  created_at?: string;
 }
 
 export interface PatientDemographics {
+  id?: number;
   patient_id: string;
-  age: number;
-  gender: string;
+  age?: number;
+  gender?: string;
+  blood_type?: string;
   chief_complaint?: string;
-  relevant_history: string[];
-  known_allergies: string[];
+  relevant_history?: string[];
+  allergies: string[];
+  chronic_conditions: string[];
   current_medications: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface VitalSigns {
@@ -150,10 +157,13 @@ export interface ClinicalSession {
   patient_id: string;
   doctor_id: string;
   thread_id: string;
-  status: SessionStatusType;
+  status: string;
   current_step: string;
-  created_at: string;
-  updated_at: string;
+  started_at?: string;
+  completed_at?: string;
+  approved_at?: string;
+  created_at?: string;
+  updated_at?: string;
   state: ClinicalState;
 }
 

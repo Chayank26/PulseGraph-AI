@@ -25,8 +25,8 @@ export const SignupPage: React.FC = () => {
       setError('Passwords do not match.');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
       return;
     }
 
@@ -35,8 +35,8 @@ export const SignupPage: React.FC = () => {
       await signup({
         full_name: fullName,
         doctor_id: doctorId,
-        email,
         department,
+        password,
         role: 'Attending Physician'
       });
       navigate('/dashboard');
