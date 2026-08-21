@@ -1,0 +1,95 @@
+.audit-shell {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  font-family: var(--font-sans);
+}
+
+.audit-banner {
+  background-color: #FAF8F2;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 2px solid #000000;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .audit-banner {
+    padding: 2rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.audit-banner-meta {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(0, 0, 0, 0.7);
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.audit-banner-title {
+  font-family: var(--font-sans);
+  font-weight: 900;
+  font-size: 2.25rem;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+  color: #000000;
+  line-height: 1;
+}
+
+@media (min-width: 768px) {
+  .audit-banner-title {
+    font-size: 3rem;
+  }
+}
+
+.audit-banner-subtitle {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1rem;
+  color: #66655C;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.audit-banner-badge {
+  background-color: #2A2B2E;
+  color: #FFFFFF;
+  padding: 0.625rem 1.25rem;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.audit-content-card {
+  background-color: #FAF8F2;
+  border: 2px solid #000000;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 768px) {
+  .audit-content-card {
+    padding: 2rem;
+  }
+}
