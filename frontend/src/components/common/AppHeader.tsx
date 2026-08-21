@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { Play, RotateCcw, LogOut, User, AlertCircle, PlusCircle } from 'lucide-react';
-import { PatientManagementModal } from './PatientManagementModal';
+import { PatientSelectionModal } from './PatientSelectionModal';
 
 export const AppHeader: React.FC = () => {
   const { doctor, logout } = useAuth();
@@ -16,7 +16,7 @@ export const AppHeader: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPatientModalOpen(true)}
-            title="Manage Patient / Create Patient"
+            title="Select Patient / New Patient & Clinical Session"
             className="bg-[#2A2B2E] text-white font-mono text-xs md:text-sm tracking-wider uppercase font-semibold px-5 py-2 rounded-full shadow-sm flex items-center gap-2 hover:bg-black transition cursor-pointer"
           >
             <span className="w-2 h-2 rounded-full bg-[#E19B4C] animate-pulse"></span>
@@ -63,7 +63,7 @@ export const AppHeader: React.FC = () => {
 
           <button
             onClick={resetDemoSession}
-            title="Reset Demo Session State"
+            title="Reset Session State"
             className="p-2 text-[#4A4943] hover:text-black hover:bg-[#EAE7DA] rounded-full transition-colors"
           >
             <RotateCcw size={16} />
@@ -91,8 +91,8 @@ export const AppHeader: React.FC = () => {
         </div>
       </header>
 
-      {/* Patient Management Modal */}
-      <PatientManagementModal
+      {/* Patient Selection Modal */}
+      <PatientSelectionModal
         isOpen={isPatientModalOpen}
         onClose={() => setIsPatientModalOpen(false)}
       />

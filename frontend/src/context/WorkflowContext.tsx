@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
-import type { ClinicalSession, AgentStatusType, PatientDemographics } from '../types/clinical';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import type { ClinicalSession, AgentStatusType, PatientDemographics, ClinicalDataRequest } from '../types/clinical';
 import { mockClinicalSession } from '../data/mockClinicalSession';
 import { patientsApi } from '../api/patients';
 import type { CreatePatientPayload, UpdatePatientPayload } from '../api/patients';
@@ -12,6 +12,7 @@ interface WorkflowContextType {
   runningAgentId: string | null;
   currentAgentProgressMessage: string;
   loadingPatient: boolean;
+  isPolling: boolean;
   createPatient: (payload: CreatePatientPayload) => Promise<PatientDemographics>;
   updatePatient: (patientId: string, payload: UpdatePatientPayload) => Promise<PatientDemographics>;
   fetchPatient: (patientId: string) => Promise<PatientDemographics>;
@@ -38,6 +39,8 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     current_medications: mockClinicalSession.state.demographics.current_medications
   });
   const [loadingPatient, setLoadingPatient] = useState<boolean>(false);
+  const [isPolling, setIsPolling] = useState<boolean>(false);
+
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatusType>>({
     triage: 'COMPLETED',
     imaging: 'COMPLETED',
@@ -47,6 +50,113 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
   const [runningAgentId, setRunningAgentId] = useState<string | null>(null);
   const [currentAgentProgressMessage, setCurrentAgentProgressMessage] = useState<string>('');
+
+  const pollingIntervalRef = useRef<any>(null);
+
+  // Stop polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Poll backend state for active session
+  const pollSessionState = async (sessionId: string) => {
+    try {
+      const updatedSess = await clinicalSessionsApi.getSession(sessionId);
+      
+      // Attempt to load CDS results if generated
+      let cdsResults = null;
+      try {
+        cdsResults = await clinicalSessionsApi.getCDSResults(sessionId);
+      } catch (e) {
+        // CDS result might not be generated yet during early stage
+      }
+
+      // Attempt to load pending data requests if paused
+      let pendingRequests: ClinicalDataRequest[] = [];
+      if (updatedSess.status === 'WAITING_FOR_CLINICAL_DATA') {
+        try {
+          pendingRequests = await clinicalSessionsApi.getDataRequests(sessionId);
+        } catch (e) {
+          console.warn('Failed to fetch data requests:', e);
+        }
+      }
+
+      // Attempt to load audit trail
+      let auditTrail = session.state.audit_trail;
+      try {
+        const auditLogs = await clinicalSessionsApi.getAuditTrail(sessionId);
+        if (auditLogs && auditLogs.length > 0) {
+          auditTrail = auditLogs.map(log => ({
+            timestamp: log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString(),
+            agent_name: log.agent_name,
+            action: log.action,
+            details: log.summary || JSON.stringify(log.metadata_json || {})
+          }));
+        }
+      } catch (e) {
+        // Audit trail fetch fallback
+      }
+
+      // Map backend current_step to agent status indicators
+      const step = updatedSess.current_step || '';
+      const newAgentStatuses: Record<string, AgentStatusType> = {
+        triage: step.includes('triage') ? 'RUNNING' : 'COMPLETED',
+        imaging: step.includes('imaging') ? 'RUNNING' : (step === 'initialized' || step.includes('triage') ? 'IDLE' : 'COMPLETED'),
+        diagnostic: step.includes('diagnostic') ? 'RUNNING' : (step.includes('triage') || step.includes('imaging') || step === 'initialized' ? 'IDLE' : 'COMPLETED'),
+        evidence: step.includes('evidence') ? 'RUNNING' : (step.includes('safety') || step.includes('human') || step === 'completed' || step === 'ehr_exported' ? 'COMPLETED' : 'IDLE'),
+        safety: step.includes('safety') ? 'RUNNING' : (step.includes('human') || step === 'completed' || step === 'ehr_exported' ? 'COMPLETED' : 'IDLE')
+      };
+
+      setAgentStatuses(newAgentStatuses);
+
+      setSession(prev => ({
+        ...prev,
+        session_id: updatedSess.session_id,
+        patient_id: updatedSess.patient_id,
+        doctor_id: updatedSess.doctor_id,
+        thread_id: updatedSess.thread_id,
+        status: updatedSess.status,
+        current_step: updatedSess.current_step,
+        state: {
+          ...prev.state,
+          patient_id: updatedSess.patient_id,
+          current_step: updatedSess.current_step,
+          pending_data_requests: pendingRequests,
+          audit_trail: auditTrail,
+          risk_scores: cdsResults?.risk_scores || prev.state.risk_scores,
+          differentials: cdsResults?.differentials || prev.state.differentials,
+          imaging_data: cdsResults?.imaging_findings ? {
+            image_path: 'data/mock_patients/patient_001_cxr.png',
+            modality: 'CHEST_XRAY_PA',
+            findings: cdsResults.imaging_findings,
+            impression: 'Sub-segmental filling defect noted in right lower lobe.'
+          } : prev.state.imaging_data,
+          evidence: cdsResults?.evidence || prev.state.evidence,
+          safety_flags: cdsResults?.safety_flags || prev.state.safety_flags,
+          symbolic_overrides: cdsResults?.symbolic_overrides || prev.state.symbolic_overrides
+        }
+      }));
+
+      // Check if session reached a terminal/breakpoint status
+      const isTerminal = ['WAITING_FOR_CLINICAL_DATA', 'WAITING_FOR_CLINICIAN_REVIEW', 'APPROVED', 'REJECTED_MANUAL_TAKEOVER', 'COMPLETED'].includes(updatedSess.status);
+      
+      if (isTerminal) {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        setIsPolling(false);
+        setRunningAgentId(null);
+        setCurrentAgentProgressMessage('');
+      }
+    } catch (err) {
+      console.warn('Error polling session state:', err);
+    }
+  };
 
   // Create real patient on backend
   const createPatient = async (payload: CreatePatientPayload): Promise<PatientDemographics> => {
@@ -102,7 +212,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const createClinicalSession = async (patientId: string, rawNotes?: string[]): Promise<ClinicalSession> => {
     const backendSession = await clinicalSessionsApi.createSession({
       patient_id: patientId,
-      raw_notes: rawNotes || ["Patient presents with acute symptoms requiring evaluation."]
+      raw_notes: rawNotes || ["Patient presents with acute chest discomfort requiring evaluation."]
     });
 
     const newSessionState: ClinicalSession = {
@@ -130,82 +240,62 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newSessionState;
   };
 
-  // Simulates step-by-step workflow execution
+  // Executes or resumes real backend LangGraph workflow
   const runWorkflow = async () => {
     setSession(prev => ({
       ...prev,
       status: 'RUNNING',
       current_step: 'running'
     }));
+    setRunningAgentId('pipeline');
+    setCurrentAgentProgressMessage('Executing LangGraph multi-agent clinical decision-support pipeline...');
+    setIsPolling(true);
 
-    const stages = [
-      { id: 'triage', msg: 'Ingesting presenting symptoms & calculating clinical risk scores (HEART, Wells PE)...' },
-      { id: 'imaging', msg: 'CheXNet Multimodal Vision model analyzing Chest X-Ray DICOM scans...' },
-      { id: 'diagnostic', msg: 'Formulating differential diagnosis candidates & ICD-10 likelihood percentages...' },
-      { id: 'evidence', msg: 'Retrieving medical guidelines & PubMed research citations via RAG pipeline...' },
-      { id: 'safety', msg: 'Auditing drug-drug interactions & evaluating deterministic symbolic safety rules...' }
-    ];
-
-    // Reset statuses to IDLE
-    setAgentStatuses({
-      triage: 'IDLE',
-      imaging: 'IDLE',
-      diagnostic: 'IDLE',
-      evidence: 'IDLE',
-      safety: 'IDLE'
-    });
-
-    for (const stage of stages) {
-      setRunningAgentId(stage.id);
-      setCurrentAgentProgressMessage(stage.msg);
-      setAgentStatuses(prev => ({ ...prev, [stage.id]: 'RUNNING' }));
-
-      // Pause for visual workflow progress demonstration
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      setAgentStatuses(prev => ({ ...prev, [stage.id]: 'COMPLETED' }));
+    try {
+      // 1. Trigger backend execution
+      await clinicalSessionsApi.runSession(
+        session.session_id,
+        session.state.raw_notes,
+        'data/mock_patients/patient_001_cxr.png'
+      );
+    } catch (err: any) {
+      console.warn('Backend run session error:', err);
     }
 
-    setRunningAgentId(null);
-    setCurrentAgentProgressMessage('');
-    setSession(prev => ({
-      ...prev,
-      status: 'WAITING_FOR_CLINICIAN_REVIEW',
-      current_step: 'human_review'
-    }));
+    // 2. Start active polling loop
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    // Initial immediate poll
+    await pollSessionState(session.session_id);
+
+    // Poll every 1.5 seconds
+    pollingIntervalRef.current = setInterval(() => {
+      pollSessionState(session.session_id);
+    }, 1500);
   };
 
   const resolveDataRequest = async (requestId: string, responseData: Record<string, any>) => {
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const formattedNote = `[ACQUIRED CLINICAL DATA]: ${Object.entries(responseData).map(([k, v]) => `${k} = ${v}`).join(', ')}`;
-    
-    setSession(prev => {
-      const updatedPending = prev.state.pending_data_requests.filter(r => r.request_id !== requestId);
-      return {
-        ...prev,
-        status: updatedPending.length > 0 ? 'WAITING_FOR_CLINICAL_DATA' : 'WAITING_FOR_CLINICIAN_REVIEW',
-        state: {
-          ...prev.state,
-          raw_notes: [...prev.state.raw_notes, formattedNote],
-          pending_data_requests: updatedPending,
-          audit_trail: [
-            ...prev.state.audit_trail,
-            {
-              timestamp,
-              agent_name: 'Clinician_Input',
-              action: `Resolved ClinicalDataRequest [${requestId}]`,
-              details: `Acquired fields: ${JSON.stringify(responseData)}`
-            }
-          ]
-        }
-      };
-    });
+    setRunningAgentId('data_resolution');
+    setCurrentAgentProgressMessage(`Submitting requested clinical parameters [${requestId}] and resuming graph...`);
+
+    try {
+      // 1. Resolve data request on backend
+      await clinicalSessionsApi.resolveDataRequest(session.session_id, requestId, {
+        response_data: responseData
+      });
+
+      // 2. Re-trigger workflow execution
+      await runWorkflow();
+    } catch (err: any) {
+      console.error('Failed to resolve data request:', err);
+    }
   };
 
   const approveSession = async (notes?: string) => {
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     
-    // Call backend endpoint if real session is active
     try {
       await clinicalSessionsApi.approveSession(session.session_id, { notes });
     } catch (e) {
@@ -296,6 +386,11 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const resetDemoSession = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPolling(false);
     setSession(mockClinicalSession);
     setAgentStatuses({
       triage: 'COMPLETED',
@@ -317,6 +412,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         runningAgentId,
         currentAgentProgressMessage,
         loadingPatient,
+        isPolling,
         createPatient,
         updatePatient,
         fetchPatient,
