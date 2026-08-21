@@ -8,12 +8,12 @@ export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
   const { signup } = useAuth();
 
-  const [fullName, setFullName] = useState('Dr. Sarah Chen');
-  const [doctorId, setDoctorId] = useState('DOC-88204');
-  const [email, setEmail] = useState('sarah.chen@hospital.org');
-  const [department, setDepartment] = useState('Emergency Medicine');
-  const [password, setPassword] = useState('Password123!');
-  const [confirmPassword, setConfirmPassword] = useState('Password123!');
+  const [fullName, setFullName] = useState('');
+  const [doctorId, setDoctorId] = useState('');
+  const [email, setEmail] = useState('');
+  const [department, setDepartment] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 

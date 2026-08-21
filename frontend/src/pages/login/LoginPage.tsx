@@ -8,8 +8,8 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [doctorId, setDoctorId] = useState('DOC-88204');
-  const [password, setPassword] = useState('Password123!');
+  const [doctorId, setDoctorId] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
