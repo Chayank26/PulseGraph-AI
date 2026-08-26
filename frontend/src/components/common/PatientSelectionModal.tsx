@@ -18,22 +18,22 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
   const [viewMode, setViewMode] = useState<'SELECT' | 'CREATE'>('SELECT');
 
   // Intake Form fields for starting a new clinical session
-  const [intakeNotes, setIntakeNotes] = useState('Patient presents with acute chest discomfort radiating to left arm with diaphoresis.');
-  const [heartRate, setHeartRate] = useState<number>(98);
-  const [sysBP, setSysBP] = useState<number>(154);
-  const [diaBP, setDiaBP] = useState<number>(92);
-  const [spo2, setSpo2] = useState<number>(94);
-  const [respRate, setRespRate] = useState<number>(22);
-  const [imagePath, setImagePath] = useState('data/mock_patients/patient_001_cxr.png');
+  const [intakeNotes, setIntakeNotes] = useState('');
+  const [heartRate, setHeartRate] = useState<number | ''>('');
+  const [sysBP, setSysBP] = useState<number | ''>('');
+  const [diaBP, setDiaBP] = useState<number | ''>('');
+  const [spo2, setSpo2] = useState<number | ''>('');
+  const [respRate, setRespRate] = useState<number | ''>('');
+  const [imagePath, setImagePath] = useState('');
 
   // New Patient Form fields
   const [newPatientId, setNewPatientId] = useState('');
-  const [newAge, setNewAge] = useState<number>(55);
-  const [newGender, setNewGender] = useState('Male');
-  const [newBloodType, setNewBloodType] = useState('A+');
-  const [newAllergies, setNewAllergies] = useState('Penicillin');
-  const [newConditions, setNewConditions] = useState('Hypertension');
-  const [newMeds, setNewMeds] = useState('Aspirin 81mg');
+  const [newAge, setNewAge] = useState<number | ''>('');
+  const [newGender, setNewGender] = useState('');
+  const [newBloodType, setNewBloodType] = useState('');
+  const [newAllergies, setNewAllergies] = useState('');
+  const [newConditions, setNewConditions] = useState('');
+  const [newMeds, setNewMeds] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -80,7 +80,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
       setLoading(true);
       const created = await createPatient({
         patient_id: newPatientId,
-        age: Number(newAge),
+        age: Number(newAge || 0),
         gender: newGender,
         blood_type: newBloodType,
         allergies: newAllergies.split(',').map(s => s.trim()).filter(Boolean),

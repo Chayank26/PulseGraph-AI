@@ -11,13 +11,13 @@ export const PatientManagementModal: React.FC<PatientModalProps> = ({ isOpen, on
   const { activePatient, createPatient, updatePatient, createClinicalSession } = useWorkflow();
 
   const [mode, setMode] = useState<'VIEW' | 'CREATE' | 'EDIT'>('VIEW');
-  const [patientId, setPatientId] = useState(activePatient?.patient_id || 'PAT-88291');
-  const [age, setAge] = useState<number>(activePatient?.age || 58);
-  const [gender, setGender] = useState<string>(activePatient?.gender || 'Male');
-  const [bloodType, setBloodType] = useState<string>(activePatient?.blood_type || 'A+');
-  const [allergies, setAllergies] = useState<string>(activePatient?.allergies?.join(', ') || 'Penicillin');
-  const [chronicConditions, setChronicConditions] = useState<string>(activePatient?.chronic_conditions?.join(', ') || 'Hypertension, Type 2 Diabetes');
-  const [currentMedications, setCurrentMedications] = useState<string>(activePatient?.current_medications?.join(', ') || 'Metformin 500mg, Lisinopril 10mg');
+  const [patientId, setPatientId] = useState(activePatient?.patient_id || '');
+  const [age, setAge] = useState<number | ''>(activePatient?.age || '');
+  const [gender, setGender] = useState<string>(activePatient?.gender || '');
+  const [bloodType, setBloodType] = useState<string>(activePatient?.blood_type || '');
+  const [allergies, setAllergies] = useState<string>(activePatient?.allergies?.join(', ') || '');
+  const [chronicConditions, setChronicConditions] = useState<string>(activePatient?.chronic_conditions?.join(', ') || '');
+  const [currentMedications, setCurrentMedications] = useState<string>(activePatient?.current_medications?.join(', ') || '');
 
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -36,7 +36,7 @@ export const PatientManagementModal: React.FC<PatientModalProps> = ({ isOpen, on
       setLoading(true);
       await createPatient({
         patient_id: patientId,
-        age: Number(age),
+        age: Number(age || 0),
         gender,
         blood_type: bloodType,
         allergies: allergies.split(',').map(s => s.trim()).filter(Boolean),
