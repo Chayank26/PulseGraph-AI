@@ -51,10 +51,6 @@ export const LandingPage: React.FC = () => {
               <span>Launch Clinical Workspace</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </Link>
-
-            <Link to="/login" className="landing-btn-physician">
-              Physician Sign In
-            </Link>
           </div>
         </div>
 

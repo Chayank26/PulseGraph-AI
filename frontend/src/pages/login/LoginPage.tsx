@@ -40,7 +40,7 @@ export const LoginPage: React.FC = () => {
   return (
     <div>
       <div className="login-box-header">
-        <h2 className="login-title">Physician Sign In</h2>
+        <h2 className="login-title">Sign In</h2>
         <p className="login-subtitle">
           Access your PulseGraph multi-agent CDS session workspace.
         </p>
