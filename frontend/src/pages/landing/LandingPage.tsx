@@ -65,10 +65,11 @@ export const LandingPage: React.FC = () => {
 
           <div className="landing-agents-grid">
             {agentsList.map((agent) => (
-              <div
+              <Link
                 key={agent.id}
+                to={`/agent-info/${agent.id}`}
                 style={{ backgroundColor: agent.color }}
-                className="landing-agent-card"
+                className="landing-agent-card block no-underline transition-all hover:scale-[1.02] cursor-pointer group"
               >
                 <div>
                   <div className="landing-agent-num">
@@ -84,9 +85,9 @@ export const LandingPage: React.FC = () => {
 
                 <div className="landing-agent-footer">
                   <span>STAGE {agent.number}</span>
-                  <span>VERIFIED</span>
+                  <span className="font-bold text-xs group-hover:underline">LEARN MORE &rarr;</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

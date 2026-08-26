@@ -7,6 +7,7 @@ import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 
 import { LandingPage } from './pages/landing/LandingPage';
+import { AgentInfoPage } from './pages/agent-info/AgentInfoPage';
 import { LoginPage } from './pages/login/LoginPage';
 import { SignupPage } from './pages/signup/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
@@ -34,8 +35,9 @@ export const App: React.FC = () => {
       <AuthProvider>
         <WorkflowProvider>
           <Routes>
-            {/* Public Landing Page */}
+            {/* Public Landing & Agent Info Pages */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/agent-info/:agentId" element={<AgentInfoPage />} />
 
             {/* Auth Layout Routes */}
             <Route element={<AuthLayout />}>
