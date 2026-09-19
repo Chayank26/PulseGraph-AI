@@ -4,7 +4,7 @@ import { AuditTimeline } from '../../components/common/AuditTimeline';
 import { PatientSelectionModal } from '../../components/common/PatientSelectionModal';
 import { patientsApi } from '../../api/patients';
 import type { PatientDemographics } from '../../types/clinical';
-import { Activity, PlayCircle, User, PlusCircle, Search, ArrowRight, RotateCcw, Stethoscope } from 'lucide-react';
+import { Activity, PlayCircle, User, PlusCircle, Search, ArrowRight, RotateCcw, Stethoscope, Trash2, X, AlertTriangle } from 'lucide-react';
 import './DashboardPage.css';
 
 export const DashboardPage: React.FC = () => {
@@ -14,6 +14,8 @@ export const DashboardPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<PatientDemographics | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   // Load existing patients from backend on mount
   useEffect(() => {
@@ -37,6 +39,22 @@ export const DashboardPage: React.FC = () => {
     (p.gender && p.gender.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (p.chief_complaint && p.chief_complaint.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const handleDeletePatient = async () => {
+    if (!patientToDelete) return;
+
+    try {
+      setLoading(true);
+      await patientsApi.deletePatient(patientToDelete.patient_id);
+      setPatients(current => current.filter(item => item.patient_id !== patientToDelete.patient_id));
+      setPatientToDelete(null);
+      setDeleteError('');
+    } catch (err: any) {
+      setDeleteError(err.response?.data?.detail || 'Failed to delete patient record.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // STATE A: NO ACTIVE PATIENT CHOSEN -> SHOW PHYSICIAN PATIENT DIRECTORY
   if (!activePatient) {
@@ -111,6 +129,18 @@ export const DashboardPage: React.FC = () => {
                         </p>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteError('');
+                        setPatientToDelete(patient);
+                      }}
+                      title={`Delete ${patient.patient_id}`}
+                      aria-label={`Delete patient ${patient.patient_id}`}
+                      className="ml-3 flex-shrink-0 p-2 text-[#8C2A2A] hover:bg-[#F7D8D8] rounded-lg transition cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
 
                   {/* Complaint & History */}
@@ -175,6 +205,64 @@ export const DashboardPage: React.FC = () => {
             loadPatients();
           }}
         />
+
+        {patientToDelete && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border-2 border-black bg-[#FAF8F2] p-6 shadow-2xl animate-fade-in">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F7D8D8] text-[#8C2A2A]">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#8C2A2A]">Destructive action</p>
+                    <h2 className="mt-1 font-serif text-2xl font-bold italic text-[#1A1A1C]">Delete patient record?</h2>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPatientToDelete(null)}
+                  aria-label="Close delete confirmation"
+                  className="rounded-lg p-1 text-[#66655C] transition hover:bg-[#E2DFC9] hover:text-black"
+                >
+                  <X size={19} />
+                </button>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-[#DCD8BE] bg-white p-4">
+                <p className="font-mono text-sm font-bold text-black">{patientToDelete.patient_id}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[#4A4943]">
+                  This permanently removes the patient record and its associated clinical sessions.
+                </p>
+              </div>
+
+              {deleteError && (
+                <div className="mt-4 rounded-xl border border-[#EAAFA0] bg-[#F7D8D8] p-3 text-xs font-mono text-[#8C2A2A]">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPatientToDelete(null)}
+                  className="rounded-full border border-black bg-white px-5 py-2.5 font-mono text-xs font-bold uppercase text-black transition hover:bg-[#E2DFC9]"
+                >
+                  Keep Record
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeletePatient}
+                  disabled={loading}
+                  className="flex items-center gap-2 rounded-full border-2 border-[#8C2A2A] bg-[#8C2A2A] px-5 py-2.5 font-mono text-xs font-bold uppercase text-white transition hover:bg-[#6F2020] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 size={14} />
+                  {loading ? 'Deleting...' : 'Delete Record'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

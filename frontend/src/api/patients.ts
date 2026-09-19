@@ -41,5 +41,9 @@ export const patientsApi = {
   updatePatient: async (patientId: string, payload: UpdatePatientPayload): Promise<PatientDemographics> => {
     const response = await apiClient.put<PatientDemographics>(`/patients/${patientId}`, payload);
     return response.data;
+  },
+
+  deletePatient: async (patientId: string): Promise<void> => {
+    await apiClient.delete(`/patients/${patientId}`);
   }
 };

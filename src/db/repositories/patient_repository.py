@@ -72,3 +72,20 @@ class PatientRepository:
         self.db.refresh(patient)
         logger.info(f"Updated Patient record: {patient_id}")
         return patient
+
+    def delete(self, patient_id: str, doctor_id: str) -> bool:
+        patient = (
+            self.db.query(PatientModel)
+            .filter(
+                PatientModel.patient_id == patient_id,
+                PatientModel.doctor_id == doctor_id
+            )
+            .first()
+        )
+        if not patient:
+            return False
+
+        self.db.delete(patient)
+        self.db.commit()
+        logger.info(f"Deleted Patient record: {patient_id} (Doctor: {doctor_id})")
+        return True

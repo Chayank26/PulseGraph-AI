@@ -72,3 +72,16 @@ def update_patient(
     if not patient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Patient '{patient_id}' not found.")
     return patient
+
+
+@router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete Patient Record")
+def delete_patient(
+    patient_id: str,
+    db: Session = Depends(get_db),
+    current_clinician: DoctorModel = Depends(get_current_clinician)
+):
+    """Delete a patient record owned by the authenticated clinician."""
+    patient_repo = PatientRepository(db)
+    deleted = patient_repo.delete(patient_id, current_clinician.doctor_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Patient '{patient_id}' not found.")
