@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
-from src.db.models import PatientModel
+from src.db.models import PatientModel, ClinicalSessionModel
 
 logger = logging.getLogger("PulseGraph.PatientRepository")
 
@@ -13,15 +13,27 @@ class PatientRepository:
     def get_by_patient_id(self, patient_id: str) -> Optional[PatientModel]:
         return self.db.query(PatientModel).filter(PatientModel.patient_id == patient_id).first()
 
-    def get_all(self) -> List[PatientModel]:
-        return self.db.query(PatientModel).all()
+    def get_all(self, doctor_id: Optional[str] = None) -> List[PatientModel]:
+        if doctor_id:
+            return (
+                self.db.query(PatientModel)
+                .filter(
+                    (PatientModel.doctor_id == doctor_id)
+                    | (PatientModel.sessions.any(ClinicalSessionModel.doctor_id == doctor_id))
+                )
+                .order_by(PatientModel.created_at.desc())
+                .all()
+            )
+        return self.db.query(PatientModel).order_by(PatientModel.created_at.desc()).all()
 
     def create(
         self,
         patient_id: str,
+        doctor_id: Optional[str] = None,
         age: Optional[int] = None,
         gender: Optional[str] = None,
         blood_type: Optional[str] = None,
+        chief_complaint: Optional[str] = None,
         allergies: Optional[List[str]] = None,
         chronic_conditions: Optional[List[str]] = None,
         current_medications: Optional[List[str]] = None
@@ -32,9 +44,11 @@ class PatientRepository:
 
         patient = PatientModel(
             patient_id=patient_id,
+            doctor_id=doctor_id,
             age=age,
             gender=gender,
             blood_type=blood_type,
+            chief_complaint=chief_complaint,
             allergies=allergies or [],
             chronic_conditions=chronic_conditions or [],
             current_medications=current_medications or []
@@ -42,7 +56,7 @@ class PatientRepository:
         self.db.add(patient)
         self.db.commit()
         self.db.refresh(patient)
-        logger.info(f"Created Patient record: {patient_id}")
+        logger.info(f"Created Patient record: {patient_id} (Doctor: {doctor_id})")
         return patient
 
     def update(self, patient_id: str, updates: Dict[str, Any]) -> Optional[PatientModel]:
@@ -50,7 +64,7 @@ class PatientRepository:
         if not patient:
             return None
 
-        for field in ["age", "gender", "blood_type", "allergies", "chronic_conditions", "current_medications"]:
+        for field in ["age", "gender", "blood_type", "chief_complaint", "allergies", "chronic_conditions", "current_medications"]:
             if field in updates and updates[field] is not None:
                 setattr(patient, field, updates[field])
 

@@ -26,14 +26,14 @@ export const WorkflowProgress: React.FC<WorkflowProgressProps> = ({ compact = fa
           const isRunning = runningAgentId === step.id;
           const status = agentStatuses[step.id] || 'IDLE';
           const isReview = step.id === 'human-review';
-          const isApproved = session.status === 'APPROVED';
+          const isApproved = session?.status === 'APPROVED';
 
           let stateColor = 'bg-[#EAE7DA] text-[#66655C] border-[#DCD8BE]';
           if (isRunning) {
             stateColor = 'bg-[#D6E3F5] text-[#1E3A8A] border-[#93C5FD] ring-2 ring-[#2563EB] animate-pulse';
           } else if (status === 'COMPLETED' || (isReview && isApproved)) {
             stateColor = 'bg-[#CBD7C0] text-[#1C3829] border-[#9DB08F]';
-          } else if (isReview && session.status === 'WAITING_FOR_CLINICIAN_REVIEW') {
+          } else if (isReview && session?.status === 'WAITING_FOR_CLINICIAN_REVIEW') {
             stateColor = 'bg-[#E19B4C] text-black border-black ring-2 ring-black';
           }
 

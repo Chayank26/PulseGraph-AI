@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Home } from 'lucide-react';
 import { agentsList } from '../../data/mockClinicalSession';
 import { useWorkflow } from '../../context/WorkflowContext';
 
@@ -9,7 +10,29 @@ export const WorkflowTopBanner: React.FC = () => {
   const { agentStatuses, runningAgentId } = useWorkflow();
 
   return (
-    <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 border-b-2 border-black bg-[#FAF8F2] select-none">
+    <div className="w-full grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 border-b-2 border-black bg-[#FAF8F2] select-none">
+      {/* Home Directory Navigation Tile */}
+      <div
+        onClick={() => navigate('/dashboard')}
+        className={`relative p-3 md:p-4 cursor-pointer transition-all duration-200 border-r border-b md:border-b-0 border-black/20 hover:brightness-95 group bg-[#EAE7DA] ${
+          location.pathname === '/dashboard' ? 'ring-2 ring-inset ring-black shadow-inner font-bold' : ''
+        }`}
+      >
+        <div className="flex items-center justify-between text-[10px] sm:text-xs font-sans tracking-wide uppercase text-black/70 font-semibold mb-1">
+          <span>PORTAL</span>
+          <span className="truncate max-w-[120px] font-normal italic font-serif">Patient Directory</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight uppercase text-black font-sans leading-none flex items-center gap-1.5">
+            <Home size={22} className="text-[#E19B4C]" />
+            <span>HOME</span>
+          </h2>
+        </div>
+        {location.pathname === '/dashboard' && (
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-black" />
+        )}
+      </div>
+
       {agentsList.map((agent) => {
         const isActiveRoute = location.pathname === agent.route;
         const isRunning = runningAgentId === agent.id;

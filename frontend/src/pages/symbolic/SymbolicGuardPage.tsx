@@ -3,39 +3,32 @@ import { useWorkflow } from '../../context/WorkflowContext';
 import { ShieldCheck, Lock, AlertOctagon, CheckSquare, Terminal } from 'lucide-react';
 import './SymbolicGuardPage.css';
 
-export const SymbolicGuardPage: React.FC = () => {
-  const { session } = useWorkflow();
-  const rawOverrides = session.state.symbolic_overrides;
+import { Link } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 
-  const overrides = (rawOverrides && rawOverrides.length > 0) ? rawOverrides : [
-    {
-      rule_id: 'SYM-001-HEPARIN-CAP',
-      severity: 'CRITICAL' as const,
-      message: 'Unfractionated Heparin initial IV bolus capped at 4,000 Units due to HAS-BLED bleeding risk score >= 3.',
-      deterministic_rule: 'IF (has_bled_score >= 3 AND patient_age >= 65) THEN MAX_INITIAL_HEPARIN_BOLUS = 4000_UNITS AND REQUIRE_ATTENDING_SIGN_OFF = TRUE',
-      action_required: 'Attending physician must explicitly confirm reduced initial heparin bolus weight before EHR order export.',
-      triggered_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      governance_status: 'PENDING_PEER_REVIEW' as const
-    },
-    {
-      rule_id: 'SYM-002-CONTRAST-NEPHRO',
-      severity: 'HIGH' as const,
-      message: 'CT Pulmonary Angiogram IV contrast protocol requires pre-procedural normal saline hydration due to eGFR < 60 mL/min.',
-      deterministic_rule: 'IF (eGFR < 60 AND planned_procedure == "CT_ANGIOGRAPHY") THEN ENFORCE_NS_HYDRATION_PROTOCOL = TRUE',
-      action_required: 'Order 0.9% Normal Saline IV infusion at 1 mL/kg/h for 6 hours pre-and-post imaging scan.',
-      triggered_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      governance_status: 'APPROVED' as const
-    },
-    {
-      rule_id: 'SYM-003-BRADYCARDIA-BLOCK',
-      severity: 'CRITICAL' as const,
-      message: 'Absolute hard-stop: Metoprolol administration BLOCKED due to HR < 50 bpm.',
-      deterministic_rule: 'IF (heart_rate < 50_BPM) THEN BLOCK_BETA_BLOCKER_ADMINISTRATION = TRUE AND NOTIFY_CARDIOLOGY = TRUE',
-      action_required: 'Immediate discontinuation of negative chronotropic agents; obtain urgent 12-lead ECG.',
-      triggered_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      governance_status: 'APPROVED' as const
-    }
-  ];
+export const SymbolicGuardPage: React.FC = () => {
+  const { session, activePatient } = useWorkflow();
+
+  if (!activePatient || !session) {
+    return (
+      <div className="bg-white border-2 border-black rounded-2xl p-12 text-center max-w-2xl mx-auto my-12 shadow-sm font-sans">
+        <AlertTriangle size={36} className="mx-auto text-[#E19B4C] mb-3" />
+        <h2 className="font-serif text-2xl font-bold text-black">No Active Patient Selected</h2>
+        <p className="text-sm text-[#66655C] mt-2">
+          Please select or register a patient from the Physician Patient Directory to view deterministic symbolic guardrails.
+        </p>
+        <Link
+          to="/dashboard"
+          className="mt-6 inline-flex items-center gap-2 bg-[#1A1A1C] text-white font-mono text-xs font-bold uppercase px-6 py-3 rounded-full hover:bg-black transition"
+        >
+          <span>Go to Patient Directory &rarr;</span>
+        </Link>
+      </div>
+    );
+  }
+
+  const overrides = session.state.symbolic_overrides || [];
+
 
   return (
     <div className="symbolic-shell animate-fade-in font-sans">
@@ -78,47 +71,53 @@ export const SymbolicGuardPage: React.FC = () => {
         </h3>
 
         <div className="space-y-6">
-          {overrides.map((rule, idx) => (
-            <div
-              key={idx}
-              className="symbolic-rule-card"
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#E2DFC9] pb-4">
-                <div className="flex items-center gap-3">
-                  <span className="bg-[#2A2B2E] text-white font-mono text-xs font-bold px-3 py-1.5 rounded-md uppercase">
-                    RULE ID: {rule.rule_id}
-                  </span>
-                  <span className="bg-red-800 text-white text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                    {rule.severity} OVERRIDE
-                  </span>
+          {overrides && overrides.length > 0 ? (
+            overrides.map((rule, idx) => (
+              <div
+                key={idx}
+                className="symbolic-rule-card"
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#E2DFC9] pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-[#2A2B2E] text-white font-mono text-xs font-bold px-3 py-1.5 rounded-md uppercase">
+                      RULE ID: {rule.rule_id}
+                    </span>
+                    <span className="bg-red-800 text-white text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                      {rule.severity} OVERRIDE
+                    </span>
+                  </div>
+
+                  <div className="bg-[#CBD7C0] text-[#1C3829] border border-[#9DB08F] px-4 py-1.5 rounded-full font-mono text-xs font-bold uppercase flex items-center gap-1.5">
+                    <CheckSquare size={14} />
+                    <span>GOVERNANCE: {rule.governance_status}</span>
+                  </div>
                 </div>
 
-                <div className="bg-[#CBD7C0] text-[#1C3829] border border-[#9DB08F] px-4 py-1.5 rounded-full font-mono text-xs font-bold uppercase flex items-center gap-1.5">
-                  <CheckSquare size={14} />
-                  <span>GOVERNANCE: {rule.governance_status}</span>
+                <div className="space-y-2">
+                  <span className="text-[10px] font-mono uppercase text-[#66655C] font-bold">Deterministic Logic Statement</span>
+                  <div className="symbolic-code-block">
+                    <code>{rule.deterministic_rule}</code>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-1">
+                  <span className="text-[10px] font-mono uppercase text-[#66655C] font-bold">Clinical Safety Message</span>
+                  <p className="font-serif italic text-sm text-black font-semibold">
+                    "{rule.message}"
+                  </p>
+                </div>
+
+                <div className="bg-[#FFF3C4] border border-[#E6C200] rounded-xl p-4 text-xs text-[#8C6D00] font-semibold flex items-center gap-2">
+                  <AlertOctagon size={16} className="flex-shrink-0" />
+                  <span>Mandatory Action Required: {rule.action_required}</span>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <span className="text-[10px] font-mono uppercase text-[#66655C] font-bold">Deterministic Logic Statement</span>
-                <div className="symbolic-code-block">
-                  <code>{rule.deterministic_rule}</code>
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-1">
-                <span className="text-[10px] font-mono uppercase text-[#66655C] font-bold">Clinical Safety Message</span>
-                <p className="font-serif italic text-sm text-black font-semibold">
-                  "{rule.message}"
-                </p>
-              </div>
-
-              <div className="bg-[#FFF3C4] border border-[#E6C200] rounded-xl p-4 text-xs text-[#8C6D00] font-semibold flex items-center gap-2">
-                <AlertOctagon size={16} className="flex-shrink-0" />
-                <span>Mandatory Action Required: {rule.action_required}</span>
-              </div>
+            ))
+          ) : (
+            <div className="bg-white border border-[#DCD8BE] rounded-2xl p-12 text-center text-xs font-mono text-[#8C8A7B]">
+              No deterministic symbolic rule overrides triggered for this patient session.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

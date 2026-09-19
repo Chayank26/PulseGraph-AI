@@ -14,15 +14,15 @@ export const EhrExportModal: React.FC<EhrExportModalProps> = ({ isOpen, onClose,
   if (!isOpen) return null;
 
   const topDifferential = session.state.differentials?.[0] || {
-    disease_name: 'Acute Coronary Syndrome / NSTEMI',
-    icd10_code: 'I21.4',
-    likelihood_percentage: 68
+    disease_name: 'Diagnostic Synthesis Pending',
+    icd10_code: 'R69',
+    likelihood_percentage: 0
   };
 
   const topRiskScore = session.state.risk_scores?.[0] || {
-    score_name: 'HEART Score',
-    score_value: 6,
-    risk_level: 'HIGH_RISK'
+    score_name: 'Clinical Risk Score',
+    score_value: 0,
+    risk_level: 'PENDING'
   };
 
   // Generate valid FHIR R4 DiagnosticReport / Bundle payload

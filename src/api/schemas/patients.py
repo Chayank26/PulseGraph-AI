@@ -8,6 +8,7 @@ class PatientCreate(BaseModel):
     age: Optional[int] = Field(default=None, json_schema_extra={"example": 58}, description="Patient age in years")
     gender: Optional[str] = Field(default=None, json_schema_extra={"example": "Male"}, description="Biological sex / gender")
     blood_type: Optional[str] = Field(default=None, json_schema_extra={"example": "A+"}, description="Blood type")
+    chief_complaint: str = Field(..., min_length=1, json_schema_extra={"example": "Sudden onset chest pain"}, description="Presenting complaint and symptoms")
     allergies: List[str] = Field(default_factory=list, json_schema_extra={"example": ["Penicillin"]}, description="Documented drug/food allergies")
     chronic_conditions: List[str] = Field(default_factory=list, json_schema_extra={"example": ["Hypertension", "Chronic Kidney Disease"]}, description="Chronic medical conditions")
     current_medications: List[str] = Field(default_factory=list, json_schema_extra={"example": ["Warfarin 5mg", "Metoprolol 25mg"]}, description="Current medication regimen")
@@ -17,6 +18,7 @@ class PatientUpdate(BaseModel):
     age: Optional[int] = None
     gender: Optional[str] = None
     blood_type: Optional[str] = None
+    chief_complaint: Optional[str] = Field(default=None, min_length=1)
     allergies: Optional[List[str]] = None
     chronic_conditions: Optional[List[str]] = None
     current_medications: Optional[List[str]] = None
@@ -28,6 +30,7 @@ class PatientResponse(BaseModel):
     age: Optional[int]
     gender: Optional[str]
     blood_type: Optional[str]
+    chief_complaint: Optional[str]
     allergies: List[str]
     chronic_conditions: List[str]
     current_medications: List[str]

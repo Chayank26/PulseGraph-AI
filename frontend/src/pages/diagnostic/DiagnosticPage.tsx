@@ -3,34 +3,31 @@ import { useWorkflow } from '../../context/WorkflowContext';
 import { CheckCircle2, AlertTriangle, Stethoscope, Activity } from 'lucide-react';
 import './DiagnosticPage.css';
 
-export const DiagnosticPage: React.FC = () => {
-  const { session, agentStatuses } = useWorkflow();
-  const rawDiffs = session.state.differentials;
-  const status = agentStatuses.diagnostic || 'COMPLETED';
+import { Link } from 'react-router-dom';
 
-  const differentials = (rawDiffs && rawDiffs.length > 0) ? rawDiffs : [
-    {
-      disease_name: 'Acute Coronary Syndrome / NSTEMI',
-      icd10_code: 'I21.4',
-      likelihood_percentage: 68,
-      clinical_rationale: 'High HEART score (6/10), presenting crushing retrosternal chest pain radiating to left jaw, diaphoresis, and hypertension. Requires serial hs-Troponin I tracking.',
-      recommended_workup: ['Serial hs-Troponin I at 0h / 3h', '12-Lead Electrocardiogram', 'Dual Antiplatelet Therapy Protocol', 'Echocardiography for wall motion defect']
-    },
-    {
-      disease_name: 'Pulmonary Embolism',
-      icd10_code: 'I26.99',
-      likelihood_percentage: 24,
-      clinical_rationale: 'Wells PE score (4.5/10) indicates moderate PE probability. Sub-segmental infiltrate noted on CXR radiograph scan.',
-      recommended_workup: ['High-Sensitivity Quantitative D-Dimer', 'CT Pulmonary Angiography (CTPA)', 'Venous Duplex Ultrasound lower extremities']
-    },
-    {
-      disease_name: 'Acute Pericarditis',
-      icd10_code: 'I30.9',
-      likelihood_percentage: 8,
-      clinical_rationale: 'Pleuritic component to chest discomfort with elevated inflammatory response.',
-      recommended_workup: ['Erythrocyte Sedimentation Rate (ESR) & CRP', 'Transthoracic Echocardiogram', 'Colchicine + NSAID evaluation']
-    }
-  ];
+export const DiagnosticPage: React.FC = () => {
+  const { session, activePatient, agentStatuses } = useWorkflow();
+
+  if (!activePatient || !session) {
+    return (
+      <div className="bg-white border-2 border-black rounded-2xl p-12 text-center max-w-2xl mx-auto my-12 shadow-sm font-sans">
+        <AlertTriangle size={36} className="mx-auto text-[#E19B4C] mb-3" />
+        <h2 className="font-serif text-2xl font-bold text-black">No Active Patient Selected</h2>
+        <p className="text-sm text-[#66655C] mt-2">
+          Please select or register a patient from the Physician Patient Directory to view differential diagnosis hypotheses.
+        </p>
+        <Link
+          to="/dashboard"
+          className="mt-6 inline-flex items-center gap-2 bg-[#1A1A1C] text-white font-mono text-xs font-bold uppercase px-6 py-3 rounded-full hover:bg-black transition"
+        >
+          <span>Go to Patient Directory &rarr;</span>
+        </Link>
+      </div>
+    );
+  }
+
+  const differentials = session.state.differentials || [];
+  const status = agentStatuses.diagnostic || 'COMPLETED';
 
   return (
     <div className="diagnostic-shell animate-fade-in font-sans">
@@ -73,66 +70,72 @@ export const DiagnosticPage: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          {differentials.map((diff, idx) => (
-            <div
-              key={idx}
-              className="diagnostic-card"
-            >
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-[#E2DFC9] pb-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-[#2A2B2E] text-white font-mono text-sm font-bold flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <h3 className="font-serif italic text-2xl font-bold text-black">{diff.disease_name}</h3>
-                    <span className="font-mono text-xs font-semibold text-[#66655C]">ICD-10: {diff.icd10_code}</span>
+          {differentials && differentials.length > 0 ? (
+            differentials.map((diff, idx) => (
+              <div
+                key={idx}
+                className="diagnostic-card"
+              >
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-[#E2DFC9] pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-[#2A2B2E] text-white font-mono text-sm font-bold flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <h3 className="font-serif italic text-2xl font-bold text-black">{diff.disease_name}</h3>
+                      <span className="font-mono text-xs font-semibold text-[#66655C]">ICD-10: {diff.icd10_code}</span>
+                    </div>
+                  </div>
+
+                  <div className="diagnostic-pct-badge">
+                    {diff.likelihood_percentage}% LIKELIHOOD
                   </div>
                 </div>
 
-                <div className="diagnostic-pct-badge">
-                  {diff.likelihood_percentage}% LIKELIHOOD
+                {/* Likelihood Probability Meter */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-mono font-bold text-[#66655C] uppercase">
+                    <span>Bayesian Probability Estimate</span>
+                    <span>{diff.likelihood_percentage}%</span>
+                  </div>
+                  <div className="w-full bg-[#E2DFC9] h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-black h-full transition-all duration-500"
+                      style={{ width: `${diff.likelihood_percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 font-sans">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#66655C]">
+                    Clinical Rationale
+                  </h4>
+                  <p className="text-xs text-[#1A1A1C] leading-relaxed font-normal bg-white border border-[#DCD8BE] rounded-xl p-4">
+                    {diff.clinical_rationale}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#66655C] flex items-center gap-1.5">
+                    <Activity size={14} className="text-[#E19B4C]" />
+                    <span>Recommended Diagnostic Workup Checklist</span>
+                  </h4>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-semibold text-black">
+                    {diff.recommended_workup?.map((w, i) => (
+                      <li key={i} className="bg-white border border-[#DCD8BE] rounded-lg p-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#E19B4C] flex-shrink-0"></span>
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
-
-              {/* Likelihood Probability Meter */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] font-mono font-bold text-[#66655C] uppercase">
-                  <span>Bayesian Probability Estimate</span>
-                  <span>{diff.likelihood_percentage}%</span>
-                </div>
-                <div className="w-full bg-[#E2DFC9] h-2.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-black h-full transition-all duration-500"
-                    style={{ width: `${diff.likelihood_percentage}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="space-y-2 font-sans">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#66655C]">
-                  Clinical Rationale
-                </h4>
-                <p className="text-xs text-[#1A1A1C] leading-relaxed font-normal bg-white border border-[#DCD8BE] rounded-xl p-4">
-                  {diff.clinical_rationale}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#66655C] flex items-center gap-1.5">
-                  <Activity size={14} className="text-[#E19B4C]" />
-                  <span>Recommended Diagnostic Workup Checklist</span>
-                </h4>
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-semibold text-black">
-                  {diff.recommended_workup.map((w, i) => (
-                    <li key={i} className="bg-white border border-[#DCD8BE] rounded-lg p-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#E19B4C] flex-shrink-0"></span>
-                      <span>{w}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            ))
+          ) : (
+            <div className="bg-white border border-[#DCD8BE] rounded-2xl p-12 text-center text-xs font-mono text-[#8C8A7B]">
+              Differential diagnosis synthesis pending... Run workflow pipeline to compute probabilistic hypotheses.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

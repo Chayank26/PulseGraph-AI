@@ -268,10 +268,32 @@ export const agentsList: AgentInfo[] = [
     number: '05',
     name: 'SAFETY',
     shortName: 'Safety',
-    tagline: 'Layer: Symbolic Guard',
+    tagline: 'Layer: Pharmacological',
     color: '#D5D4CD',
     lightColor: '#EFEFEA',
     status: 'COMPLETED',
     route: '/safety'
+  },
+  {
+    id: 'symbolic',
+    number: '06',
+    name: 'SYMBOLIC',
+    shortName: 'Symbolic',
+    tagline: 'Layer: AST Guardrail',
+    color: '#D8E2DC',
+    lightColor: '#EEF4F0',
+    status: 'COMPLETED',
+    route: '/symbolic'
+  },
+  {
+    id: 'review',
+    number: '07',
+    name: 'REVIEW',
+    shortName: 'Review',
+    tagline: 'Attestation: HITL',
+    color: '#F4DEB3',
+    lightColor: '#FAF0DB',
+    status: 'COMPLETED',
+    route: '/review'
   }
 ];

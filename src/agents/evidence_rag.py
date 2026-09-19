@@ -31,12 +31,34 @@ def evidence_rag_agent_node(state: ClinicalState) -> Dict[str, Any]:
         elif "Acute Coronary Syndrome" in diff.condition_name:
             retrieved_evidence.append(
                 ClinicalEvidence(
-                    title="AHA/ACC Guideline for the Evaluation and Diagnosis of Chest Pain",
+                    title="2021 AHA/ACC Guideline for the Evaluation and Diagnosis of Chest Pain",
                     authors="Gulati M, et al.",
                     source="Journal of the American College of Cardiology",
                     url_or_doi="10.1016/j.jacc.2021.07.053",
                     snippet="In patients with acute chest pain, high-sensitivity cardiac troponins are recommended to rapidly rule in or rule out myocardial injury.",
-                    relevance_score=0.92
+                    relevance_score=0.94
+                )
+            )
+        elif "Hypertensive" in diff.condition_name or "Cardiomegaly" in diff.condition_name:
+            retrieved_evidence.append(
+                ClinicalEvidence(
+                    title="2022 AHA/ACC/HFSA Guideline for the Management of Heart Failure",
+                    authors="Heidenreich PA, et al.",
+                    source="Circulation / American Heart Association",
+                    url_or_doi="10.1161/CIR.0000000000001063",
+                    snippet="Patients with radiographic cardiomegaly and hypertension should undergo prompt echocardiographic assessment of ventricular ejection fraction and geometry.",
+                    relevance_score=0.96
+                )
+            )
+        elif "Pleural Effusion" in diff.condition_name:
+            retrieved_evidence.append(
+                ClinicalEvidence(
+                    title="BTS Clinical Statement on the Investigation and Management of Pleural Effusion",
+                    authors="Roberts ME, et al.",
+                    source="Thorax / BMJ",
+                    url_or_doi="10.1136/thorax-2022-219784",
+                    snippet="Thoracic ultrasound and diagnostic fluid analysis are recommended to characterize blunted costophrenic angles and rule out parapneumonic exudates.",
+                    relevance_score=0.91
                 )
             )
 

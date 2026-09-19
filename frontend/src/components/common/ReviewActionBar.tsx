@@ -4,6 +4,7 @@ import { ShieldAlert, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 
 export const ReviewActionBar: React.FC = () => {
   const { session, approveSession, rejectSession, reevaluateSession } = useWorkflow();
+  if (!session) return null;
   const [showNotesModal, setShowNotesModal] = useState<'APPROVE' | 'REJECT' | 'REEVAL' | null>(null);
   const [clinicianNotes, setClinicianNotes] = useState('');
 

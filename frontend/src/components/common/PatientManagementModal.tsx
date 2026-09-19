@@ -15,6 +15,7 @@ export const PatientManagementModal: React.FC<PatientModalProps> = ({ isOpen, on
   const [age, setAge] = useState<number | ''>(activePatient?.age || '');
   const [gender, setGender] = useState<string>(activePatient?.gender || '');
   const [bloodType, setBloodType] = useState<string>(activePatient?.blood_type || '');
+  const [chiefComplaint, setChiefComplaint] = useState<string>(activePatient?.chief_complaint || '');
   const [allergies, setAllergies] = useState<string>(activePatient?.allergies?.join(', ') || '');
   const [chronicConditions, setChronicConditions] = useState<string>(activePatient?.chronic_conditions?.join(', ') || '');
   const [currentMedications, setCurrentMedications] = useState<string>(activePatient?.current_medications?.join(', ') || '');
@@ -31,6 +32,10 @@ export const PatientManagementModal: React.FC<PatientModalProps> = ({ isOpen, on
       setError('Patient Identifier / MRN is required.');
       return;
     }
+    if (!chiefComplaint.trim()) {
+      setError('Chief complaint and presenting symptoms are required.');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -39,6 +44,7 @@ export const PatientManagementModal: React.FC<PatientModalProps> = ({ isOpen, on
         age: Number(age || 0),
         gender,
         blood_type: bloodType,
+        chief_complaint: chiefComplaint.trim(),
         allergies: allergies.split(',').map(s => s.trim()).filter(Boolean),
         chronic_conditions: chronicConditions.split(',').map(s => s.trim()).filter(Boolean),
         current_medications: currentMedications.split(',').map(s => s.trim()).filter(Boolean)
@@ -245,6 +251,18 @@ export const PatientManagementModal: React.FC<PatientModalProps> = ({ isOpen, on
                     className="w-full bg-white border border-[#DCD8BE] rounded-lg px-3 py-2 font-mono font-bold text-black"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-[#66655C] mb-1">Chief Complaint & Presenting Symptoms *</label>
+                <textarea
+                  value={chiefComplaint}
+                  onChange={(e) => setChiefComplaint(e.target.value)}
+                  placeholder="Sudden onset chest pain and shortness of breath"
+                  rows={3}
+                  required
+                  className="w-full bg-white border border-[#DCD8BE] rounded-lg px-3 py-2 text-black font-semibold"
+                />
               </div>
 
               <div>

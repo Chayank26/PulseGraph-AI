@@ -4,7 +4,7 @@ import { ShieldCheck, Terminal, UserCheck, Activity, Eye, X } from 'lucide-react
 
 export const AuditTimeline: React.FC = () => {
   const { session } = useWorkflow();
-  const auditTrail = session.state.audit_trail || [];
+  const auditTrail = session?.state?.audit_trail || [];
   const [filterCategory, setFilterCategory] = useState<'ALL' | 'AGENTS' | 'CLINICIAN' | 'SAFETY'>('ALL');
   const [selectedEntry, setSelectedEntry] = useState<any | null>(null);
 

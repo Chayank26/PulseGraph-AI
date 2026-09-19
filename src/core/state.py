@@ -32,6 +32,7 @@ class PatientDemographics(BaseModel):
     age: Optional[int] = Field(default=None, ge=0, le=130, description="Age in years")
     gender: Optional[str] = Field(default=None, description="Gender identity or biological sex")
     blood_type: Optional[str] = Field(default=None, description="ABO/Rh blood type")
+    chief_complaint: Optional[str] = Field(default=None, description="Presenting complaint and symptoms")
     allergies: List[str] = Field(default_factory=list, description="Known drug or food allergies")
     chronic_conditions: List[str] = Field(default_factory=list, description="Pre-existing diagnoses")
     current_medications: List[str] = Field(default_factory=list, description="Active prescriptions")

@@ -6,6 +6,7 @@ export interface CreatePatientPayload {
   age?: number;
   gender?: string;
   blood_type?: string;
+  chief_complaint: string;
   allergies?: string[];
   chronic_conditions?: string[];
   current_medications?: string[];
@@ -15,6 +16,7 @@ export interface UpdatePatientPayload {
   age?: number;
   gender?: string;
   blood_type?: string;
+  chief_complaint?: string;
   allergies?: string[];
   chronic_conditions?: string[];
   current_medications?: string[];

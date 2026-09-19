@@ -41,15 +41,18 @@ class PatientModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     patient_id = Column(String(64), unique=True, nullable=False, index=True)
+    doctor_id = Column(String(64), ForeignKey("doctors.doctor_id", ondelete="SET NULL"), nullable=True, index=True)
     age = Column(Integer, nullable=True)
     gender = Column(String(32), nullable=True)
     blood_type = Column(String(16), nullable=True)
+    chief_complaint = Column(Text, nullable=True)
     allergies = Column(JSON, default=list, nullable=False)
     chronic_conditions = Column(JSON, default=list, nullable=False)
     current_medications = Column(JSON, default=list, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
+    doctor = relationship("DoctorModel", foreign_keys=[doctor_id])
     sessions = relationship("ClinicalSessionModel", back_populates="patient", cascade="all, delete-orphan")
 
 

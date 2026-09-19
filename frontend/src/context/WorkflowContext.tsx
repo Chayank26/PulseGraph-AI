@@ -1,18 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ClinicalSession, AgentStatusType, PatientDemographics, ClinicalDataRequest } from '../types/clinical';
-import { mockClinicalSession } from '../data/mockClinicalSession';
 import { patientsApi } from '../api/patients';
 import type { CreatePatientPayload, UpdatePatientPayload } from '../api/patients';
 import { clinicalSessionsApi } from '../api/clinicalSessions';
 
 interface WorkflowContextType {
-  session: ClinicalSession;
+  session: ClinicalSession | null;
   activePatient: PatientDemographics | null;
   agentStatuses: Record<string, AgentStatusType>;
   runningAgentId: string | null;
   currentAgentProgressMessage: string;
   loadingPatient: boolean;
   isPolling: boolean;
+  selectPatient: (patient: PatientDemographics) => Promise<void>;
+  clearActivePatient: () => void;
   createPatient: (payload: CreatePatientPayload) => Promise<PatientDemographics>;
   updatePatient: (patientId: string, payload: UpdatePatientPayload) => Promise<PatientDemographics>;
   fetchPatient: (patientId: string) => Promise<PatientDemographics>;
@@ -28,25 +29,17 @@ interface WorkflowContextType {
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
 
 export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<ClinicalSession>(mockClinicalSession);
-  const [activePatient, setActivePatient] = useState<PatientDemographics | null>({
-    patient_id: mockClinicalSession.patient_id,
-    age: mockClinicalSession.state.demographics.age,
-    gender: mockClinicalSession.state.demographics.gender,
-    chief_complaint: mockClinicalSession.state.demographics.chief_complaint,
-    allergies: mockClinicalSession.state.demographics.allergies || ['Penicillin (Rash)'],
-    chronic_conditions: mockClinicalSession.state.demographics.chronic_conditions || ['Hypertension', 'Diabetes'],
-    current_medications: mockClinicalSession.state.demographics.current_medications
-  });
+  const [session, setSession] = useState<ClinicalSession | null>(null);
+  const [activePatient, setActivePatient] = useState<PatientDemographics | null>(null);
   const [loadingPatient, setLoadingPatient] = useState<boolean>(false);
   const [isPolling, setIsPolling] = useState<boolean>(false);
 
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatusType>>({
-    triage: 'COMPLETED',
-    imaging: 'COMPLETED',
-    diagnostic: 'COMPLETED',
-    evidence: 'COMPLETED',
-    safety: 'COMPLETED'
+    triage: 'IDLE',
+    imaging: 'IDLE',
+    diagnostic: 'IDLE',
+    evidence: 'IDLE',
+    safety: 'IDLE'
   });
   const [runningAgentId, setRunningAgentId] = useState<string | null>(null);
   const [currentAgentProgressMessage, setCurrentAgentProgressMessage] = useState<string>('');
@@ -86,7 +79,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       // Attempt to load audit trail
-      let auditTrail = session.state.audit_trail;
+      let auditTrail = session?.state?.audit_trail || [];
       try {
         const auditLogs = await clinicalSessionsApi.getAuditTrail(sessionId);
         if (auditLogs && auditLogs.length > 0) {
@@ -113,33 +106,36 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setAgentStatuses(newAgentStatuses);
 
-      setSession(prev => ({
-        ...prev,
-        session_id: updatedSess.session_id,
-        patient_id: updatedSess.patient_id,
-        doctor_id: updatedSess.doctor_id,
-        thread_id: updatedSess.thread_id,
-        status: updatedSess.status,
-        current_step: updatedSess.current_step,
-        state: {
-          ...prev.state,
+      setSession(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          session_id: updatedSess.session_id,
           patient_id: updatedSess.patient_id,
+          doctor_id: updatedSess.doctor_id,
+          thread_id: updatedSess.thread_id,
+          status: updatedSess.status,
           current_step: updatedSess.current_step,
-          pending_data_requests: pendingRequests,
-          audit_trail: auditTrail,
-          risk_scores: cdsResults?.risk_scores || prev.state.risk_scores,
-          differentials: cdsResults?.differentials || prev.state.differentials,
-          imaging_data: cdsResults?.imaging_findings ? {
-            image_path: 'data/mock_patients/patient_001_cxr.png',
-            modality: 'CHEST_XRAY_PA',
-            findings: cdsResults.imaging_findings,
-            impression: 'Sub-segmental filling defect noted in right lower lobe.'
-          } : prev.state.imaging_data,
-          evidence: cdsResults?.evidence || prev.state.evidence,
-          safety_flags: cdsResults?.safety_flags || prev.state.safety_flags,
-          symbolic_overrides: cdsResults?.symbolic_overrides || prev.state.symbolic_overrides
-        }
-      }));
+          state: {
+            ...prev.state,
+            patient_id: updatedSess.patient_id,
+            current_step: updatedSess.current_step,
+            pending_data_requests: pendingRequests,
+            audit_trail: auditTrail,
+            risk_scores: cdsResults?.risk_scores || prev.state.risk_scores,
+            differentials: cdsResults?.differentials || prev.state.differentials,
+            imaging_data: cdsResults?.imaging_findings ? {
+              image_path: 'data/mock_patients/patient_001_cxr.png',
+              modality: 'CHEST_XRAY_PA',
+              findings: cdsResults.imaging_findings,
+              impression: 'Sub-segmental filling defect noted in right lower lobe.'
+            } : prev.state.imaging_data,
+            evidence: cdsResults?.evidence || prev.state.evidence,
+            safety_flags: cdsResults?.safety_flags || prev.state.safety_flags,
+            symbolic_overrides: cdsResults?.symbolic_overrides || prev.state.symbolic_overrides
+          }
+        };
+      });
 
       // Check if session reached a terminal/breakpoint status
       const isTerminal = ['WAITING_FOR_CLINICAL_DATA', 'WAITING_FOR_CLINICIAN_REVIEW', 'APPROVED', 'REJECTED_MANUAL_TAKEOVER', 'COMPLETED'].includes(updatedSess.status);
@@ -176,20 +172,23 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const updated = await patientsApi.updatePatient(patientId, payload);
       setActivePatient(updated);
-      setSession(prev => ({
-        ...prev,
-        state: {
-          ...prev.state,
-          demographics: {
-            ...prev.state.demographics,
-            age: updated.age ?? prev.state.demographics.age,
-            gender: updated.gender ?? prev.state.demographics.gender,
-            allergies: updated.allergies ?? prev.state.demographics.allergies,
-            chronic_conditions: updated.chronic_conditions ?? prev.state.demographics.chronic_conditions,
-            current_medications: updated.current_medications ?? prev.state.demographics.current_medications
+      setSession(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          state: {
+            ...prev.state,
+            demographics: {
+              ...prev.state.demographics,
+              age: updated.age ?? prev.state.demographics.age,
+              gender: updated.gender ?? prev.state.demographics.gender,
+              allergies: updated.allergies ?? prev.state.demographics.allergies,
+              chronic_conditions: updated.chronic_conditions ?? prev.state.demographics.chronic_conditions,
+              current_medications: updated.current_medications ?? prev.state.demographics.current_medications
+            }
           }
-        }
-      }));
+        };
+      });
       return updated;
     } finally {
       setLoadingPatient(false);
@@ -208,15 +207,41 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const selectPatient = async (patient: PatientDemographics) => {
+    setActivePatient(patient);
+    try {
+      await createClinicalSession(patient.patient_id, [
+        `[PATIENT INTAKE RECORD]: MRN=${patient.patient_id}, Age=${patient.age}, Gender=${patient.gender}`,
+        patient.chief_complaint ? `Chief Complaint: ${patient.chief_complaint}` : '',
+        patient.allergies?.length ? `Allergies: ${patient.allergies.join(', ')}` : '',
+        patient.chronic_conditions?.length ? `Conditions: ${patient.chronic_conditions.join(', ')}` : '',
+        patient.current_medications?.length ? `Medications: ${patient.current_medications.join(', ')}` : ''
+      ].filter(Boolean));
+    } catch (e) {
+      console.warn('Initial session lookup notice:', e);
+    }
+  };
+
+  const clearActivePatient = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPolling(false);
+    setActivePatient(null);
+    setSession(null);
+    setRunningAgentId(null);
+    setCurrentAgentProgressMessage('');
+  };
+
   // Create real clinical session on backend
   const createClinicalSession = async (patientId: string, rawNotes?: string[]): Promise<ClinicalSession> => {
     const backendSession = await clinicalSessionsApi.createSession({
       patient_id: patientId,
-      raw_notes: rawNotes || ["Patient presents with acute chest discomfort requiring evaluation."]
+      raw_notes: rawNotes || ["Patient presents for clinical evaluation."]
     });
 
     const newSessionState: ClinicalSession = {
-      ...mockClinicalSession,
       session_id: backendSession.session_id,
       patient_id: backendSession.patient_id,
       doctor_id: backendSession.doctor_id,
@@ -224,15 +249,36 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       status: backendSession.status || 'INITIALIZED',
       current_step: backendSession.current_step || 'initialized',
       state: {
-        ...mockClinicalSession.state,
         patient_id: backendSession.patient_id,
-        raw_notes: rawNotes || mockClinicalSession.state.raw_notes,
+        raw_notes: rawNotes || ["Patient presents for clinical evaluation."],
         demographics: {
-          ...mockClinicalSession.state.demographics,
           patient_id: backendSession.patient_id,
-          age: activePatient?.age || 58,
-          gender: activePatient?.gender || 'Male'
-        }
+          age: activePatient?.age || 0,
+          gender: activePatient?.gender || 'Unspecified',
+          chief_complaint: activePatient?.chief_complaint || '',
+          allergies: activePatient?.allergies || [],
+          chronic_conditions: activePatient?.chronic_conditions || [],
+          current_medications: activePatient?.current_medications || []
+        },
+        vitals: undefined,
+        imaging_data: undefined,
+        differentials: [],
+        risk_scores: [],
+        safety_flags: [],
+        symbolic_overrides: [],
+        evidence: [],
+        current_step: 'initialized',
+        iteration_count: 0,
+        re_evaluation_requested: false,
+        pending_data_requests: [],
+        audit_trail: [
+          {
+            timestamp: new Date().toISOString(),
+            agent_name: 'System',
+            action: 'INITIALIZED_CLINICAL_SESSION',
+            details: `Initialized new clinical session for Patient ID: ${backendSession.patient_id}`
+          }
+        ]
       }
     };
 
@@ -242,11 +288,14 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Executes or resumes real backend LangGraph workflow
   const runWorkflow = async () => {
-    setSession(prev => ({
+    if (!session) return;
+    const currentSessionId = session.session_id;
+
+    setSession(prev => prev ? {
       ...prev,
       status: 'RUNNING',
       current_step: 'running'
-    }));
+    } : null);
     setRunningAgentId('pipeline');
     setCurrentAgentProgressMessage('Executing LangGraph multi-agent clinical decision-support pipeline...');
     setIsPolling(true);
@@ -254,9 +303,9 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       // 1. Trigger backend execution
       await clinicalSessionsApi.runSession(
-        session.session_id,
+        currentSessionId,
         session.state.raw_notes,
-        'data/mock_patients/patient_001_cxr.png'
+        (session.state as any)?.imaging_path || undefined
       );
     } catch (err: any) {
       console.warn('Backend run session error:', err);
@@ -268,15 +317,16 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     // Initial immediate poll
-    await pollSessionState(session.session_id);
+    await pollSessionState(currentSessionId);
 
     // Poll every 1.5 seconds
     pollingIntervalRef.current = setInterval(() => {
-      pollSessionState(session.session_id);
+      pollSessionState(currentSessionId);
     }, 1500);
   };
 
   const resolveDataRequest = async (requestId: string, responseData: Record<string, any>) => {
+    if (!session) return;
     setRunningAgentId('data_resolution');
     setCurrentAgentProgressMessage(`Submitting requested clinical parameters [${requestId}] and resuming graph...`);
 
@@ -294,6 +344,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const approveSession = async (notes?: string) => {
+    if (!session) return;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     
     try {
@@ -302,27 +353,31 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('Backend approval sync:', e);
     }
 
-    setSession(prev => ({
-      ...prev,
-      status: 'APPROVED',
-      current_step: 'ehr_exported',
-      state: {
-        ...prev.state,
-        approved_by_clinician: true,
-        audit_trail: [
-          ...prev.state.audit_trail,
-          {
-            timestamp,
-            agent_name: 'Clinician_Review',
-            action: 'APPROVED & PERSISTED CDS RESULT',
-            details: notes || 'Clinician verified and approved PulseGraph recommendation payload for EHR Export.'
-          }
-        ]
-      }
-    }));
+    setSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        status: 'APPROVED',
+        current_step: 'ehr_exported',
+        state: {
+          ...prev.state,
+          approved_by_clinician: true,
+          audit_trail: [
+            ...prev.state.audit_trail,
+            {
+              timestamp,
+              agent_name: 'Clinician_Review',
+              action: 'APPROVED & PERSISTED CDS RESULT',
+              details: notes || 'Clinician verified and approved PulseGraph recommendation payload for EHR Export.'
+            }
+          ]
+        }
+      };
+    });
   };
 
   const rejectSession = async (notes?: string) => {
+    if (!session) return;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     try {
@@ -331,27 +386,31 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('Backend rejection sync:', e);
     }
 
-    setSession(prev => ({
-      ...prev,
-      status: 'REJECTED_MANUAL_TAKEOVER',
-      current_step: 'rejected_manual_takeover',
-      state: {
-        ...prev.state,
-        approved_by_clinician: false,
-        audit_trail: [
-          ...prev.state.audit_trail,
-          {
-            timestamp,
-            agent_name: 'Clinician_Review',
-            action: 'REJECTED — MANUAL PHYSICIAN TAKEOVER',
-            details: notes || 'Clinician rejected automated recommendations and initiated manual patient management.'
-          }
-        ]
-      }
-    }));
+    setSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        status: 'REJECTED_MANUAL_TAKEOVER',
+        current_step: 'rejected_manual_takeover',
+        state: {
+          ...prev.state,
+          approved_by_clinician: false,
+          audit_trail: [
+            ...prev.state.audit_trail,
+            {
+              timestamp,
+              agent_name: 'Clinician_Review',
+              action: 'REJECTED — MANUAL PHYSICIAN TAKEOVER',
+              details: notes || 'Clinician rejected automated recommendations and initiated manual patient management.'
+            }
+          ]
+        }
+      };
+    });
   };
 
   const reevaluateSession = async (notes?: string) => {
+    if (!session) return;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     try {
@@ -362,25 +421,28 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('Backend reevaluation sync:', e);
     }
 
-    setSession(prev => ({
-      ...prev,
-      status: 'RUNNING',
-      current_step: 'reevaluating',
-      state: {
-        ...prev.state,
-        iteration_count: prev.state.iteration_count + 1,
-        re_evaluation_requested: true,
-        audit_trail: [
-          ...prev.state.audit_trail,
-          {
-            timestamp,
-            agent_name: 'Clinician_Review',
-            action: 'REQUESTED RE-EVALUATION LOOP',
-            details: `Clinician Feedback: ${notes || 'Re-evaluate differential diagnosis with updated imaging parameters.'}`
-          }
-        ]
-      }
-    }));
+    setSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        status: 'RUNNING',
+        current_step: 'reevaluating',
+        state: {
+          ...prev.state,
+          iteration_count: prev.state.iteration_count + 1,
+          re_evaluation_requested: true,
+          audit_trail: [
+            ...prev.state.audit_trail,
+            {
+              timestamp,
+              agent_name: 'Clinician_Review',
+              action: 'REQUESTED RE-EVALUATION LOOP',
+              details: `Clinician Feedback: ${notes || 'Re-evaluate differential diagnosis with updated imaging parameters.'}`
+            }
+          ]
+        }
+      };
+    });
 
     await runWorkflow();
   };
@@ -391,13 +453,14 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       pollingIntervalRef.current = null;
     }
     setIsPolling(false);
-    setSession(mockClinicalSession);
+    setActivePatient(null);
+    setSession(null);
     setAgentStatuses({
-      triage: 'COMPLETED',
-      imaging: 'COMPLETED',
-      diagnostic: 'COMPLETED',
-      evidence: 'COMPLETED',
-      safety: 'COMPLETED'
+      triage: 'IDLE',
+      imaging: 'IDLE',
+      diagnostic: 'IDLE',
+      evidence: 'IDLE',
+      safety: 'IDLE'
     });
     setRunningAgentId(null);
     setCurrentAgentProgressMessage('');
@@ -413,6 +476,8 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentAgentProgressMessage,
         loadingPatient,
         isPolling,
+        selectPatient,
+        clearActivePatient,
         createPatient,
         updatePatient,
         fetchPatient,

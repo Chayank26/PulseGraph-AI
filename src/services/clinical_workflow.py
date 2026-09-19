@@ -109,6 +109,7 @@ class ClinicalWorkflowService:
             age=patient_model.age,
             gender=patient_model.gender,
             blood_type=patient_model.blood_type,
+            chief_complaint=patient_model.chief_complaint,
             allergies=patient_model.allergies or [],
             chronic_conditions=patient_model.chronic_conditions or [],
             current_medications=patient_model.current_medications or []

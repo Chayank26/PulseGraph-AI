@@ -1,30 +1,41 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkflow } from '../../context/WorkflowContext';
-import { Play, RotateCcw, LogOut, User, AlertCircle, PlusCircle } from 'lucide-react';
+import { Play, RotateCcw, LogOut, User, AlertCircle, PlusCircle, Home } from 'lucide-react';
 import { PatientSelectionModal } from './PatientSelectionModal';
 
 export const AppHeader: React.FC = () => {
+  const navigate = useNavigate();
   const { doctor, logout } = useAuth();
-  const { session, runWorkflow, runningAgentId, resetDemoSession } = useWorkflow();
+  const { session, activePatient, runWorkflow, runningAgentId, resetDemoSession } = useWorkflow();
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
 
   return (
     <>
       <header className="w-full bg-[#F5F3EB] px-4 md:px-8 py-5 border-b border-[#E2DFC9] flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Patient Pill */}
+        {/* Patient Pill & Home Link */}
         <div className="flex items-center gap-2">
+          <Link
+            to="/dashboard"
+            title="Navigate to Physician Dashboard Home"
+            className="bg-[#1A1A1C] text-white p-2 md:px-3.5 md:py-2 rounded-full font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-black transition shadow-sm"
+          >
+            <Home size={16} className="text-[#E19B4C]" />
+            <span className="hidden sm:inline">Home</span>
+          </Link>
+
           <button
             onClick={() => setIsPatientModalOpen(true)}
-            title="Select Patient / New Patient & Clinical Session"
+            title="Select Patient / Register Patient"
             className="bg-[#2A2B2E] text-white font-mono text-xs md:text-sm tracking-wider uppercase font-semibold px-5 py-2 rounded-full shadow-sm flex items-center gap-2 hover:bg-black transition cursor-pointer"
           >
-            <span className="w-2 h-2 rounded-full bg-[#E19B4C] animate-pulse"></span>
-            <span>PATIENT: {session.patient_id}</span>
+            <span className={`w-2 h-2 rounded-full ${activePatient ? 'bg-[#E19B4C] animate-pulse' : 'bg-gray-500'}`}></span>
+            <span>PATIENT: {activePatient ? activePatient.patient_id : 'SELECT PATIENT'}</span>
             <PlusCircle size={14} className="text-[#E19B4C] ml-1" />
           </button>
 
-          {session.status === 'WAITING_FOR_CLINICAL_DATA' && (
+          {session?.status === 'WAITING_FOR_CLINICAL_DATA' && (
             <div className="bg-[#FFF3C4] text-[#8C6D00] border border-[#E6C200] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 animate-bounce">
               <AlertCircle size={14} />
               <span>Data Needed</span>
@@ -32,12 +43,16 @@ export const AppHeader: React.FC = () => {
           )}
         </div>
 
-        {/* Center Editorial Title Block */}
-        <div className="text-center">
-          <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.25em] text-[#66655C] font-medium">
+        {/* Center Editorial Title Block (Clickable to Home) */}
+        <div 
+          onClick={() => navigate('/dashboard')}
+          className="text-center cursor-pointer group"
+          title="Return to Physician Patient Directory Dashboard"
+        >
+          <p className="text-[10px] md:text-xs font-mono uppercase tracking-[0.25em] text-[#66655C] font-medium group-hover:text-black transition">
             NEURO-SYMBOLIC MULTIMODAL ENGINE
           </p>
-          <h1 className="font-serif italic text-2xl md:text-3xl text-[#1A1A1C] font-semibold tracking-tight">
+          <h1 className="font-serif italic text-2xl md:text-3xl text-[#1A1A1C] font-semibold tracking-tight group-hover:text-[#E19B4C] transition">
             PulseGraph Clinical Decision Support
           </h1>
         </div>
@@ -45,7 +60,7 @@ export const AppHeader: React.FC = () => {
         {/* Session Pill & Controls */}
         <div className="flex items-center gap-3">
           <div className="bg-[#2A2B2E] text-white font-mono text-xs md:text-sm tracking-wider uppercase font-semibold px-5 py-2 rounded-full shadow-sm">
-            <span>SESSION: {session.session_id}</span>
+            <span>SESSION: {session ? session.session_id : 'NO ACTIVE SESSION'}</span>
           </div>
 
           {/* Action Controls */}

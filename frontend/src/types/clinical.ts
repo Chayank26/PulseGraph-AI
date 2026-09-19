@@ -135,7 +135,7 @@ export interface ClinicalState {
   patient_id: string;
   demographics: PatientDemographics;
   raw_notes: string[];
-  vitals: VitalSigns;
+  vitals?: VitalSigns;
   risk_scores: RiskScore[];
   differentials: DiagnosticDifferential[];
   imaging_data?: ImagingData;

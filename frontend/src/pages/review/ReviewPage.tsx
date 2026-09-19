@@ -5,30 +5,41 @@ import { UserCheck, CheckCircle, XCircle, RotateCcw, FileCode, AlertOctagon, Shi
 import { EhrExportModal } from '../../components/common/EhrExportModal';
 import './ReviewPage.css';
 
+import { Link } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
+
 export const ReviewPage: React.FC = () => {
   const { doctor } = useAuth();
-  const { session, approveSession, rejectSession, reevaluateSession } = useWorkflow();
+  const { session, activePatient, approveSession, rejectSession, reevaluateSession } = useWorkflow();
+
+  if (!activePatient || !session) {
+    return (
+      <div className="bg-white border-2 border-black rounded-2xl p-12 text-center max-w-2xl mx-auto my-12 shadow-sm font-sans">
+        <AlertTriangle size={36} className="mx-auto text-[#E19B4C] mb-3" />
+        <h2 className="font-serif text-2xl font-bold text-black">No Active Patient Selected</h2>
+        <p className="text-sm text-[#66655C] mt-2">
+          Please select or register a patient from the Physician Patient Directory to conduct human-in-the-loop clinical review.
+        </p>
+        <Link
+          to="/dashboard"
+          className="mt-6 inline-flex items-center gap-2 bg-[#1A1A1C] text-white font-mono text-xs font-bold uppercase px-6 py-3 rounded-full hover:bg-black transition"
+        >
+          <span>Go to Patient Directory &rarr;</span>
+        </Link>
+      </div>
+    );
+  }
+
   const state = session.state;
 
-  const [reviewNotes, setReviewNotes] = useState<string>('Reviewed risk scores, imaging findings, and safety flags. Recommendations approved.');
-  const [reevalNotes, setReevalNotes] = useState<string>('Re-evaluate differential diagnosis considering serial troponin trend at 3h.');
+  const [reviewNotes, setReviewNotes] = useState<string>('');
+  const [reevalNotes, setReevalNotes] = useState<string>('');
   const [activeActionTab, setActiveActionTab] = useState<'APPROVE' | 'REEVAL' | 'REJECT'>('APPROVE');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [isEhrModalOpen, setIsEhrModalOpen] = useState<boolean>(false);
 
-  const primaryDiff = state.differentials?.[0] || {
-    disease_name: 'Acute Coronary Syndrome / NSTEMI',
-    icd10_code: 'I21.4',
-    likelihood_percentage: 68,
-    clinical_rationale: 'High HEART score (6/10), presenting chest pain, and hypertensive vitals.'
-  };
-
-  const topRiskScore = state.risk_scores?.[0] || {
-    score_name: 'HEART Score',
-    score_value: 6,
-    risk_level: 'HIGH_RISK',
-    recommendation: 'High risk (50-65% MACE risk). Immediate admission and early invasive strategy.'
-  };
+  const primaryDiff = state.differentials?.[0];
+  const topRiskScore = state.risk_scores?.[0];
 
   const handleApprove = async () => {
     setSubmitting(true);
@@ -92,31 +103,43 @@ export const ReviewPage: React.FC = () => {
           {/* Primary Hypothesis */}
           <div className="space-y-3">
             <h4 className="font-serif italic text-xl font-bold text-black">Primary Diagnostic Hypothesis</h4>
-            <div className="bg-white border-2 border-black rounded-xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-base text-black">{primaryDiff.disease_name}</span>
-                <span className="font-mono text-xs font-bold text-black bg-[#D6E3F5] px-3 py-1 rounded-full border border-black">
-                  ICD-10: {primaryDiff.icd10_code} • {primaryDiff.likelihood_percentage}%
-                </span>
+            {primaryDiff ? (
+              <div className="bg-white border-2 border-black rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-base text-black">{primaryDiff.disease_name}</span>
+                  <span className="font-mono text-xs font-bold text-black bg-[#D6E3F5] px-3 py-1 rounded-full border border-black">
+                    ICD-10: {primaryDiff.icd10_code} • {primaryDiff.likelihood_percentage}%
+                  </span>
+                </div>
+                <p className="text-xs text-[#4A4943] leading-relaxed font-sans">
+                  {primaryDiff.clinical_rationale}
+                </p>
               </div>
-              <p className="text-xs text-[#4A4943] leading-relaxed font-sans">
-                {primaryDiff.clinical_rationale}
-              </p>
-            </div>
+            ) : (
+              <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 text-xs font-mono text-[#8C8A7B]">
+                Awaiting diagnostic synthesis. Run the clinical pipeline to generate hypotheses.
+              </div>
+            )}
           </div>
 
           {/* Risk Score Summary */}
           <div className="space-y-3">
             <h4 className="font-serif italic text-xl font-bold text-black">Calculated Risk Stratification</h4>
-            <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-2 text-xs">
-              <div className="flex items-center justify-between font-mono font-bold text-black">
-                <span>{topRiskScore.score_name} Score: {topRiskScore.score_value}</span>
-                <span className="bg-[#F7D8D8] text-[#8C2A2A] px-2.5 py-0.5 rounded border border-[#EAAFA0] font-bold">
-                  {topRiskScore.risk_level}
-                </span>
+            {topRiskScore ? (
+              <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-2 text-xs">
+                <div className="flex items-center justify-between font-mono font-bold text-black">
+                  <span>{topRiskScore.score_name} Score: {topRiskScore.score_value}</span>
+                  <span className="bg-[#F7D8D8] text-[#8C2A2A] px-2.5 py-0.5 rounded border border-[#EAAFA0] font-bold">
+                    {topRiskScore.risk_level}
+                  </span>
+                </div>
+                <p className="text-[#66655C]">{topRiskScore.recommendation}</p>
               </div>
-              <p className="text-[#66655C]">{topRiskScore.recommendation}</p>
-            </div>
+            ) : (
+              <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 text-xs font-mono text-[#8C8A7B]">
+                Awaiting risk score computation. Run the clinical pipeline to calculate scores.
+              </div>
+            )}
           </div>
 
           {/* Safety & Guardrail Compliance */}

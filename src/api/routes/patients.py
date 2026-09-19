@@ -16,14 +16,16 @@ def create_patient(
     db: Session = Depends(get_db),
     current_clinician: DoctorModel = Depends(get_current_clinician)
 ):
-    """Create a new patient record in PostgreSQL."""
+    """Create a new patient record in PostgreSQL associated with the current doctor."""
     patient_repo = PatientRepository(db)
     try:
         patient = patient_repo.create(
             patient_id=payload.patient_id,
+            doctor_id=current_clinician.doctor_id,
             age=payload.age,
             gender=payload.gender,
             blood_type=payload.blood_type,
+            chief_complaint=payload.chief_complaint,
             allergies=payload.allergies,
             chronic_conditions=payload.chronic_conditions,
             current_medications=payload.current_medications
@@ -33,14 +35,14 @@ def create_patient(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
-@router.get("", response_model=List[PatientResponse], summary="List All Patients")
+@router.get("", response_model=List[PatientResponse], summary="List Doctor's Patients")
 def list_patients(
     db: Session = Depends(get_db),
     current_clinician: DoctorModel = Depends(get_current_clinician)
 ):
-    """Retrieve all patient records."""
+    """Retrieve all patient records added by or assigned to the current doctor."""
     patient_repo = PatientRepository(db)
-    return patient_repo.get_all()
+    return patient_repo.get_all(doctor_id=current_clinician.doctor_id)
 
 
 @router.get("/{patient_id}", response_model=PatientResponse, summary="Get Patient Details")

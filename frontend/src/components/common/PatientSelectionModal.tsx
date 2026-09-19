@@ -31,6 +31,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
   const [newAge, setNewAge] = useState<number | ''>('');
   const [newGender, setNewGender] = useState('');
   const [newBloodType, setNewBloodType] = useState('');
+  const [newChiefComplaint, setNewChiefComplaint] = useState('');
   const [newAllergies, setNewAllergies] = useState('');
   const [newConditions, setNewConditions] = useState('');
   const [newMeds, setNewMeds] = useState('');
@@ -75,6 +76,10 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
       setError('Patient ID / MRN is required.');
       return;
     }
+    if (!newChiefComplaint.trim()) {
+      setError('Chief complaint and presenting symptoms are required.');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -83,6 +88,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
         age: Number(newAge || 0),
         gender: newGender,
         blood_type: newBloodType,
+        chief_complaint: newChiefComplaint.trim(),
         allergies: newAllergies.split(',').map(s => s.trim()).filter(Boolean),
         chronic_conditions: newConditions.split(',').map(s => s.trim()).filter(Boolean),
         current_medications: newMeds.split(',').map(s => s.trim()).filter(Boolean)
@@ -314,7 +320,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                           type="text"
                           value={imagePath}
                           onChange={(e) => setImagePath(e.target.value)}
-                          placeholder="data/mock_patients/patient_001_cxr.png"
+                          placeholder="e.g. data/radiology/chest_xray_dicom.png"
                           className="w-full bg-white border border-[#DCD8BE] rounded-lg p-2 font-mono text-xs text-black"
                         />
                       </div>
@@ -392,6 +398,18 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                     className="w-full bg-white border border-[#DCD8BE] rounded-lg px-3 py-2 font-mono font-bold text-black"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-[#66655C] mb-1">Chief Complaint & Presenting Symptoms *</label>
+                <textarea
+                  value={newChiefComplaint}
+                  onChange={(e) => setNewChiefComplaint(e.target.value)}
+                  placeholder="Sudden onset chest pain and shortness of breath"
+                  rows={3}
+                  required
+                  className="w-full bg-white border border-[#DCD8BE] rounded-lg px-3 py-2 font-semibold text-black"
+                />
               </div>
 
               <div>

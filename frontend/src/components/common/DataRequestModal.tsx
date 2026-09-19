@@ -4,6 +4,7 @@ import { HelpCircle, Send, FileText } from 'lucide-react';
 
 export const DataRequestModal: React.FC = () => {
   const { session, resolveDataRequest } = useWorkflow();
+  if (!session) return null;
   const pendingRequests = session.state.pending_data_requests || [];
   const activeRequest = pendingRequests[0];
 
@@ -76,9 +77,10 @@ export const DataRequestModal: React.FC = () => {
                   <FileText size={16} className="text-[#66655C]" />
                   <input
                     type="text"
-                    value={formData[field.field_key] || 'data/mock_patients/patient_001_cxr.png'}
+                    value={formData[field.field_key] || ''}
                     onChange={(e) => handleInputChange(field.field_key, e.target.value)}
                     required={field.required}
+                    placeholder="Enter DICOM image filepath or dataset URL..."
                     className="w-full bg-[#FAF8F2] border border-[#DCD8BE] rounded-lg p-2.5 text-xs font-mono text-black focus:outline-none focus:ring-2 focus:ring-black"
                   />
                 </div>
