@@ -132,6 +132,7 @@ export interface ClinicalDataRequest {
 }
 
 export interface ClinicalState {
+  urgency?: UrgencyAssessment;
   presentation?: ClinicalPresentation;
   patient_id: string;
   demographics: PatientDemographics;
@@ -194,5 +195,25 @@ export interface ClinicalPresentation {
     }[];
   }[];
   unrecognized_sources: string[];
+  limitations: string[];
+}
+
+
+export interface UrgencyContext {
+  clinician_concern?: boolean | null;
+  new_confusion?: boolean | null;
+  pregnant?: boolean | null;
+  oxygen_scale?: 'standard' | 'individualized' | 'unknown';
+}
+
+export interface UrgencyAssessment {
+  status: 'URGENT_REVIEW' | 'INCOMPLETE' | 'OUTSIDE_SCOPE' | 'NO_TRIGGER_DETECTED';
+  action: string;
+  acknowledged: boolean;
+  assessed_at: string;
+  rules_version: string;
+  rules_review_status: string;
+  reasons: { rule_id: string; explanation: string; source: string }[];
+  missing_information: string[];
   limitations: string[];
 }

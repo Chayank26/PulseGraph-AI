@@ -1,7 +1,8 @@
 import { apiClient } from './client';
-import type { ClinicalSession, ClinicalDataRequest, RiskScore } from '../types/clinical';
+import type { ClinicalSession, ClinicalDataRequest, RiskScore, UrgencyContext } from '../types/clinical';
 
 export interface CreateSessionPayload {
+  urgency_context?: UrgencyContext;
   patient_id: string;
   raw_notes?: string[];
   vitals?: {

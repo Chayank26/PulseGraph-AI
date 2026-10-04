@@ -63,3 +63,53 @@ claiming unrestricted symptom understanding.
 
 Urgency classification, pathway expansion, and optional imaging remain later
 phases. The imaging step still follows the existing workflow in this phase.
+
+## Phase 3: urgency screening and reassessment
+
+A dedicated `urgency_check` graph node runs before triage, after every resolved
+clinical data request, and before clinician-requested diagnostic reevaluation.
+It persists the latest assessment and records assessment snapshots in the audit
+trail. Urgent findings pause routine questionnaires for explicit review by the
+session's authenticated clinician. Acknowledgement allows assessment continuation;
+it does not clear the alert or attest that the patient is safe. Approval cannot
+bypass a pending data/urgency checkpoint. Changed observations or configuration
+invalidate prior acknowledgement. No external emergency notification is sent.
+
+The versioned candidate screen uses individual extreme observation thresholds
+in the RCP NEWS2 report (chart 1, printed page 29), plus explicit clinician concern
+consistent with NICE CG50 recommendation 1.4. It is **not a NEWS2 calculation**,
+does not aggregate scores, and does not assign disposition or treatment.
+
+Sources:
+- https://www.rcp.ac.uk/media/a4ibkkbf/news2-final-report_0_0.pdf
+- https://www.nice.org.uk/guidance/CG50/chapter/recommendations
+
+### Scope and configuration
+
+Physiological rules require recorded age >=16 and explicit non-pregnancy.
+SpO2 screening additionally requires a clinician-confirmed standard scale;
+individualized targets require manual assessment. Explicit clinician concern
+triggers review regardless of these restrictions. Unrecorded applicability is
+never inferred. Missing values and unsupported populations remain visibly
+incomplete/outside scope. Measurement age and clinical trends are not evaluated.
+No detected trigger must never be read as low risk. Several moderately abnormal
+observations may require escalation without triggering this limited screen.
+
+`URGENCY_RULES` accepts a JSON configuration matching `UrgencyRules`, including
+thresholds, version, `reviewed_by`, and `review_reference`. Defaults are marked
+`PENDING_CLINICAL_REVIEW`: implementation/testing is not clinical validation.
+Before clinical use, obtain local clinical review of population, thresholds,
+escalation procedures, and response staffing. Recording review metadata is an
+administrative record, not independent verification. Changed local thresholds
+must have their own version and clinical review; default source references do
+not endorse local modifications.
+
+New session intake accepts optional `urgency_context` fields: clinician concern,
+new confusion, pregnancy, and oxygen scale. Unknown values remain unknown. The
+intake UI collects these explicitly. Older/direct workspace sessions without
+context show the scope limitation instead of a false normal result. Acquired
+confusion and vital measurements trigger reassessment. Symptom-driven emergency
+classification, pediatric/obstetric rules, full NEWS2, and automatic escalation
+notifications are not implemented in this phase.
+
+Apply `DEBUG=false venv/bin/alembic upgrade head` before restarting the backend.

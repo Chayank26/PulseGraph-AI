@@ -121,6 +121,7 @@ class CDSResultModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(64), ForeignKey("clinical_sessions.session_id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    urgency = Column(JSON, nullable=True)
     presentation = Column(JSON, nullable=True)
     risk_scores = Column(JSON, default=list, nullable=False)
     differentials = Column(JSON, default=list, nullable=False)

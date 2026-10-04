@@ -6,6 +6,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from src.core.state import ClinicalState, AuditEntry
 from src.core.data_requests import get_pending_requests
 from src.agents.triage import triage_agent_node
+from src.agents.urgency import urgency_agent_node
 from src.agents.imaging import imaging_agent_node
 from src.agents.diagnostic import diagnostic_agent_node
 from src.agents.evidence_rag import evidence_rag_agent_node
@@ -17,6 +18,7 @@ logger = logging.getLogger("PulseGraph.Graph")
 MAX_ITERATIONS = 2
 
 ALLOWED_RESUMPTION_NODES: Set[str] = {
+    "urgency_check",
     "triage",
     "imaging",
     "diagnostic",
@@ -152,6 +154,8 @@ def feedback_processor_node(state: ClinicalState) -> Dict[str, Any]:
     )
 
     return {
+        "urgency_resume_node": "diagnostic",
+        "active_data_request_id": None,
         "iteration_count": current_count,
         "raw_notes": [feedback_text],
         "re_evaluation_requested": False,
@@ -276,6 +280,23 @@ def route_after_review(state: ClinicalState) -> str:
     return END
 
 
+def urgency_checkpoint_node(state):
+    target = state.get("urgency_resume_node") or "triage"
+    if state.get("active_data_request_id"):
+        resolved_target = route_after_data_request_review(state)
+        if resolved_target in ALLOWED_RESUMPTION_NODES and resolved_target != "urgency_check":
+            target = resolved_target
+    result = urgency_agent_node(state)
+    result["urgency_resume_node"] = target
+    return result
+
+
+def route_after_urgency(state):
+    if get_pending_requests(state):
+        return "data_request_review"
+    return state.get("urgency_resume_node") or "triage"
+
+
 def build_clinical_graph(checkpointer: Optional[Any] = None):
     """
     Constructs and compiles the PulseGraph AI Neuro-Symbolic multi-agent workflow state machine.
@@ -293,6 +314,7 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     workflow = StateGraph(ClinicalState)
 
     # 1. Register agent, review, data request, export, and feedback nodes
+    workflow.add_node("urgency_check", urgency_checkpoint_node)
     workflow.add_node("triage", triage_agent_node)
     workflow.add_node("imaging", imaging_agent_node)
     workflow.add_node("diagnostic", diagnostic_agent_node)
@@ -305,7 +327,9 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     workflow.add_node("data_request_review", data_request_review_node)
 
     # 2. Define workflow topology
-    workflow.add_edge(START, "triage")
+    workflow.add_edge(START, "urgency_check")
+    workflow.add_conditional_edges("urgency_check", route_after_urgency,
+        {node: node for node in ALLOWED_RESUMPTION_NODES | {"data_request_review"}})
 
     # Conditional data request routing after each agent node
     workflow.add_conditional_edges("triage", route_after_triage, {"data_request_review": "data_request_review", "imaging": "imaging", END: END})
@@ -319,20 +343,12 @@ def build_clinical_graph(checkpointer: Optional[Any] = None):
     workflow.add_conditional_edges(
         "data_request_review",
         route_after_data_request_review,
-        {
-            "triage": "triage",
-            "imaging": "imaging",
-            "diagnostic": "diagnostic",
-            "evidence": "evidence",
-            "safety": "safety",
-            "symbolic_guardrail": "symbolic_guardrail",
-            "data_request_review": "data_request_review",
-            END: END
-        }
+        {**{node: "urgency_check" for node in ALLOWED_RESUMPTION_NODES},
+         "data_request_review": "data_request_review", END: END}
     )
 
     # Feedback loop routing back to diagnostic
-    workflow.add_edge("feedback_processor", "diagnostic")
+    workflow.add_edge("feedback_processor", "urgency_check")
     workflow.add_edge("ehr_export", END)
 
     # Conditional routing after human review

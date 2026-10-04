@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from src.core.state import (
     ClinicalState,
+    AuditEntry,
     PatientDemographics,
     VitalSigns,
     ClinicianIdentity
@@ -76,6 +77,7 @@ class ClinicalWorkflowService:
         # 3. Sync CDS Recommendations
         self.sess_repo.save_cds_result(
             session_id=session.session_id,
+            urgency=state_values.get("urgency"),
             presentation=state_values.get("presentation"),
             risk_scores=_to_json_serializable(state_values.get("risk_scores", [])),
             differentials=_to_json_serializable(state_values.get("differentials", [])),
@@ -92,7 +94,8 @@ class ClinicalWorkflowService:
         session_id: str,
         raw_notes: Optional[List[str]] = None,
         vitals_payload: Optional[Dict[str, Any]] = None,
-        image_path: Optional[str] = None
+        image_path: Optional[str] = None,
+        urgency_context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Executes or continues the LangGraph workflow for a given session.
@@ -132,11 +135,16 @@ class ClinicalWorkflowService:
             role=doctor_model.role
         )
 
+        prior = self.graph.get_state({"configurable": {"thread_id": session.thread_id}})
         initial_state: ClinicalState = {
+            "urgency_observation_revision": prior.values.get("urgency_observation_revision", 0) + 1,
+            "urgency_resume_node": "triage",
+            "active_data_request_id": None,
             "patient_id": patient_model.patient_id,
             "demographics": demographics,
             "raw_notes": notes_list,
             "vitals": vitals,
+            "urgency_context": urgency_context if urgency_context is not None else intake.get("urgency_context"),
             "risk_scores": [],
             "differentials": [],
             "imaging_data": None,
@@ -187,7 +195,8 @@ class ClinicalWorkflowService:
         self,
         session_id: str,
         request_id: str,
-        response_data: Dict[str, Any]
+        response_data: Dict[str, Any],
+        reviewing_doctor_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Resolves a pending ClinicalDataRequest with clinician inputs and resumes graph execution
@@ -207,6 +216,9 @@ class ClinicalWorkflowService:
         if not target_req:
             raise ValueError(f"ClinicalDataRequest [{request_id}] not found in session pending requests.")
 
+        if target_req.requesting_agent == "urgency_check" and reviewing_doctor_id != session.doctor_id:
+            raise ValueError("Urgent findings must be reviewed by the session's authenticated clinician.")
+
         # Validate clinician input against field requirements
         validate_response(target_req, response_data)
 
@@ -221,6 +233,11 @@ class ClinicalWorkflowService:
         resolved_list = snapshot.values.get("resolved_data_requests", []) + [resolved_req]
         state_updates["resolved_data_requests"] = resolved_list
         state_updates["active_data_request_id"] = request_id
+        if target_req.requesting_agent == "urgency_check":
+            state_updates["audit_trail"].append(AuditEntry(
+                agent_name="UrgencyScreen", action="URGENCY_REVIEW_ACKNOWLEDGED",
+                summary="Clinician reviewed flagged observations and permitted assessment continuation.",
+                metadata={"doctor_id": reviewing_doctor_id, "request_id": request_id}))
 
         # Route from the review checkpoint back to the requesting agent.
         # Inferring the last writer (triage) would skip its unfinished scores.
@@ -272,6 +289,9 @@ class ClinicalWorkflowService:
             raise ValueError(f"Session '{session_id}' not found.")
 
         thread_config = {"configurable": {"thread_id": session.thread_id}}
+        if self.graph.get_state(thread_config).next != ("human_review",):
+            raise ValueError("Clinical review actions require the human-review checkpoint; pending data or urgency review must be completed first.")
+
 
         self.graph.update_state(
             thread_config,
@@ -318,6 +338,9 @@ class ClinicalWorkflowService:
             raise ValueError(f"Session '{session_id}' not found.")
 
         thread_config = {"configurable": {"thread_id": session.thread_id}}
+        if self.graph.get_state(thread_config).next != ("human_review",):
+            raise ValueError("Clinical review actions require the human-review checkpoint; pending data or urgency review must be completed first.")
+
 
         self.graph.update_state(
             thread_config,
@@ -335,7 +358,8 @@ class ClinicalWorkflowService:
         resumed_values = resumed_snapshot.values
         next_step = resumed_snapshot.next[0] if resumed_snapshot.next else None
 
-        session_status = "WAITING_FOR_CLINICIAN_REVIEW" if next_step == "human_review" else "RE_EVALUATION_IN_PROGRESS"
+        session_status = ("WAITING_FOR_CLINICAL_DATA" if next_step == "data_request_review" else
+                          "WAITING_FOR_CLINICIAN_REVIEW" if next_step == "human_review" else "RE_EVALUATION_IN_PROGRESS")
 
         self.sess_repo.update_session_status(
             session_id=session_id,

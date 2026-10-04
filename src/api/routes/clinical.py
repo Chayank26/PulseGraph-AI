@@ -49,7 +49,8 @@ def resolve_data_request(
         result = workflow_service.resolve_data_request(
             session_id=session_id,
             request_id=request_id,
-            response_data=payload.response_data
+            response_data=payload.response_data,
+            reviewing_doctor_id=current_clinician.doctor_id
         )
         return result
     except ValueError as e:
@@ -80,6 +81,7 @@ def get_review_package(
         "doctor_id": session.doctor_id,
         "status": session.status,
         "current_step": session.current_step,
+        "urgency": cds_result.urgency,
         "presentation": cds_result.presentation,
         "risk_scores": cds_result.risk_scores,
         "differentials": cds_result.differentials,

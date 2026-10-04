@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { patientsApi } from '../../api/patients';
-import type { PatientDemographics } from '../../types/clinical';
+import type { PatientDemographics, UrgencyContext } from '../../types/clinical';
 import { User, Plus, Search, CheckCircle, Play, X, AlertCircle } from 'lucide-react';
 
 interface PatientSelectionModalProps {
@@ -25,6 +25,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
   const [spo2, setSpo2] = useState<number | ''>('');
   const [respRate, setRespRate] = useState<number | ''>('');
   const [imagePath, setImagePath] = useState('');
+  const [urgencyContext, setUrgencyContext] = useState<UrgencyContext>({});
 
   // New Patient Form fields
   const [newPatientId, setNewPatientId] = useState('');
@@ -92,6 +93,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
         current_medications: newMeds.split(',').map(s => s.trim()).filter(Boolean)
       });
       setSelectedPatient(created);
+      setUrgencyContext({});
       setIntakeNotes('');
       setViewMode('SELECT');
       await loadPatients();
@@ -116,6 +118,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
         selectedPatient.chief_complaint?.trim() || intakeNotes.trim(),
         imagePath ? `cxr_path=${imagePath}` : ''
       ].filter(Boolean), {
+        urgency_context: urgencyContext,
         vitals: {
           heart_rate_bpm: heartRate === '' ? undefined : heartRate,
           blood_pressure_sys: sysBP === '' ? undefined : sysBP,
@@ -203,7 +206,10 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                       <div
                         key={p.patient_id}
                         onClick={() => {
-                          if (!isSelected) setIntakeNotes('');
+                          if (!isSelected) {
+                            setIntakeNotes('');
+                            setUrgencyContext({});
+                          }
                           setSelectedPatient(p);
                         }}
                         className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
@@ -281,6 +287,33 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                           />
                         )}
                       </div>
+
+                      <fieldset className="space-y-2">
+                        <legend className="font-bold">Initial urgency context</legend>
+                        {([
+                          ['clinician_concern', 'Do you have an urgent clinical concern?'],
+                          ['new_confusion', 'Is new confusion present?'],
+                          ['pregnant', 'Is the patient pregnant?'],
+                        ] as const).map(([field, label]) => (
+                          <label key={field} className="block">
+                            {label}
+                            <select className="block w-full border rounded p-2 bg-white" value={urgencyContext[field] == null ? '' : String(urgencyContext[field])}
+                              onChange={event => setUrgencyContext(previous => ({...previous, [field]: event.target.value === '' ? null : event.target.value === 'true'}))}>
+                              <option value="">Unknown / not assessed</option>
+                              <option value="true">Yes</option>
+                              <option value="false">No</option>
+                            </select>
+                          </label>
+                        ))}
+                        <label className="block">Oxygen saturation scale confirmed by clinician
+                          <select className="block w-full border rounded p-2 bg-white" value={urgencyContext.oxygen_scale ?? 'unknown'}
+                            onChange={event => setUrgencyContext(previous => ({...previous, oxygen_scale: event.target.value as UrgencyContext['oxygen_scale']}))}>
+                            <option value="unknown">Unknown / not assessed</option>
+                            <option value="standard">Standard adult scale</option>
+                            <option value="individualized">Individualized target (manual assessment)</option>
+                          </select>
+                        </label>
+                      </fieldset>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
                         <div>

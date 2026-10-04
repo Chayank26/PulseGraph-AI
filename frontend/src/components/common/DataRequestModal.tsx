@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useWorkflow } from '../../context/WorkflowContext';
+import { UrgencyBanner } from './UrgencyBanner';
 import { HelpCircle, Send, FileText } from 'lucide-react';
 
 export const DataRequestModal: React.FC = () => {
@@ -31,7 +32,7 @@ export const DataRequestModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-[#FAF8F2] border-2 border-black rounded-2xl max-w-xl w-full p-6 md:p-8 shadow-2xl animate-fade-in">
+      <div className="bg-[#FAF8F2] border-2 border-black rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl animate-fade-in">
         {/* Header Badge */}
         <div className="flex items-center justify-between mb-4">
           <div className="bg-[#E19B4C] text-black text-xs font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5">
@@ -48,6 +49,7 @@ export const DataRequestModal: React.FC = () => {
           {activeRequest.reason}
         </p>
 
+        <UrgencyBanner />
         {/* Dynamic Form Fields */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {activeRequest.required_fields.map((field) => (

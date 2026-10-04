@@ -71,6 +71,7 @@ def run_session(
         result = workflow_service.run_session(
             session_id=session_id,
             raw_notes=payload if isinstance(payload, list) else (payload.raw_notes if payload else None),
+            urgency_context=payload.urgency_context.model_dump() if isinstance(payload, SessionRunRequest) and payload.urgency_context else None,
             vitals_payload=payload.vitals.model_dump() if isinstance(payload, SessionRunRequest) and payload.vitals else None,
             image_path=(payload.image_path if isinstance(payload, SessionRunRequest) else None) or image_path
         )

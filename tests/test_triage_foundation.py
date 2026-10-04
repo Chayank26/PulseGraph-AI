@@ -72,7 +72,7 @@ def client(monkeypatch):
     app.include_router(sessions_router)
     app.include_router(clinical_router)
     app.dependency_overrides[get_db] = database
-    app.dependency_overrides[get_current_clinician] = lambda: DoctorModel(doctor_id='D')
+    app.dependency_overrides[get_current_clinician] = lambda: DoctorModel(doctor_id='D', full_name='Test', department='Test')
     with TestClient(app) as test_client:
         yield test_client
     engine.dispose()

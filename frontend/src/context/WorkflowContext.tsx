@@ -18,7 +18,7 @@ interface WorkflowContextType {
   createPatient: (payload: CreatePatientPayload) => Promise<PatientDemographics>;
   updatePatient: (patientId: string, payload: UpdatePatientPayload) => Promise<PatientDemographics>;
   fetchPatient: (patientId: string) => Promise<PatientDemographics>;
-  createClinicalSession: (patientId: string, rawNotes?: string[], intake?: Pick<CreateSessionPayload, 'vitals' | 'image_path'>) => Promise<ClinicalSession>;
+  createClinicalSession: (patientId: string, rawNotes?: string[], intake?: Pick<CreateSessionPayload, 'vitals' | 'image_path' | 'urgency_context'>) => Promise<ClinicalSession>;
   runWorkflow: (targetSession?: ClinicalSession) => Promise<void>;
   resolveDataRequest: (requestId: string, responseData: Record<string, any>) => Promise<void>;
   approveSession: (notes?: string) => Promise<void>;
@@ -98,7 +98,8 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Map backend current_step to agent status indicators
       const step = updatedSess.current_step || '';
       const newAgentStatuses: Record<string, AgentStatusType> = {
-        triage: step.includes('triage') ? 'RUNNING' : 'COMPLETED',
+        triage: pendingRequests.some(request => ['triage', 'urgency_check'].includes(request.requesting_agent))
+          ? 'WAITING_FOR_DATA' : (step === 'initialized' ? 'IDLE' : step.includes('triage') && step !== 'triage_completed' ? 'RUNNING' : 'COMPLETED'),
         imaging: step.includes('imaging') ? 'RUNNING' : (step === 'initialized' || step.includes('triage') ? 'IDLE' : 'COMPLETED'),
         diagnostic: step.includes('diagnostic') ? 'RUNNING' : (step.includes('triage') || step.includes('imaging') || step === 'initialized' ? 'IDLE' : 'COMPLETED'),
         evidence: step.includes('evidence') ? 'RUNNING' : (step.includes('safety') || step.includes('human') || step === 'completed' || step === 'ehr_exported' ? 'COMPLETED' : 'IDLE'),
@@ -123,6 +124,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             current_step: updatedSess.current_step,
             pending_data_requests: pendingRequests,
             audit_trail: auditTrail,
+            urgency: cdsResults?.urgency ?? prev.state.urgency,
             presentation: cdsResults?.presentation ?? prev.state.presentation,
             risk_scores: cdsResults?.risk_scores || prev.state.risk_scores,
             differentials: cdsResults?.differentials || prev.state.differentials,
@@ -237,7 +239,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Create real clinical session on backend
-  const createClinicalSession = async (patientId: string, rawNotes?: string[], intake?: Pick<CreateSessionPayload, 'vitals' | 'image_path'>): Promise<ClinicalSession> => {
+  const createClinicalSession = async (patientId: string, rawNotes?: string[], intake?: Pick<CreateSessionPayload, 'vitals' | 'image_path' | 'urgency_context'>): Promise<ClinicalSession> => {
     const patient = await patientsApi.getPatient(patientId);
     setActivePatient(patient);
     const backendSession = await clinicalSessionsApi.createSession({
@@ -365,11 +367,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!session) return;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     
-    try {
-      await clinicalSessionsApi.approveSession(session.session_id, { notes });
-    } catch (e) {
-      console.warn('Backend approval sync:', e);
-    }
+    await clinicalSessionsApi.approveSession(session.session_id, { notes });
 
     setSession(prev => {
       if (!prev) return null;

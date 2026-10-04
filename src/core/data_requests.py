@@ -71,7 +71,10 @@ def validate_response(
             errors.append(f"Missing required field '{req_field.label}' ({req_field.field_key}).")
         else:
             key = req_field.field_key
-            if key in ("history_score", "ecg_score", "troponin_score"):
+            if key.startswith("urgency_review_"):
+                if val is not True:
+                    errors.append("Urgent review must be explicitly acknowledged by the clinician before continuing.")
+            elif key in ("history_score", "ecg_score", "troponin_score"):
                 if parse_enum_score(val) is None:
                     errors.append(f"Invalid {req_field.label}: value must be 0, 1, or 2.")
             elif req_field.data_type in ("int", "float"):
@@ -151,6 +154,14 @@ def apply_response_to_state(
             notes_to_add.append(f"[ACQUIRED CLINICAL DATA]: {key} = {val}")
 
     updates: Dict[str, Any] = {}
+    context = dict(state.get('urgency_context') or {})
+    confusion_changed = 'confusion' in response_data and parse_boolean(response_data['confusion']) != context.get('new_confusion')
+    if supplied_vitals or confusion_changed:
+        updates['urgency_observation_revision'] = state.get('urgency_observation_revision', 0) + 1
+    if 'confusion' in response_data:
+        context = dict(state.get('urgency_context') or {})
+        context['new_confusion'] = parse_boolean(response_data['confusion'])
+        updates['urgency_context'] = context
     demographics = state.get("demographics")
 
 

@@ -184,10 +184,12 @@ class SessionRepository:
         symbolic_overrides: List[Dict[str, Any]],
         final_status: str = "IN_PROGRESS",
         clinician_approval: Optional[Dict[str, Any]] = None,
+        urgency: Optional[Dict[str, Any]] = None,
         presentation: Optional[Dict[str, Any]] = None
     ) -> CDSResultModel:
         existing = self.db.query(CDSResultModel).filter(CDSResultModel.session_id == session_id).first()
         if existing:
+            existing.urgency = urgency
             existing.presentation = presentation
             existing.risk_scores = risk_scores
             existing.differentials = differentials
@@ -204,6 +206,7 @@ class SessionRepository:
 
         cds = CDSResultModel(
             session_id=session_id,
+            urgency=urgency,
             presentation=presentation,
             risk_scores=risk_scores,
             differentials=differentials,

@@ -4,9 +4,9 @@ import { ShieldAlert, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 
 export const ReviewActionBar: React.FC = () => {
   const { session, approveSession, rejectSession, reevaluateSession } = useWorkflow();
-  if (!session) return null;
   const [showNotesModal, setShowNotesModal] = useState<'APPROVE' | 'REJECT' | 'REEVAL' | null>(null);
   const [clinicianNotes, setClinicianNotes] = useState('');
+  if (!session) return null;
 
   const activeOverride = session.state.symbolic_overrides?.[0];
   const isApproved = session.status === 'APPROVED';
@@ -60,6 +60,7 @@ export const ReviewActionBar: React.FC = () => {
             <>
               {/* Request Re-Eval Button */}
               <button
+                disabled={session.status !== 'WAITING_FOR_CLINICIAN_REVIEW'}
                 onClick={() => setShowNotesModal('REEVAL')}
                 className="bg-[#2A2B2E] hover:bg-black text-white text-xs font-semibold uppercase tracking-wider px-5 py-2.5 rounded-full transition-all duration-150 flex items-center gap-1.5 shadow-md"
               >
@@ -78,6 +79,7 @@ export const ReviewActionBar: React.FC = () => {
 
               {/* Approve & Persist Button */}
               <button
+                disabled={session.status !== 'WAITING_FOR_CLINICIAN_REVIEW'}
                 onClick={() => setShowNotesModal('APPROVE')}
                 className="bg-[#B8C8A5] hover:bg-[#A6B892] text-[#2C421C] border border-[#98A885] text-xs font-bold uppercase tracking-wider px-6 py-2.5 rounded-full transition-all duration-150 flex items-center gap-1.5 shadow-md"
               >

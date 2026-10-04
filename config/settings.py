@@ -1,7 +1,8 @@
 import os
 import logging
 from typing import Optional
-from pydantic import model_validator
+from pydantic import model_validator, Field
+from src.core.urgency import UrgencyRules
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger("PulseGraph.Settings")
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     default_model: str = "gpt-4o"
     
     # Guardrails & Safety
+    urgency_rules: UrgencyRules = Field(default_factory=UrgencyRules)
     enable_safety_guardrails: bool = True
     max_diagnostic_candidates: int = 5
     

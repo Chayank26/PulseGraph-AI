@@ -33,9 +33,11 @@ class AuditLogResponse(BaseModel):
 
 
 from src.core.presentation import ClinicalPresentation
+from src.core.urgency import UrgencyAssessment
 
 
 class CDSResultResponse(BaseModel):
+    urgency: Optional[UrgencyAssessment] = None
     presentation: Optional[ClinicalPresentation] = None
     session_id: str
     risk_scores: List[Dict[str, Any]]
