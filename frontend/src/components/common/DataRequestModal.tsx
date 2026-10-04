@@ -4,13 +4,11 @@ import { HelpCircle, Send, FileText } from 'lucide-react';
 
 export const DataRequestModal: React.FC = () => {
   const { session, resolveDataRequest } = useWorkflow();
-  if (!session) return null;
-  const pendingRequests = session.state.pending_data_requests || [];
-  const activeRequest = pendingRequests[0];
-
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const [error, setError] = useState('');
+  const activeRequest = session?.state.pending_data_requests?.[0];
   if (!activeRequest) return null;
 
   const handleInputChange = (key: string, value: any) => {
@@ -20,11 +18,14 @@ export const DataRequestModal: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError('');
     try {
       await resolveDataRequest(activeRequest.request_id, formData);
+      setFormData({});
+    } catch {
+      setError('Unable to save these answers. Check the values and try again.');
     } finally {
       setSubmitting(false);
-      setFormData({});
     }
   };
 
@@ -60,8 +61,8 @@ export const DataRequestModal: React.FC = () => {
 
               {field.data_type === 'enum' && field.options ? (
                 <select
-                  value={formData[field.field_key] || ''}
-                  onChange={(e) => handleInputChange(field.field_key, Number(e.target.value))}
+                  value={formData[field.field_key] ?? ''}
+                  onChange={(e) => handleInputChange(field.field_key, e.target.value === '' ? '' : Number(e.target.value))}
                   required={field.required}
                   className="w-full bg-[#FAF8F2] border border-[#DCD8BE] rounded-lg p-2.5 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
                 >
@@ -72,12 +73,23 @@ export const DataRequestModal: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              ) : field.data_type === 'bool' ? (
+                <select
+                  value={formData[field.field_key] === undefined ? '' : String(formData[field.field_key])}
+                  onChange={(e) => handleInputChange(field.field_key, e.target.value === '' ? undefined : e.target.value === 'true')}
+                  required={field.required}
+                  className="w-full bg-[#FAF8F2] border border-[#DCD8BE] rounded-lg p-2.5 text-xs text-black"
+                >
+                  <option value="">Select an answer...</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
               ) : field.data_type === 'file' ? (
                 <div className="flex items-center gap-2">
                   <FileText size={16} className="text-[#66655C]" />
                   <input
                     type="text"
-                    value={formData[field.field_key] || ''}
+                    value={formData[field.field_key] ?? ''}
                     onChange={(e) => handleInputChange(field.field_key, e.target.value)}
                     required={field.required}
                     placeholder="Enter DICOM image filepath or dataset URL..."
@@ -89,7 +101,7 @@ export const DataRequestModal: React.FC = () => {
                   type="number"
                   step="any"
                   value={formData[field.field_key] ?? ''}
-                  onChange={(e) => handleInputChange(field.field_key, Number(e.target.value))}
+                  onChange={(e) => handleInputChange(field.field_key, e.target.value === '' ? '' : Number(e.target.value))}
                   required={field.required}
                   placeholder={`Enter ${field.label}...`}
                   className="w-full bg-[#FAF8F2] border border-[#DCD8BE] rounded-lg p-2.5 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
@@ -98,6 +110,7 @@ export const DataRequestModal: React.FC = () => {
             </div>
           ))}
 
+          {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
           <button
             type="submit"
             disabled={submitting}

@@ -67,6 +67,7 @@ class ClinicalSessionModel(Base):
     current_step = Column(String(64), nullable=False, default="initialized")
     thread_id = Column(String(128), unique=True, nullable=False, index=True)
     iteration_count = Column(Integer, default=0, nullable=False)
+    intake_data = Column(JSON, nullable=True)
     clinician_notes = Column(Text, nullable=True)
     started_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)

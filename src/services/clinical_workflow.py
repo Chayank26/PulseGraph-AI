@@ -115,9 +115,12 @@ class ClinicalWorkflowService:
             current_medications=patient_model.current_medications or []
         )
 
+        intake = session.intake_data or {}
+        vitals_payload = vitals_payload if vitals_payload is not None else intake.get("vitals")
         vitals = VitalSigns(**vitals_payload) if vitals_payload else None
 
-        notes_list = raw_notes or []
+        notes_list = list(raw_notes if raw_notes is not None else intake.get("raw_notes", []))
+        image_path = image_path if image_path is not None else intake.get("image_path")
         if image_path:
             notes_list.append(f"cxr_path={image_path}")
 
@@ -218,7 +221,9 @@ class ClinicalWorkflowService:
         state_updates["resolved_data_requests"] = resolved_list
         state_updates["active_data_request_id"] = request_id
 
-        self.graph.update_state(thread_config, state_updates)
+        # Route from the review checkpoint back to the requesting agent.
+        # Inferring the last writer (triage) would skip its unfinished scores.
+        self.graph.update_state(thread_config, state_updates, as_node="data_request_review")
 
         # Resume graph execution
         logger.info(f"Resuming graph after resolving data request [{request_id}].")

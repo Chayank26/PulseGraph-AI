@@ -2,7 +2,7 @@ import operator
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any, Annotated, Literal
 from typing_extensions import TypedDict
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict, field_validator
 
 WorkflowStep = Literal[
     "init",
@@ -40,13 +40,22 @@ class PatientDemographics(BaseModel):
 
 class VitalSigns(BaseModel):
     """Extracted physiological vitals and measurements."""
-    heart_rate_bpm: Optional[float] = Field(default=None, description="Heart rate in beats per minute")
-    blood_pressure_sys: Optional[float] = Field(default=None, description="Systolic blood pressure (mmHg)")
-    blood_pressure_dia: Optional[float] = Field(default=None, description="Diastolic blood pressure (mmHg)")
-    temperature_c: Optional[float] = Field(default=None, description="Body temperature in Celsius")
-    respiratory_rate: Optional[float] = Field(default=None, description="Breaths per minute")
-    spo2_percent: Optional[float] = Field(default=None, description="Oxygen saturation %")
-    bmi: Optional[float] = Field(default=None, description="Body Mass Index")
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def reject_boolean(cls, value):
+        if isinstance(value, bool):
+            raise ValueError("Vital measurements cannot be booleans")
+        return value
+
+    heart_rate_bpm: Optional[float] = Field(default=None, ge=0, description="Heart rate in beats per minute")
+    blood_pressure_sys: Optional[float] = Field(default=None, ge=0, description="Systolic blood pressure (mmHg)")
+    blood_pressure_dia: Optional[float] = Field(default=None, ge=0, description="Diastolic blood pressure (mmHg)")
+    temperature_c: Optional[float] = Field(default=None, ge=0, description="Body temperature in Celsius")
+    respiratory_rate: Optional[float] = Field(default=None, ge=0, description="Breaths per minute")
+    spo2_percent: Optional[float] = Field(default=None, ge=0, le=100, description="Oxygen saturation %")
+    bmi: Optional[float] = Field(default=None, ge=0, description="Body Mass Index")
 
 
 class RiskScore(BaseModel):
@@ -208,6 +217,20 @@ def merge_requests(left: List[ClinicalDataRequest], right: Optional[List[Clinica
     return pending
 
 
+def merge_resolved_requests(left, right):
+    """Retain answered requests for subsequent triage passes."""
+    requests = {r.request_id: r for r in (left or [])}
+    requests.update({r.request_id: r for r in (right or [])})
+    return list(requests.values())
+
+
+def merge_risk_scores(left, right):
+    """Replace recalculated scores instead of accumulating duplicate results."""
+    scores = {score.score_name: score for score in (left or [])}
+    scores.update({score.score_name: score for score in (right or [])})
+    return list(scores.values())
+
+
 class ClinicalState(TypedDict):
     """
     Central state definition for PulseGraph AI multi-agent workflow graph.
@@ -218,7 +241,7 @@ class ClinicalState(TypedDict):
     demographics: Optional[PatientDemographics]
     raw_notes: Annotated[List[str], merge_list]
     vitals: Optional[VitalSigns]
-    risk_scores: Annotated[List[RiskScore], merge_list]
+    risk_scores: Annotated[List[RiskScore], merge_risk_scores]
     differentials: Annotated[List[DiagnosticDifferential], merge_list]
     imaging_data: Optional[ImagingData]
     safety_flags: Annotated[List[SafetyFlag], merge_list]
@@ -233,5 +256,5 @@ class ClinicalState(TypedDict):
     re_evaluation_requested: bool
     clinician_notes: Optional[str]
     pending_data_requests: Annotated[List[ClinicalDataRequest], merge_requests]
-    resolved_data_requests: Annotated[List[ClinicalDataRequest], merge_requests]
+    resolved_data_requests: Annotated[List[ClinicalDataRequest], merge_resolved_requests]
     active_data_request_id: Optional[str]

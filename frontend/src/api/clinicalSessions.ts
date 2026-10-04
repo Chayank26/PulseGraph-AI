@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ClinicalSession, ClinicalDataRequest } from '../types/clinical';
+import type { ClinicalSession, ClinicalDataRequest, RiskScore } from '../types/clinical';
 
 export interface CreateSessionPayload {
   patient_id: string;
@@ -43,10 +43,8 @@ export const clinicalSessionsApi = {
     return response.data;
   },
 
-  runSession: async (sessionId: string, raw_notes?: string[], image_path?: string): Promise<any> => {
-    const response = await apiClient.post(`/clinical/sessions/${sessionId}/run`, null, {
-      params: { raw_notes, image_path }
-    });
+  runSession: async (sessionId: string, raw_notes?: string[], image_path?: string, vitals?: CreateSessionPayload['vitals']): Promise<any> => {
+    const response = await apiClient.post(`/clinical/sessions/${sessionId}/run`, { raw_notes, image_path, vitals });
     return response.data;
   },
 
@@ -87,6 +85,19 @@ export const clinicalSessionsApi = {
 
   getCDSResults: async (sessionId: string): Promise<any> => {
     const response = await apiClient.get(`/clinical/sessions/${sessionId}/results`);
-    return response.data;
+    return {
+      ...response.data,
+      risk_scores: response.data.risk_scores.map((score: {
+        score_name: string; value: number; interpretation: string;
+        details: Record<string, unknown>; calculated_at?: string;
+      }): RiskScore => ({
+        score_name: score.score_name,
+        score_value: score.value,
+        risk_level: score.interpretation,
+        recommendation: score.interpretation,
+        parameters_used: score.details,
+        calculated_at: score.calculated_at
+      }))
+    };
   }
 };

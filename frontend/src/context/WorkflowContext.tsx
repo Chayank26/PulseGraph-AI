@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import type { ClinicalSession, AgentStatusType, PatientDemographics, ClinicalDataRequest } from '../types/clinical';
 import { patientsApi } from '../api/patients';
 import type { CreatePatientPayload, UpdatePatientPayload } from '../api/patients';
+import type { CreateSessionPayload } from '../api/clinicalSessions';
 import { clinicalSessionsApi } from '../api/clinicalSessions';
 
 interface WorkflowContextType {
@@ -17,8 +18,8 @@ interface WorkflowContextType {
   createPatient: (payload: CreatePatientPayload) => Promise<PatientDemographics>;
   updatePatient: (patientId: string, payload: UpdatePatientPayload) => Promise<PatientDemographics>;
   fetchPatient: (patientId: string) => Promise<PatientDemographics>;
-  createClinicalSession: (patientId: string, rawNotes?: string[]) => Promise<ClinicalSession>;
-  runWorkflow: () => Promise<void>;
+  createClinicalSession: (patientId: string, rawNotes?: string[], intake?: Pick<CreateSessionPayload, 'vitals' | 'image_path'>) => Promise<ClinicalSession>;
+  runWorkflow: (targetSession?: ClinicalSession) => Promise<void>;
   resolveDataRequest: (requestId: string, responseData: Record<string, any>) => Promise<void>;
   approveSession: (notes?: string) => Promise<void>;
   rejectSession: (notes?: string) => Promise<void>;
@@ -235,8 +236,11 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Create real clinical session on backend
-  const createClinicalSession = async (patientId: string, rawNotes?: string[]): Promise<ClinicalSession> => {
+  const createClinicalSession = async (patientId: string, rawNotes?: string[], intake?: Pick<CreateSessionPayload, 'vitals' | 'image_path'>): Promise<ClinicalSession> => {
+    const patient = await patientsApi.getPatient(patientId);
+    setActivePatient(patient);
     const backendSession = await clinicalSessionsApi.createSession({
+      ...intake,
       patient_id: patientId,
       raw_notes: rawNotes || ["Patient presents for clinical evaluation."]
     });
@@ -251,16 +255,15 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       state: {
         patient_id: backendSession.patient_id,
         raw_notes: rawNotes || ["Patient presents for clinical evaluation."],
-        demographics: {
-          patient_id: backendSession.patient_id,
-          age: activePatient?.age || 0,
-          gender: activePatient?.gender || 'Unspecified',
-          chief_complaint: activePatient?.chief_complaint || '',
-          allergies: activePatient?.allergies || [],
-          chronic_conditions: activePatient?.chronic_conditions || [],
-          current_medications: activePatient?.current_medications || []
-        },
-        vitals: undefined,
+        demographics: patient,
+        vitals: intake?.vitals ? {
+          heart_rate_bpm: intake.vitals.heart_rate_bpm,
+          systolic_bp_mmhg: intake.vitals.blood_pressure_sys,
+          diastolic_bp_mmhg: intake.vitals.blood_pressure_dia,
+          resp_rate_bpm: intake.vitals.respiratory_rate,
+          spo2_percent: intake.vitals.spo2_percent,
+          temperature_celsius: intake.vitals.temperature_c
+        } : undefined,
         imaging_data: undefined,
         differentials: [],
         risk_scores: [],
@@ -287,9 +290,11 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Executes or resumes real backend LangGraph workflow
-  const runWorkflow = async () => {
-    if (!session) return;
-    const currentSessionId = session.session_id;
+  const runWorkflow = async (targetSession?: ClinicalSession) => {
+    // Newly created sessions can be started before React commits setSession.
+    const sessionToRun = targetSession ?? session;
+    if (!sessionToRun) return;
+    const currentSessionId = sessionToRun.session_id;
 
     setSession(prev => prev ? {
       ...prev,
@@ -304,11 +309,23 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // 1. Trigger backend execution
       await clinicalSessionsApi.runSession(
         currentSessionId,
-        session.state.raw_notes,
-        (session.state as any)?.imaging_path || undefined
+        sessionToRun.state.raw_notes,
+        undefined,
+        sessionToRun.state.vitals ? {
+          heart_rate_bpm: sessionToRun.state.vitals.heart_rate_bpm,
+          blood_pressure_sys: sessionToRun.state.vitals.systolic_bp_mmhg,
+          blood_pressure_dia: sessionToRun.state.vitals.diastolic_bp_mmhg,
+          respiratory_rate: sessionToRun.state.vitals.resp_rate_bpm,
+          spo2_percent: sessionToRun.state.vitals.spo2_percent,
+          temperature_c: sessionToRun.state.vitals.temperature_celsius
+        } : undefined
       );
     } catch (err: any) {
-      console.warn('Backend run session error:', err);
+      setIsPolling(false);
+      setRunningAgentId(null);
+      setCurrentAgentProgressMessage('Unable to start analysis. Please try again.');
+      setSession(sessionToRun);
+      throw err;
     }
 
     // 2. Start active polling loop
@@ -316,13 +333,11 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clearInterval(pollingIntervalRef.current);
     }
 
-    // Initial immediate poll
-    await pollSessionState(currentSessionId);
-
     // Poll every 1.5 seconds
     pollingIntervalRef.current = setInterval(() => {
       pollSessionState(currentSessionId);
     }, 1500);
+    await pollSessionState(currentSessionId);
   };
 
   const resolveDataRequest = async (requestId: string, responseData: Record<string, any>) => {
@@ -336,10 +351,12 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         response_data: responseData
       });
 
-      // 2. Re-trigger workflow execution
-      await runWorkflow();
+      // Resolution already resumes the graph on the server.
+      await pollSessionState(session.session_id);
     } catch (err: any) {
-      console.error('Failed to resolve data request:', err);
+      setRunningAgentId(null);
+      setCurrentAgentProgressMessage('');
+      throw err;
     }
   };
 

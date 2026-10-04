@@ -1,9 +1,12 @@
 import logging
+from uuid import uuid4
+from src.core.clinical_parsing import parse_boolean, parse_enum_score, parse_number
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
 
 from src.core.state import (
     ClinicalState,
+    VitalSigns,
     PatientDemographics,
     ClinicalDataRequest,
     ClinicalFieldRequirement,
@@ -27,7 +30,7 @@ def create_data_request(
     """
     timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     clean_agent = requesting_agent.upper().replace("_AGENT", "").replace("_NODE", "")
-    request_id = f"REQ-{clean_agent}-{timestamp_str}"
+    request_id = f"REQ-{clean_agent}-{timestamp_str}-{uuid4().hex[:8]}"
 
     request = ClinicalDataRequest(
         request_id=request_id,
@@ -67,33 +70,22 @@ def validate_response(
         if val is None or (isinstance(val, str) and not val.strip()):
             errors.append(f"Missing required field '{req_field.label}' ({req_field.field_key}).")
         else:
-            if req_field.field_key == "age":
-                try:
-                    age_val = int(val)
-                    if age_val < 0 or age_val > 130:
-                        errors.append(f"Invalid age '{val}'. Age must be an integer between 0 and 130.")
-                except (ValueError, TypeError):
-                    errors.append(f"Invalid age '{val}'. Age must be a valid integer between 0 and 130.")
-            elif req_field.field_key in ["history_score", "ecg_score", "troponin_score"]:
-                try:
-                    num_val = int(str(val)[0]) if isinstance(val, str) else int(val)
-                    if num_val not in [0, 1, 2]:
-                        errors.append(f"Invalid {req_field.label} '{val}'. Value must be 0, 1, or 2.")
-                except (ValueError, TypeError, IndexError):
-                    errors.append(f"Invalid {req_field.label} '{val}'. Must be 0, 1, or 2.")
-            elif req_field.field_key == "cardiac_risk_factors_count":
-                try:
-                    rf_val = int(val)
-                    if rf_val < 0:
-                        errors.append(f"Invalid risk factor count '{val}'. Value must be a non-negative integer.")
-                except (ValueError, TypeError):
-                    errors.append(f"Invalid risk factor count '{val}'. Must be a non-negative integer.")
-            elif req_field.data_type == "bool":
-                if isinstance(val, str):
-                    if val.lower() not in ["true", "false"]:
-                        errors.append(f"Invalid boolean value '{val}' for field '{req_field.label}'. Must be True or False.")
-                elif not isinstance(val, bool):
-                    errors.append(f"Invalid boolean value '{val}' for field '{req_field.label}'. Must be True or False.")
+            key = req_field.field_key
+            if key in ("history_score", "ecg_score", "troponin_score"):
+                if parse_enum_score(val) is None:
+                    errors.append(f"Invalid {req_field.label}: value must be 0, 1, or 2.")
+            elif req_field.data_type in ("int", "float"):
+                number = parse_number(val)
+                if number is None or (req_field.data_type == "int" and not number.is_integer()):
+                    errors.append(f"Invalid {req_field.label}: a finite {req_field.data_type} is required.")
+                elif key == "age" and not 0 <= number <= 130:
+                    errors.append("Age must be an integer between 0 and 130.")
+                elif number < 0:
+                    errors.append(f"Invalid {req_field.label}: value must be non-negative.")
+                elif key == "spo2_percent" and number > 100:
+                    errors.append("Oxygen saturation must be between 0 and 100.")
+            elif req_field.data_type == "bool" and parse_boolean(val) is None:
+                errors.append(f"Invalid boolean value for field '{req_field.label}'.")
 
     return len(errors) == 0, errors
 
@@ -146,18 +138,12 @@ def apply_response_to_state(
     vitals = state.get("vitals")
     notes_to_add = []
 
-    # Map vital signs if provided in response
-    if vitals:
-        if "heart_rate_bpm" in response_data and response_data["heart_rate_bpm"] is not None:
-            vitals.heart_rate_bpm = float(response_data["heart_rate_bpm"])
-        if "blood_pressure_sys" in response_data and response_data["blood_pressure_sys"] is not None:
-            vitals.blood_pressure_sys = float(response_data["blood_pressure_sys"])
-        if "blood_pressure_dia" in response_data and response_data["blood_pressure_dia"] is not None:
-            vitals.blood_pressure_dia = float(response_data["blood_pressure_dia"])
-        if "spo2_percent" in response_data and response_data["spo2_percent"] is not None:
-            vitals.spo2_percent = float(response_data["spo2_percent"])
-        if "respiratory_rate" in response_data and response_data["respiratory_rate"] is not None:
-            vitals.respiratory_rate = float(response_data["respiratory_rate"])
+    vital_keys = set(VitalSigns.model_fields)
+    supplied_vitals = {key: value for key, value in response_data.items()
+                       if key in vital_keys and value is not None}
+    if supplied_vitals:
+        existing = vitals.model_dump() if vitals else {}
+        vitals = VitalSigns(**{**existing, **supplied_vitals})
 
     # Append structured clinical observations to raw_notes for downstream context
     for key, val in response_data.items():

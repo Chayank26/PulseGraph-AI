@@ -1,4 +1,5 @@
 import logging
+from src.core.clinical_parsing import parse_boolean, parse_enum_score, parse_number
 from typing import Dict, Any, List, Optional
 from src.core.state import ClinicalState, VitalSigns, RiskScore, AuditEntry, ClinicalFieldRequirement
 
@@ -6,65 +7,6 @@ from src.core.data_requests import create_data_request
 from src.tools.calculators import calculate_wells_pe_score, calculate_heart_score, calculate_curb65_score
 
 logger = logging.getLogger("PulseGraph.TriageAgent")
-
-
-def parse_boolean(val: Any) -> Optional[bool]:
-    """
-    Safely parses a clinical boolean value.
-    Returns True/False if valid, or None if missing or invalid.
-    """
-    if val is None:
-        return None
-    if isinstance(val, bool):
-        return val
-    if isinstance(val, (int, float)):
-        if val == 1:
-            return True
-        elif val == 0:
-            return False
-        return None
-    val_str = str(val).strip().lower()
-    if val_str in ("true", "1", "yes"):
-        return True
-    if val_str in ("false", "0", "no"):
-        return False
-    return None
-
-
-def parse_enum_score(val: Any) -> Optional[int]:
-    """
-    Safely parses an enum score (e.g. history_score, ecg_score, troponin_score).
-    Returns int 0, 1, or 2 if valid, or None if missing or invalid.
-    """
-    if val is None:
-        return None
-    if isinstance(val, int) and val in (0, 1, 2):
-        return val
-    val_str = str(val).strip()
-    if not val_str:
-        return None
-    first_char = val_str[0]
-    if first_char in ("0", "1", "2"):
-        return int(first_char)
-    return None
-
-
-def parse_number(val: Any) -> Optional[float]:
-    """
-    Safely parses a numeric clinical measurement.
-    Returns float if valid number, or None if missing or invalid.
-    """
-    if val is None:
-        return None
-    if isinstance(val, (int, float)):
-        return float(val)
-    try:
-        val_str = str(val).strip()
-        if not val_str:
-            return None
-        return float(val_str)
-    except (ValueError, TypeError):
-        return None
 
 
 def get_acquired_data(raw_notes: List[str], resolved_reqs: List[Any]) -> Dict[str, Any]:
@@ -77,24 +19,14 @@ def get_acquired_data(raw_notes: List[str], resolved_reqs: List[Any]) -> Dict[st
             kv = note.replace("[ACQUIRED CLINICAL DATA]: ", "").split(" = ")
             if len(kv) == 2:
                 k, v = kv[0].strip(), kv[1].strip()
-                b_val = parse_boolean(v)
-                if b_val is not None:
-                    acquired[k] = b_val
-                else:
-                    num_val = parse_number(v)
-                    acquired[k] = num_val if num_val is not None else v
+                acquired[k] = v
 
     for r in resolved_reqs:
         resp = r.clinician_response if hasattr(r, "clinician_response") else (r.get("clinician_response") if isinstance(r, dict) else None)
         if resp and isinstance(resp, dict):
             for k, v in resp.items():
                 if k not in acquired and v is not None:
-                    b_val = parse_boolean(v)
-                    if b_val is not None:
-                        acquired[k] = b_val
-                    else:
-                        num_val = parse_number(v)
-                        acquired[k] = num_val if num_val is not None else v
+                    acquired[k] = v
     return acquired
 
 
@@ -125,7 +57,8 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     ClinicalDataRequest instead of assuming false/normal values.
     """
     raw_notes = state.get("raw_notes", [])
-    combined_notes = " ".join(raw_notes).lower()
+    complaint = getattr(state.get("demographics"), "chief_complaint", None) or ""
+    combined_notes = " ".join([complaint, *raw_notes]).lower()
     vitals = state.get("vitals")
     demographics = state.get("demographics")
 
@@ -174,10 +107,11 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     # Heart rate gt 100 evaluation using only structured vitals or explicit acquired data
     hr_val = vitals.heart_rate_bpm if (vitals and vitals.heart_rate_bpm is not None) else acquired_data.get("heart_rate_bpm")
     hr_gt_100: Optional[bool] = None
-    if hr_val is not None:
-        hr_gt_100 = float(hr_val) > 100.0
+    hr_val = parse_number(hr_val)
+    if hr_val is not None and hr_val >= 0:
+        hr_gt_100 = hr_val > 100.0
     elif "heart_rate_gt_100" in acquired_data and acquired_data["heart_rate_gt_100"] is not None:
-        hr_gt_100 = bool(acquired_data["heart_rate_gt_100"])
+        hr_gt_100 = parse_boolean(acquired_data["heart_rate_gt_100"])
 
     new_risk_scores: List[RiskScore] = []
     pending_requests = []

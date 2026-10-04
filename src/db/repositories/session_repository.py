@@ -36,7 +36,8 @@ class SessionRepository:
         doctor_id: str,
         thread_id: str,
         status: str = "INITIALIZED",
-        current_step: str = "initialized"
+        current_step: str = "initialized",
+        intake_data: Optional[Dict[str, Any]] = None
     ) -> ClinicalSessionModel:
         session = ClinicalSessionModel(
             session_id=session_id,
@@ -45,6 +46,7 @@ class SessionRepository:
             thread_id=thread_id,
             status=status,
             current_step=current_step,
+            intake_data=intake_data,
             started_at=utc_now()
         )
         self.db.add(session)

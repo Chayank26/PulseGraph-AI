@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.api.dependencies import get_db, get_current_clinician, to_clinician_identity
 from src.api.schemas.sessions import (
     SessionCreateRequest,
+    SessionRunRequest,
     SessionResponse,
     DataRequestResolvePayload,
     ClinicianReviewPayload,
@@ -47,7 +48,8 @@ def create_session(
         doctor_id=current_clinician.doctor_id,
         thread_id=thread_id,
         status="INITIALIZED",
-        current_step="initialized"
+        current_step="initialized",
+        intake_data=payload.model_dump(exclude={"patient_id"})
     )
     return session
 
@@ -55,7 +57,7 @@ def create_session(
 @router.post("/{session_id}/run", summary="Run/Execute Clinical Session Workflow")
 def run_session(
     session_id: str,
-    raw_notes: Optional[List[str]] = None,
+    payload: Optional[SessionRunRequest | List[str]] = None,
     image_path: Optional[str] = None,
     db: Session = Depends(get_db),
     current_clinician: DoctorModel = Depends(get_current_clinician)
@@ -68,8 +70,9 @@ def run_session(
     try:
         result = workflow_service.run_session(
             session_id=session_id,
-            raw_notes=raw_notes,
-            image_path=image_path
+            raw_notes=payload if isinstance(payload, list) else (payload.raw_notes if payload else None),
+            vitals_payload=payload.vitals.model_dump() if isinstance(payload, SessionRunRequest) and payload.vitals else None,
+            image_path=(payload.image_path if isinstance(payload, SessionRunRequest) else None) or image_path
         )
         return result
     except ValueError as e:

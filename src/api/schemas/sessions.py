@@ -3,14 +3,11 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
-class VitalsPayload(BaseModel):
-    heart_rate_bpm: Optional[float] = Field(default=None, json_schema_extra={"example": 48.0})
-    blood_pressure_sys: Optional[float] = Field(default=None, json_schema_extra={"example": 135.0})
-    blood_pressure_dia: Optional[float] = Field(default=None, json_schema_extra={"example": 85.0})
-    temperature_c: Optional[float] = Field(default=None, json_schema_extra={"example": 37.1})
-    respiratory_rate: Optional[float] = Field(default=None, json_schema_extra={"example": 22.0})
-    spo2_percent: Optional[float] = Field(default=None, json_schema_extra={"example": 91.0})
+from src.core.state import VitalSigns
 
+
+class VitalsPayload(VitalSigns):
+    pass
 
 class SessionCreateRequest(BaseModel):
     patient_id: str = Field(..., json_schema_extra={"example": "PAT-88291"}, description="Patient identifier")
@@ -19,7 +16,14 @@ class SessionCreateRequest(BaseModel):
     image_path: Optional[str] = Field(default=None, json_schema_extra={"example": "data/mock_patients/patient_001_cxr.png"}, description="Path to Chest X-Ray DICOM/PNG")
 
 
+class SessionRunRequest(BaseModel):
+    raw_notes: Optional[List[str]] = None
+    vitals: Optional[VitalsPayload] = None
+    image_path: Optional[str] = None
+
+
 class SessionResponse(BaseModel):
+    intake_data: Optional[Dict[str, Any]] = None
     session_id: str
     patient_id: str
     doctor_id: str

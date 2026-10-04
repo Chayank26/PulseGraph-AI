@@ -52,9 +52,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
     try {
       const list = await patientsApi.listPatients();
       setPatients(list);
-      if (list.length > 0 && !selectedPatient) {
-        setSelectedPatient(list[0]);
-      }
+      setSelectedPatient(current => current ?? list[0] ?? null);
     } catch (err: any) {
       console.warn('Failed to load patients list from backend:', err);
     } finally {
@@ -94,6 +92,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
         current_medications: newMeds.split(',').map(s => s.trim()).filter(Boolean)
       });
       setSelectedPatient(created);
+      setIntakeNotes('');
       setViewMode('SELECT');
       await loadPatients();
     } catch (err: any) {
@@ -113,16 +112,23 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
 
     try {
       // 1. Create real backend clinical session
-      await createClinicalSession(selectedPatient.patient_id, [
-        intakeNotes,
-        `[INTAKE VITALS]: HR=${heartRate}bpm, BP=${sysBP}/${diaBP}mmHg, SpO2=${spo2}%, RR=${respRate}/min`,
+      const createdSession = await createClinicalSession(selectedPatient.patient_id, [
+        selectedPatient.chief_complaint?.trim() || intakeNotes.trim(),
         imagePath ? `cxr_path=${imagePath}` : ''
-      ].filter(Boolean));
-
-      onClose();
+      ].filter(Boolean), {
+        vitals: {
+          heart_rate_bpm: heartRate === '' ? undefined : heartRate,
+          blood_pressure_sys: sysBP === '' ? undefined : sysBP,
+          blood_pressure_dia: diaBP === '' ? undefined : diaBP,
+          spo2_percent: spo2 === '' ? undefined : spo2,
+          respiratory_rate: respRate === '' ? undefined : respRate
+        },
+        image_path: imagePath.trim() || undefined
+      });
 
       // 2. Trigger real LangGraph execution workflow
-      await runWorkflow();
+      await runWorkflow(createdSession);
+      onClose();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to initialize clinical session.');
     } finally {
@@ -196,7 +202,10 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                     return (
                       <div
                         key={p.patient_id}
-                        onClick={() => setSelectedPatient(p)}
+                        onClick={() => {
+                          if (!isSelected) setIntakeNotes('');
+                          setSelectedPatient(p);
+                        }}
                         className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
                           isSelected
                             ? 'bg-[#2A2B2E] text-white border-black shadow-md'
@@ -256,12 +265,21 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                         <label className="block text-[10px] font-mono uppercase text-[#66655C] mb-1">
                           Chief Complaint & Presenting Symptoms
                         </label>
-                        <textarea
-                          rows={2}
-                          value={intakeNotes}
-                          onChange={(e) => setIntakeNotes(e.target.value)}
-                          className="w-full bg-white border border-[#DCD8BE] rounded-xl p-3 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
-                        />
+                        {selectedPatient.chief_complaint?.trim() ? (
+                          <div className="bg-white border border-[#DCD8BE] rounded-xl p-3 text-xs text-black">
+                            <p className="whitespace-pre-wrap">{selectedPatient.chief_complaint}</p>
+                            <p className="mt-2 text-[10px] text-[#66655C]">
+                              Saved with the patient record. Included in this assessment automatically.
+                            </p>
+                          </div>
+                        ) : (
+                          <textarea
+                            rows={2}
+                            value={intakeNotes}
+                            onChange={(e) => setIntakeNotes(e.target.value)}
+                            className="w-full bg-white border border-[#DCD8BE] rounded-xl p-3 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
+                          />
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
@@ -270,7 +288,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                           <input
                             type="number"
                             value={heartRate}
-                            onChange={(e) => setHeartRate(Number(e.target.value))}
+                            onChange={(e) => setHeartRate(e.target.value === '' ? '' : Number(e.target.value))}
                             className="w-full bg-white border border-[#DCD8BE] rounded-lg px-2.5 py-1.5 font-bold text-black"
                           />
                         </div>
@@ -280,14 +298,14 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                             <input
                               type="number"
                               value={sysBP}
-                              onChange={(e) => setSysBP(Number(e.target.value))}
+                              onChange={(e) => setSysBP(e.target.value === '' ? '' : Number(e.target.value))}
                               className="w-full bg-white border border-[#DCD8BE] rounded-lg px-1.5 py-1.5 font-bold text-black"
                             />
                             <span>/</span>
                             <input
                               type="number"
                               value={diaBP}
-                              onChange={(e) => setDiaBP(Number(e.target.value))}
+                              onChange={(e) => setDiaBP(e.target.value === '' ? '' : Number(e.target.value))}
                               className="w-full bg-white border border-[#DCD8BE] rounded-lg px-1.5 py-1.5 font-bold text-black"
                             />
                           </div>
@@ -297,7 +315,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                           <input
                             type="number"
                             value={spo2}
-                            onChange={(e) => setSpo2(Number(e.target.value))}
+                            onChange={(e) => setSpo2(e.target.value === '' ? '' : Number(e.target.value))}
                             className="w-full bg-white border border-[#DCD8BE] rounded-lg px-2.5 py-1.5 font-bold text-black"
                           />
                         </div>
@@ -306,7 +324,7 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({ is
                           <input
                             type="number"
                             value={respRate}
-                            onChange={(e) => setRespRate(Number(e.target.value))}
+                            onChange={(e) => setRespRate(e.target.value === '' ? '' : Number(e.target.value))}
                             className="w-full bg-white border border-[#DCD8BE] rounded-lg px-2.5 py-1.5 font-bold text-black"
                           />
                         </div>
