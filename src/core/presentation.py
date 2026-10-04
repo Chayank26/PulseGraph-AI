@@ -34,6 +34,7 @@ class SymptomSummary(BaseModel):
 
 class ClinicalPresentation(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    imaging_plan: dict | None = None
     routing: RoutingPlan | None = None
     extractor_version: str = 'rules-v1'
     sources: list[SourceText]

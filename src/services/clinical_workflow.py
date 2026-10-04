@@ -100,6 +100,7 @@ class ClinicalWorkflowService:
         vitals_payload: Optional[Dict[str, Any]] = None,
         image_path: Optional[str] = None,
         urgency_context: Optional[Dict[str, Any]] = None,
+        imaging_decision: Optional[Dict[str, Any]] = None,
         pathway_decisions: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
@@ -130,8 +131,7 @@ class ClinicalWorkflowService:
 
         notes_list = list(raw_notes if raw_notes is not None else intake.get("raw_notes", []))
         image_path = image_path if image_path is not None else intake.get("image_path")
-        if image_path:
-            notes_list.append(f"cxr_path={image_path}")
+
 
         clinician_identity = ClinicianIdentity(
             doctor_id=doctor_model.doctor_id,
@@ -151,6 +151,8 @@ class ClinicalWorkflowService:
             "demographics": demographics,
             "raw_notes": notes_list,
             "vitals": vitals,
+            "image_path": image_path,
+            "imaging_decision": imaging_decision if imaging_decision is not None else intake.get("imaging_decision"),
             "pathway_decisions": pathway_decisions if pathway_decisions is not None else intake.get("pathway_decisions"),
             "urgency_context": urgency_context if urgency_context is not None else intake.get("urgency_context"),
             "risk_scores": [],
@@ -174,7 +176,7 @@ class ClinicalWorkflowService:
         state_values = snapshot.values
         next_step = snapshot.next[0] if snapshot.next else None
 
-        if state_values.get("current_step") == "triage_manual_review_required":
+        if state_values.get("current_step") in ("triage_manual_review_required", "imaging_manual_review_required"):
             session_status = "REQUIRES_CLINICIAN_ASSESSMENT"
         elif next_step == "data_request_review":
             session_status = "WAITING_FOR_CLINICAL_DATA"
@@ -226,8 +228,8 @@ class ClinicalWorkflowService:
         if not target_req:
             raise ValueError(f"ClinicalDataRequest [{request_id}] not found in session pending requests.")
 
-        if target_req.requesting_agent == "urgency_check" and reviewing_doctor_id != session.doctor_id:
-            raise ValueError("Urgent findings must be reviewed by the session's authenticated clinician.")
+        if target_req.requesting_agent in ("urgency_check", "imaging") and reviewing_doctor_id != session.doctor_id:
+            raise ValueError("Urgency and imaging decisions must be reviewed by the session's authenticated clinician.")
 
         # Validate clinician input against field requirements
         validate_response(target_req, response_data)
@@ -261,7 +263,7 @@ class ClinicalWorkflowService:
         resumed_values = resumed_snapshot.values
         next_step = resumed_snapshot.next[0] if resumed_snapshot.next else None
 
-        if resumed_values.get("current_step") == "triage_manual_review_required":
+        if resumed_values.get("current_step") in ("triage_manual_review_required", "imaging_manual_review_required"):
             session_status = "REQUIRES_CLINICIAN_ASSESSMENT"
         elif next_step == "data_request_review":
             session_status = "WAITING_FOR_CLINICAL_DATA"

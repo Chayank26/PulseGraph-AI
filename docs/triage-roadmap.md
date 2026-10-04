@@ -167,3 +167,50 @@ A second `/run` on an already-started session returns HTTP 409, preserving its
 pending requests instead of duplicating them. Continue via data resolution or
 clinician review; create a new session for a new assessment. The UI disables the
 initial run action after startup and does not restart the graph after reevaluation.
+
+## Phase 5: optional imaging and report review
+
+The imaging stage now collects an explicit clinician decision: `no_imaging`,
+`optional`, `required`, or `uncertain`, with a written rationale. The decision
+request shows saved complaint/symptom context and allergies in the UI. This is a
+clinician-confirmed policy, not a new autonomous imaging-indication model.
+Symptoms and calculator scores do not independently order imaging.
+
+No-imaging and optional-without-report decisions continue directly to diagnostic
+processing. An optional existing report can be included with modality and body
+region. Required imaging specifies modality and anatomy and pauses for a report;
+a path alone does not satisfy that requirement. The clinician can submit the
+report, explicitly mark it unavailable, document an override to proceed without
+it, or request manual assessment. Unknown indication and unavailable required
+reports produce `REQUIRES_CLINICIAN_ASSESSMENT`, not endless requests. Urgency
+review still runs first and after data resolution, and cannot be bypassed by an
+imaging decision or supplied report.
+
+`imaging_decision` is accepted on session creation/run and persists in intake.
+It uses `decision`, `reason`, and optional `modality`, `anatomy`, `report`, and
+`study_reference`. Required studies and supplied reports require modality and
+anatomy. Runtime decisions and report requests use the existing acquisition
+endpoint. Only the session clinician can start the workflow or resolve imaging
+requests. Unexpected imaging response fields and missing override reasons are
+rejected. The resulting `presentation.imaging_plan` persists through the existing
+results JSON and is available in results/review APIs. No migration is needed.
+
+The live imaging node no longer calls the legacy filename demonstration. It
+retains clinician-supplied report text without inventing structured findings or
+confidence values. Reports remain structured rather than entering raw notes
+consumed by the old diagnostic keyword rules. Report interpretation and validated
+pixel-based inference remain future work. The legacy `analyze_chest_xray` helper
+is retained only for demonstration/tests; it is not on the live graph path.
+
+The imaging page displays decision, status, requested study, reference, report,
+and any override/handoff. The frontend no longer fabricates a scan path or
+radiology impression when findings are empty. Skipped imaging is not displayed
+as a normal scan. References are metadata: this phase does not upload, fetch,
+or interpret image files. Optional reports should be supplied with intake or
+the imaging decision; adding reports after a completed assessment requires a new
+session. Old `cxr_path` text hints no longer imply clinical indication.
+
+Verification covers no-imaging/optional continuation, existing reports, required
+report blocking, unknown/unavailable handoff, explicit overrides, validation,
+clinician ownership, persistence, and urgency precedence. The Phase 4 research
+manuscript remains a historical snapshot; it was not rewritten for Phase 5.

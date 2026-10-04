@@ -11,6 +11,10 @@ WorkflowStep = Literal[
     "waiting_for_clinical_data",
     "triage_completed",
     "triage_manual_review_required",
+    "imaging_decision_required",
+    "imaging_skipped",
+    "imaging_report_provided",
+    "imaging_manual_review_required",
     "imaging_data_requested",
     "imaging_analyzed",
     "diagnostic_completed",
@@ -242,6 +246,9 @@ class ClinicalState(TypedDict):
     patient_id: str
     demographics: Optional[PatientDemographics]
     urgency: Optional[Dict[str, Any]]
+    imaging_decision: Optional[Dict[str, Any]]
+    imaging_response: Optional[Dict[str, Any]]
+    image_path: Optional[str]
     pathway_decisions: Optional[Dict[str, Any]]
     urgency_context: Optional[Dict[str, Any]]
     urgency_resume_node: Optional[str]

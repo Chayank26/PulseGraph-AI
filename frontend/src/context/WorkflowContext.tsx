@@ -100,7 +100,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const newAgentStatuses: Record<string, AgentStatusType> = {
         triage: pendingRequests.some(request => ['triage', 'urgency_check'].includes(request.requesting_agent))
           ? 'WAITING_FOR_DATA' : (step === 'initialized' ? 'IDLE' : step.includes('triage') && step !== 'triage_completed' ? 'RUNNING' : 'COMPLETED'),
-        imaging: step.includes('imaging') ? 'RUNNING' : (step === 'initialized' || step.includes('triage') ? 'IDLE' : 'COMPLETED'),
+        imaging: pendingRequests.some(request => request.requesting_agent === 'imaging') ? 'WAITING_FOR_DATA' : (cdsResults?.presentation?.imaging_plan ? 'COMPLETED' : 'IDLE'),
         diagnostic: step.includes('diagnostic') ? 'RUNNING' : (step.includes('triage') || step.includes('imaging') || step === 'initialized' ? 'IDLE' : 'COMPLETED'),
         evidence: step.includes('evidence') ? 'RUNNING' : (step.includes('safety') || step.includes('human') || step === 'completed' || step === 'ehr_exported' ? 'COMPLETED' : 'IDLE'),
         safety: step.includes('safety') ? 'RUNNING' : (step.includes('human') || step === 'completed' || step === 'ehr_exported' ? 'COMPLETED' : 'IDLE')
@@ -128,12 +128,12 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             presentation: cdsResults?.presentation ?? prev.state.presentation,
             risk_scores: cdsResults?.risk_scores || prev.state.risk_scores,
             differentials: cdsResults?.differentials || prev.state.differentials,
-            imaging_data: cdsResults?.imaging_findings ? {
-              image_path: 'data/mock_patients/patient_001_cxr.png',
-              modality: 'CHEST_XRAY_PA',
-              findings: cdsResults.imaging_findings,
-              impression: 'Sub-segmental filling defect noted in right lower lobe.'
-            } : prev.state.imaging_data,
+            imaging_data: cdsResults?.presentation?.imaging_plan?.status === 'REPORT_PROVIDED' ? {
+              image_path: cdsResults.presentation.imaging_plan.study_reference || '',
+              modality: cdsResults.presentation.imaging_plan.modality || 'Unspecified',
+              findings: [],
+              impression: cdsResults.presentation.imaging_plan.report
+            } : undefined,
             evidence: cdsResults?.evidence || prev.state.evidence,
             safety_flags: cdsResults?.safety_flags || prev.state.safety_flags,
             symbolic_overrides: cdsResults?.symbolic_overrides || prev.state.symbolic_overrides

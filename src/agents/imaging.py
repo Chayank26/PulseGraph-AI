@@ -9,10 +9,10 @@ logger = logging.getLogger("PulseGraph.ImagingAgent")
 
 def analyze_chest_xray(image_path: str) -> ImagingData:
     """
-    Simulates / performs vision model inference (DenseNet-121 / RadImageNet trained on ChestX-ray14)
+    Legacy filename-based demonstration (not used by the live workflow)
     on a Chest X-Ray DICOM/PNG image file.
     """
-    logger.info(f"Running CheXNet / RadImageNet vision inference on: {image_path}")
+    logger.info("Running legacy filename demonstration")
     
     filename = os.path.basename(image_path).lower()
     findings: List[ImagingFinding] = []
@@ -68,88 +68,83 @@ def analyze_chest_xray(image_path: str) -> ImagingData:
 
 
 def imaging_agent_node(state: ClinicalState) -> Dict[str, Any]:
-    """
-    Multimodal Vision Agent Node:
-    Ingests chest X-ray image paths, executes vision neural net diagnostic prediction,
-    and updates state with structured imaging findings and impression notes.
-    
-    Conditional Data Acquisition:
-    If image path is explicitly missing or unrecorded when chest imaging is requested,
-    creates a ClinicalDataRequest.
-    """
-    logger.info("Executing Multimodal Vision Agent Node...")
-    
-    notes = state.get("raw_notes", [])
-    combined_notes = " ".join(notes)
-    
-    # Parse acquired data notes
-    acquired_data: Dict[str, Any] = {}
-    for note in notes:
-        if note.startswith("[ACQUIRED CLINICAL DATA]: "):
-            kv = note.replace("[ACQUIRED CLINICAL DATA]: ", "").split(" = ")
-            if len(kv) == 2:
-                acquired_data[kv[0].strip()] = kv[1].strip()
+    """Collect an imaging decision and optional clinician-supplied report."""
+    from src.core.imaging import ImagingDecision
+    from src.core.presentation import extract_presentation
+    from src.core.routing import UNAVAILABLE
 
-    # Determine image path
-    image_path = None
-    if "cxr_path" in acquired_data:
-        image_path = acquired_data["cxr_path"]
-    elif "cxr_path=" in combined_notes:
-        for word in combined_notes.split():
-            if "cxr_path=" in word:
-                image_path = word.split("cxr_path=")[1].strip(",;\"'")
-    
-    # Check if image path was explicitly specified as missing
-    if "cxr_path=missing" in combined_notes or "cxr_required=true" in combined_notes:
-        image_path = None
+    decision_data = state.get("imaging_decision")
+    presentation = dict(state.get("presentation") or extract_presentation(getattr(state.get("demographics"), "chief_complaint", "") or "", state.get("raw_notes", [])).model_dump(mode="json"))
+    plan = {"reviewed_by": getattr(state.get("authenticated_clinician"), "doctor_id", None),
+            "status": "NEEDS_DECISION", "decision": None,
+            "reason": "Imaging need has not been confirmed by the clinician.",
+            "limitations": ["No pixel-based image interpretation is available. A study reference alone is not a report.",
+                            "Skipping imaging does not establish that imaging is clinically unnecessary."],
+            "study_reference": state.get("image_path"), "report": None}
 
+    def finish(step, request=None, report=None):
+        presentation["imaging_plan"] = plan
+        result = {"presentation": presentation, "imaging_data": report, "current_step": step,
+            "audit_trail": [AuditEntry(agent_name="ImagingAgent", action="IMAGING_DECISION",
+                summary=plan["reason"], metadata={"status": plan["status"], "decision": plan["decision"],
+                    "doctor_id": getattr(state.get("authenticated_clinician"), "doctor_id", None)})]}
+        if request:
+            result["pending_data_requests"] = [request]
+        return result
 
-    # If image path is missing when explicitly required:
-    if not image_path or image_path.lower() == "missing":
-        logger.info("Chest X-ray study indicated but DICOM/image file path missing. Generating ClinicalDataRequest.")
-        req = create_data_request(
-            requesting_agent="imaging",
-            pathway_name="Chest Radiography Vision Analysis",
-            reason="Chest imaging analysis requires an accessible DICOM or PNG image file path.",
-            required_fields=[
-                ClinicalFieldRequirement(
-                    field_key="cxr_path",
-                    label="Chest X-Ray DICOM/Image Path",
-                    data_type="file",
-                    required=True,
-                    description="File system path to Chest X-ray image (PNG/DICOM)"
-                )
-            ],
-            priority="HIGH"
-        )
-        audit_entry = AuditEntry(
-            agent_name="ImagingAgent",
-            action="DATA_REQUEST_CREATED",
-            summary="Chest X-Ray image file missing. Created ClinicalDataRequest.",
-            metadata={"request_id": req.request_id}
-        )
-        return {
-            "pending_data_requests": [req],
-            "audit_trail": [audit_entry],
-            "current_step": "imaging_data_requested"
-        }
+    if not decision_data:
+        req = create_data_request("imaging", "Imaging decision",
+            "Review the complaint, symptoms, allergies and available observations. Confirm whether imaging is needed. "
+            "Optional imaging can be skipped; include an existing report if available. "
+            "For required imaging, specify the modality and body region. No image inference is available.",
+            [ClinicalFieldRequirement(field_key="imaging_decision", label="Imaging decision", data_type="enum",
+                options=["no_imaging", "optional", "required", "uncertain"], required=True),
+             ClinicalFieldRequirement(field_key="imaging_reason", label="Clinical rationale", data_type="str", required=True)],
+            optional_fields=[ClinicalFieldRequirement(field_key="imaging_" + key, label=label, data_type="str", required=False)
+                for key, label in [("modality", "Modality (required when requesting imaging or including a report)"),
+                    ("anatomy", "Body region (required when requesting imaging or including a report)"),
+                    ("report", "Existing radiology report / clinician interpretation (optional)"),
+                    ("study_reference", "Study reference (optional; does not upload or interpret an image)")]])
+        return finish("imaging_decision_required", req)
 
-    # Run vision analysis tool
-    imaging_result = analyze_chest_xray(image_path)
+    decision = ImagingDecision.model_validate(decision_data)
+    plan.update(decision.model_dump())
+    plan["study_reference"] = decision.study_reference or state.get("image_path")
+    if decision.decision == "uncertain":
+        plan["status"] = "REQUIRES_CLINICIAN_ASSESSMENT"
+        return finish("imaging_manual_review_required")
+    if decision.decision == "no_imaging":
+        plan["status"] = "SKIPPED"
+        return finish("imaging_skipped")
 
-    audit_entry = AuditEntry(
-        agent_name="ImagingAgent",
-        action="CHEST_XRAY_ANALYSIS",
-        summary=f"Analyzed {imaging_result.modality} ({image_path}). Impression: {imaging_result.impression}",
-        metadata={
-            "findings_count": len(imaging_result.findings),
-            "findings": [f.finding_name for f in imaging_result.findings]
-        }
-    )
+    response = state.get("imaging_response") or {}
+    if response.get("imaging_action") == "proceed_without_imaging":
+        plan.update(status="OVERRIDDEN", override_reason=response["imaging_override_reason"])
+        plan["reason"] = "Clinician override: " + response["imaging_override_reason"]
+        return finish("imaging_skipped")
+    if response.get("imaging_action") == "clinician_assessment":
+        plan.update(status="REQUIRES_CLINICIAN_ASSESSMENT", reason=response["imaging_override_reason"])
+        return finish("imaging_manual_review_required")
 
-    return {
-        "imaging_data": imaging_result,
-        "audit_trail": [audit_entry],
-        "current_step": "imaging_analyzed"
-    }
+    report_text = response.get("imaging_report") or decision.report
+    if report_text == UNAVAILABLE:
+        plan.update(status="REQUIRES_CLINICIAN_ASSESSMENT", reason="Required imaging report is unavailable; clinician assessment is needed.")
+        return finish("imaging_manual_review_required")
+    if not report_text and decision.decision == "optional":
+        plan["status"] = "SKIPPED"
+        return finish("imaging_skipped")
+    if not report_text:
+        plan["status"] = "WAITING_FOR_REPORT"
+        req = create_data_request("imaging", "Required imaging report",
+            f"{decision.modality} of {decision.anatomy}: {decision.reason}. Submit a report, document an override, or hand off for clinician assessment.",
+            [ClinicalFieldRequirement(field_key="imaging_action", label="How should the assessment proceed?", data_type="enum",
+                options=["submit_report", "proceed_without_imaging", "clinician_assessment"], required=True)],
+            optional_fields=[ClinicalFieldRequirement(field_key="imaging_report", label="Radiology report / clinician interpretation", data_type="str", required=False, allow_unavailable=True),
+                ClinicalFieldRequirement(field_key="imaging_override_reason", label="Reason for override or clinician handoff", data_type="str", required=False)])
+        return finish("imaging_data_requested", req)
 
+    plan.update(status="REPORT_PROVIDED", report=report_text,
+                report_source="Clinician-supplied report; not automated image interpretation")
+    report = ImagingData(image_path=plan["study_reference"] or "", modality=decision.modality or "Unspecified",
+                         findings=[], impression=report_text)
+    return finish("imaging_report_provided", report=report)

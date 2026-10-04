@@ -66,6 +66,27 @@ def validate_response(
     if not response_data:
         return False, ["Response data cannot be empty."]
 
+    if request.requesting_agent != "imaging" and any(k.startswith("imaging_") for k in response_data):
+        return False, ["Imaging decisions must use the imaging review request."]
+    if request.requesting_agent == "imaging":
+        allowed = {f.field_key for f in request.required_fields + request.optional_fields}
+        if set(response_data) - allowed:
+            return False, ["Unexpected fields in imaging response."]
+        try:
+            if request.pathway_name == "Imaging decision":
+                from src.core.imaging import decision_from_response
+                decision_from_response(response_data)
+            elif request.pathway_name == "Required imaging report":
+                action = response_data.get("imaging_action")
+                key = "imaging_report" if action == "submit_report" else "imaging_override_reason"
+                value = response_data.get(key)
+                if not isinstance(value, str) or not value.strip() or len(value) > 20000:
+                    return False, ["Supply a report or an explicit reason for the selected action."]
+                if action != "submit_report" and value == UNAVAILABLE:
+                    return False, ["An override or handoff requires a written reason."]
+        except ValueError as exc:
+            return False, [str(exc)]
+
     for req_field in request.required_fields:
         val = response_data.get(req_field.field_key)
         if val == UNAVAILABLE and req_field.allow_unavailable:
@@ -144,6 +165,14 @@ def apply_response_to_state(
     """
     Applies validated clinician responses to state vitals, demographics, and clinical notes.
     """
+    imaging_updates = {}
+    if "imaging_decision" in response_data:
+        from src.core.imaging import decision_from_response
+        imaging_updates["imaging_decision"] = decision_from_response(response_data).model_dump()
+    elif "imaging_action" in response_data:
+        imaging_updates["imaging_response"] = dict(response_data)
+    # Keep reports and decisions structured; do not feed them to keyword diagnosis.
+    response_data = {k: v for k, v in response_data.items() if not k.startswith("imaging_")}
     # Unavailable is an explicit answer, not a numeric measurement.
     unavailable = {k: v for k, v in response_data.items() if v == UNAVAILABLE}
     response_data = {k: v for k, v in response_data.items() if v != UNAVAILABLE}
@@ -162,7 +191,7 @@ def apply_response_to_state(
         if key not in ["heart_rate_bpm", "blood_pressure_sys", "blood_pressure_dia", "spo2_percent", "respiratory_rate"]:
             notes_to_add.append(f"[ACQUIRED CLINICAL DATA]: {key} = {val}")
 
-    updates: Dict[str, Any] = {}
+    updates: Dict[str, Any] = dict(imaging_updates)
     context = dict(state.get('urgency_context') or {})
     confusion_changed = 'confusion' in response_data and parse_boolean(response_data['confusion']) != context.get('new_confusion')
     if supplied_vitals or confusion_changed:

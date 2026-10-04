@@ -186,6 +186,8 @@ def route_after_triage(state: ClinicalState) -> str:
 
 
 def route_after_imaging(state: ClinicalState) -> str:
+    if state.get("current_step") == "imaging_manual_review_required":
+        return END
     return _check_data_request_routing(state, "diagnostic")
 
 

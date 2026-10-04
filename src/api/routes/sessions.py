@@ -66,11 +66,17 @@ def run_session(
     Triggers/executes the multi-agent LangGraph workflow for a session.
     Automatically pauses at data_request_review or human_review.
     """
+    session = SessionRepository(db).get_by_session_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if session.doctor_id != current_clinician.doctor_id:
+        raise HTTPException(status_code=403, detail="Only the session clinician can start this assessment.")
     workflow_service = ClinicalWorkflowService(db)
     try:
         result = workflow_service.run_session(
             session_id=session_id,
             raw_notes=payload if isinstance(payload, list) else (payload.raw_notes if payload else None),
+            imaging_decision=payload.imaging_decision.model_dump() if isinstance(payload, SessionRunRequest) and payload.imaging_decision else None,
             pathway_decisions=payload.pathway_decisions.model_dump() if isinstance(payload, SessionRunRequest) and payload.pathway_decisions else None,
             urgency_context=payload.urgency_context.model_dump() if isinstance(payload, SessionRunRequest) and payload.urgency_context else None,
             vitals_payload=payload.vitals.model_dump() if isinstance(payload, SessionRunRequest) and payload.vitals else None,

@@ -22,7 +22,7 @@ def test_analyze_chest_xray_normal():
     assert "Clear lung fields" in data.impression
 
 
-def test_imaging_missing_path_creates_request():
+def test_imaging_legacy_path_note_requires_clinician_decision():
     from src.agents.imaging import imaging_agent_node
     state: ClinicalState = {
         "patient_id": "TEST-IMG-001",
@@ -52,5 +52,5 @@ def test_imaging_missing_path_creates_request():
     assert len(result["pending_data_requests"]) == 1
     req = result["pending_data_requests"][0]
     assert req.requesting_agent == "imaging"
-    assert req.required_fields[0].field_key == "cxr_path"
+    assert req.required_fields[0].field_key == "imaging_decision"
 

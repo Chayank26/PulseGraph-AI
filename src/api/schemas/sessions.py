@@ -6,12 +6,14 @@ from datetime import datetime
 from src.core.state import VitalSigns
 from src.core.urgency import UrgencyContext
 from src.core.routing import PathwayDecisions
+from src.core.imaging import ImagingDecision
 
 
 class VitalsPayload(VitalSigns):
     pass
 
 class SessionCreateRequest(BaseModel):
+    imaging_decision: Optional[ImagingDecision] = None
     pathway_decisions: Optional[PathwayDecisions] = None
     urgency_context: Optional[UrgencyContext] = None
     patient_id: str = Field(..., json_schema_extra={"example": "PAT-88291"}, description="Patient identifier")
@@ -21,6 +23,7 @@ class SessionCreateRequest(BaseModel):
 
 
 class SessionRunRequest(BaseModel):
+    imaging_decision: Optional[ImagingDecision] = None
     pathway_decisions: Optional[PathwayDecisions] = None
     urgency_context: Optional[UrgencyContext] = None
     raw_notes: Optional[List[str]] = None

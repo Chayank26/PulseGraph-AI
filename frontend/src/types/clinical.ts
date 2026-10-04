@@ -127,6 +127,7 @@ export interface ClinicalDataRequest {
   reason: string;
   priority: SeverityType;
   required_fields: ClinicalFieldRequirement[];
+  optional_fields?: ClinicalFieldRequirement[];
   status: 'PENDING' | 'RESOLVED';
   created_at: string;
   clinician_response?: Record<string, any>;
@@ -183,7 +184,21 @@ export interface AgentInfo {
 }
 
 
+export interface ImagingPlan {
+  status: 'NEEDS_DECISION' | 'WAITING_FOR_REPORT' | 'REPORT_PROVIDED' | 'SKIPPED' | 'OVERRIDDEN' | 'REQUIRES_CLINICIAN_ASSESSMENT';
+  decision: 'no_imaging' | 'optional' | 'required' | 'uncertain' | null;
+  reason: string;
+  modality?: string | null;
+  anatomy?: string | null;
+  study_reference?: string | null;
+  report?: string | null;
+  report_source?: string;
+  override_reason?: string;
+  limitations: string[];
+}
+
 export interface ClinicalPresentation {
+  imaging_plan?: ImagingPlan | null;
   routing?: {
     groups: Record<string, string[]>;
     pathways: { key: string; name: string; status: string; rationale: string; unavailable_fields: string[] }[];

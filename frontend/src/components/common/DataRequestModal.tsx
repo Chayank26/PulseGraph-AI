@@ -3,7 +3,7 @@ import { useWorkflow } from '../../context/WorkflowContext';
 import { UrgencyBanner } from './UrgencyBanner';
 import { HelpCircle, Send, FileText } from 'lucide-react';
 
-export const DataRequestModal: React.FC = () => {
+const DataRequestForm: React.FC = () => {
   const { session, resolveDataRequest } = useWorkflow();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -50,9 +50,16 @@ export const DataRequestModal: React.FC = () => {
         </p>
 
         <UrgencyBanner />
+        {activeRequest.requesting_agent === 'imaging' && (
+          <section className="bg-white border rounded-lg p-3 mb-4 text-sm">
+            <p><strong>Complaint:</strong> {session?.state.demographics?.chief_complaint || 'Not recorded'}</p>
+            <p><strong>Allergies:</strong> {session?.state.demographics?.allergies?.join(', ') || 'No entries recorded; confirm history'}</p>
+            {session?.state.presentation?.sources.map(source => <p key={source.source_id}>{source.text}</p>)}
+          </section>
+        )}
         {/* Dynamic Form Fields */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {activeRequest.required_fields.map((field) => (
+          {[...activeRequest.required_fields, ...(activeRequest.optional_fields || [])].map((field) => (
             <div key={field.field_key} className="bg-white border border-[#DCD8BE] rounded-xl p-4">
               <label className="block text-xs font-bold text-[#1A1A1C] uppercase tracking-wide mb-1">
                 {field.label} {field.required && <span className="text-red-700">*</span>}
@@ -69,7 +76,7 @@ export const DataRequestModal: React.FC = () => {
                 </label>
               )}
               {formData[field.field_key] === '__unavailable__' ? (
-                <p className="text-xs">This input will remain unknown; dependent scores will not be calculated.</p>
+                <p className="text-xs">This information will remain unavailable; dependent assessment cannot be completed.</p>
               ) : field.data_type === 'enum' && field.options ? (
                 <select
                   value={formData[field.field_key] ?? ''}
@@ -77,7 +84,7 @@ export const DataRequestModal: React.FC = () => {
                   required={field.required}
                   className="w-full bg-[#FAF8F2] border border-[#DCD8BE] rounded-lg p-2.5 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
                 >
-                  <option value="">Select clinical score parameter...</option>
+                  <option value="">Select an option...</option>
                   {field.options.map((opt) => (
                     <option key={opt} value={opt}>
                       {opt.replace(/_/g, ' ')}
@@ -95,6 +102,13 @@ export const DataRequestModal: React.FC = () => {
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </select>
+              ) : field.data_type === 'str' ? (
+                <textarea rows={field.field_key.includes('report') ? 5 : 2}
+                  value={formData[field.field_key] ?? ''}
+                  onChange={e => handleInputChange(field.field_key, e.target.value)}
+                  required={field.required}
+                  className="w-full border rounded-lg p-2.5 text-sm text-black"
+                  placeholder={field.label} />
               ) : field.data_type === 'file' ? (
                 <div className="flex items-center gap-2">
                   <FileText size={16} className="text-[#66655C]" />
@@ -134,4 +148,10 @@ export const DataRequestModal: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const DataRequestModal: React.FC = () => {
+  const { session } = useWorkflow();
+  const request = session?.state.pending_data_requests?.[0];
+  return request ? <DataRequestForm key={request.request_id} /> : null;
 };
