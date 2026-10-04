@@ -32,7 +32,11 @@ class AuditLogResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+from src.core.presentation import ClinicalPresentation
+
+
 class CDSResultResponse(BaseModel):
+    presentation: Optional[ClinicalPresentation] = None
     session_id: str
     risk_scores: List[Dict[str, Any]]
     differentials: List[Dict[str, Any]]

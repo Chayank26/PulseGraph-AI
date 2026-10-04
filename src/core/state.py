@@ -239,6 +239,7 @@ class ClinicalState(TypedDict):
     """
     patient_id: str
     demographics: Optional[PatientDemographics]
+    presentation: Optional[Dict[str, Any]]
     raw_notes: Annotated[List[str], merge_list]
     vitals: Optional[VitalSigns]
     risk_scores: Annotated[List[RiskScore], merge_risk_scores]

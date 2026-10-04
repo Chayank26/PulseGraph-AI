@@ -132,6 +132,7 @@ export interface ClinicalDataRequest {
 }
 
 export interface ClinicalState {
+  presentation?: ClinicalPresentation;
   patient_id: string;
   demographics: PatientDemographics;
   raw_notes: string[];
@@ -177,4 +178,21 @@ export interface AgentInfo {
   lightColor: string;
   status: AgentStatusType;
   route: string;
+}
+
+
+export interface ClinicalPresentation {
+  extractor_version: string;
+  sources: { source_id: string; text: string }[];
+  symptoms: {
+    symptom: string;
+    status: 'present' | 'absent' | 'historical' | 'uncertain' | 'other_person' | 'conflicting';
+    clarification_source?: string | null;
+    mentions: {
+      source_id: string; quote: string; context: string; start: number; end: number;
+      status: string; time_course?: string | null; severity?: string | null; location?: string | null;
+    }[];
+  }[];
+  unrecognized_sources: string[];
+  limitations: string[];
 }

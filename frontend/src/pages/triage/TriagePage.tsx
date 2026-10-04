@@ -52,6 +52,29 @@ export const TriagePage: React.FC = () => {
         </div>
       </div>
 
+      {state.presentation && (
+        <section className="bg-white border border-[#DCD8BE] rounded-xl p-5 space-y-3" aria-label="Structured presentation">
+          <h3 className="triage-panel-title">STRUCTURED PRESENTATION</h3>
+          <p className="text-xs text-[#66655C]">Review extracted statements against their source. Missing information remains unknown.</p>
+          {state.presentation.symptoms.length === 0 && <p className="text-sm">No supported symptom phrases recognized. Review the original complaint and notes.</p>}
+          {state.presentation.symptoms.map(symptom => (
+            <div key={symptom.symptom} className="border-t border-[#DCD8BE] pt-3">
+              <p className="text-sm font-bold">{symptom.symptom.replace(/_/g, ' ')} — {symptom.status.replace(/_/g, ' ')}</p>
+              {symptom.clarification_source && <p className="text-xs">Current status confirmed by clinician.</p>}
+              {symptom.mentions.map((mention, index) => (
+                <div key={`${mention.source_id}-${mention.start}-${index}`} className="text-xs mt-2">
+                  <blockquote className="whitespace-pre-wrap">“{mention.context}”</blockquote>
+                  <p className="text-[#66655C]">Source: {mention.source_id} · {mention.status.replace(/_/g, ' ')}</p>
+                  <p>{[mention.time_course, mention.severity, mention.location].filter(Boolean).join(' · ')}</p>
+                </div>
+              ))}
+            </div>
+          ))}
+          {state.presentation.unrecognized_sources.length > 0 && <p className="text-xs">Some source text has no recognized symptoms. Review: {state.presentation.unrecognized_sources.join(', ')}.</p>}
+          {state.presentation.limitations.map(limit => <p key={limit} className="text-xs text-[#66655C]">{limit}</p>)}
+        </section>
+      )}
+
       {/* Main Analysis Layout */}
       <div className="triage-grid">
         {/* Left Column: Intake Demographics & Vitals Monitor */}

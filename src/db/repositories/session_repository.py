@@ -183,10 +183,12 @@ class SessionRepository:
         safety_flags: List[Dict[str, Any]],
         symbolic_overrides: List[Dict[str, Any]],
         final_status: str = "IN_PROGRESS",
-        clinician_approval: Optional[Dict[str, Any]] = None
+        clinician_approval: Optional[Dict[str, Any]] = None,
+        presentation: Optional[Dict[str, Any]] = None
     ) -> CDSResultModel:
         existing = self.db.query(CDSResultModel).filter(CDSResultModel.session_id == session_id).first()
         if existing:
+            existing.presentation = presentation
             existing.risk_scores = risk_scores
             existing.differentials = differentials
             existing.imaging_findings = imaging_findings
@@ -202,6 +204,7 @@ class SessionRepository:
 
         cds = CDSResultModel(
             session_id=session_id,
+            presentation=presentation,
             risk_scores=risk_scores,
             differentials=differentials,
             imaging_findings=imaging_findings,

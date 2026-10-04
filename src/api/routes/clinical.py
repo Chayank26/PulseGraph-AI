@@ -80,6 +80,7 @@ def get_review_package(
         "doctor_id": session.doctor_id,
         "status": session.status,
         "current_step": session.current_step,
+        "presentation": cds_result.presentation,
         "risk_scores": cds_result.risk_scores,
         "differentials": cds_result.differentials,
         "imaging_findings": cds_result.imaging_findings,

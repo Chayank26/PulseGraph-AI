@@ -76,6 +76,7 @@ class ClinicalWorkflowService:
         # 3. Sync CDS Recommendations
         self.sess_repo.save_cds_result(
             session_id=session.session_id,
+            presentation=state_values.get("presentation"),
             risk_scores=_to_json_serializable(state_values.get("risk_scores", [])),
             differentials=_to_json_serializable(state_values.get("differentials", [])),
             imaging_findings=_to_json_serializable(state_values.get("imaging_data").findings if state_values.get("imaging_data") else []),

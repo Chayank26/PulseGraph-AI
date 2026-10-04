@@ -123,6 +123,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             current_step: updatedSess.current_step,
             pending_data_requests: pendingRequests,
             audit_trail: auditTrail,
+            presentation: cdsResults?.presentation ?? prev.state.presentation,
             risk_scores: cdsResults?.risk_scores || prev.state.risk_scores,
             differentials: cdsResults?.differentials || prev.state.differentials,
             imaging_data: cdsResults?.imaging_findings ? {

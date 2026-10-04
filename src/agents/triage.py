@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Optional
 from src.core.state import ClinicalState, VitalSigns, RiskScore, AuditEntry, ClinicalFieldRequirement
 
 from src.core.data_requests import create_data_request
+from src.core.presentation import extract_presentation, ClinicalPresentation
 from src.tools.calculators import calculate_wells_pe_score, calculate_heart_score, calculate_curb65_score
 
 logger = logging.getLogger("PulseGraph.TriageAgent")
@@ -46,7 +47,7 @@ def get_validated_age(demographics: Any, acquired_data: Dict[str, Any]) -> Optio
     return None
 
 
-def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
+def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation) -> Dict[str, Any]:
     """
     Triage Agent Node:
     Ingests patient data, parses vitals and notes, and performs baseline clinical risk calculations
@@ -57,8 +58,6 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     ClinicalDataRequest instead of assuming false/normal values.
     """
     raw_notes = state.get("raw_notes", [])
-    complaint = getattr(state.get("demographics"), "chief_complaint", None) or ""
-    combined_notes = " ".join([complaint, *raw_notes]).lower()
     vitals = state.get("vitals")
     demographics = state.get("demographics")
 
@@ -99,9 +98,10 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
 
 
     # Baseline symptom indicators
-    chest_pain = "chest pain" in combined_notes or "chest discomfort" in combined_notes
-    sob = "shortness of breath" in combined_notes or "dyspnea" in combined_notes
-    dvt_signs = "leg swelling" in combined_notes or "dvt" in combined_notes
+    present = {item.symptom for item in presentation.symptoms if item.status == "present"}
+    chest_pain = "chest_pain" in present
+    sob = "breathlessness" in present
+    dvt_signs = bool({"leg_swelling", "dvt"} & present)
 
 
     # Heart rate gt 100 evaluation using only structured vitals or explicit acquired data
@@ -400,3 +400,37 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
 
 
 
+
+
+def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
+    complaint = getattr(state.get("demographics"), "chief_complaint", None) or ""
+    presentation = extract_presentation(complaint, state.get("raw_notes", []))
+    acquired = get_acquired_data(state.get("raw_notes", []), state.get("resolved_data_requests", []))
+    conflicts = []
+    for symptom in presentation.symptoms:
+        key = f"symptom_present_{symptom.symptom}"
+        answer = parse_boolean(acquired.get(key))
+        if symptom.status == "conflicting" and answer is not None:
+            symptom.status = "present" if answer else "absent"
+            symptom.clarification_source = key
+        elif symptom.status == "conflicting":
+            conflicts.append(ClinicalFieldRequirement(
+                field_key=key, label=f"Is {symptom.symptom.replace('_', ' ')} currently present?",
+                data_type="bool", required=True,
+                description="The complaint and notes contain contradictory statements. Confirm the current presentation."))
+    if conflicts:
+        request = create_data_request("triage", "Presentation clarification",
+            "Conflicting symptom statements require clinician clarification before risk scoring.", conflicts)
+        result = {"risk_scores": [], "pending_data_requests": [request],
+                  "current_step": "waiting_for_clinical_data", "audit_trail": []}
+    else:
+        result = _calculate_triage(state, presentation)
+    result["presentation"] = presentation.model_dump(mode="json")
+    result["audit_trail"] = [AuditEntry(
+        agent_name="TriageAgent", action="PRESENTATION_EXTRACTION",
+        summary=f"Structured {len(presentation.symptoms)} symptom concepts from supplied text.",
+        metadata={"extractor_version": presentation.extractor_version,
+                  "symptoms": {s.symptom: s.status for s in presentation.symptoms},
+                  "unrecognized_sources": presentation.unrecognized_sources}
+    ), *result.get("audit_trail", [])]
+    return result
