@@ -4,6 +4,7 @@ import { AppHeader } from '../components/common/AppHeader';
 import { WorkflowTopBanner } from '../components/common/WorkflowTopBanner';
 import { WorkflowProgress } from '../components/common/WorkflowProgress';
 import { ReviewActionBar } from '../components/common/ReviewActionBar';
+import { TriageHandoffBanner } from '../components/common/TriageHandoffBanner';
 import { UrgencyBanner } from '../components/common/UrgencyBanner';
 import { DataRequestModal } from '../components/common/DataRequestModal';
 
@@ -22,6 +23,7 @@ export const AppLayout: React.FC = () => {
       {/* Main Clinical Viewport */}
       <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-6">
         <UrgencyBanner />
+        <TriageHandoffBanner />
         <Outlet />
       </main>
 

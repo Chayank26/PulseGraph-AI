@@ -1,5 +1,6 @@
 """Conservative, bounded symptom extraction. Not a diagnosis or urgency classifier."""
 import re
+from src.core.routing import RoutingPlan
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -33,6 +34,7 @@ class SymptomSummary(BaseModel):
 
 class ClinicalPresentation(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    routing: RoutingPlan | None = None
     extractor_version: str = 'rules-v1'
     sources: list[SourceText]
     symptoms: list[SymptomSummary]

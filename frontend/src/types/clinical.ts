@@ -111,6 +111,7 @@ export interface AuditEntry {
 }
 
 export interface ClinicalFieldRequirement {
+  allow_unavailable?: boolean;
   field_key: string;
   label: string;
   data_type: string;
@@ -183,6 +184,13 @@ export interface AgentInfo {
 
 
 export interface ClinicalPresentation {
+  routing?: {
+    groups: Record<string, string[]>;
+    pathways: { key: string; name: string; status: string; rationale: string; unavailable_fields: string[] }[];
+    handoff_reasons: string[];
+    requires_clinician_assessment: boolean;
+    limitations: string[];
+  } | null;
   extractor_version: string;
   sources: { source_id: string; text: string }[];
   symptoms: {

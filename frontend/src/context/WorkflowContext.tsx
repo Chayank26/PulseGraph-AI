@@ -142,7 +142,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
 
       // Check if session reached a terminal/breakpoint status
-      const isTerminal = ['WAITING_FOR_CLINICAL_DATA', 'WAITING_FOR_CLINICIAN_REVIEW', 'APPROVED', 'REJECTED_MANUAL_TAKEOVER', 'COMPLETED'].includes(updatedSess.status);
+      const isTerminal = ['WAITING_FOR_CLINICAL_DATA', 'WAITING_FOR_CLINICIAN_REVIEW', 'APPROVED', 'REJECTED_MANUAL_TAKEOVER', 'REQUIRES_CLINICIAN_ASSESSMENT', 'COMPLETED'].includes(updatedSess.status);
       
       if (isTerminal) {
         if (pollingIntervalRef.current) {
@@ -427,40 +427,9 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const reevaluateSession = async (notes?: string) => {
     if (!session) return;
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-    try {
-      if (notes) {
-        await clinicalSessionsApi.reevaluateSession(session.session_id, { notes });
-      }
-    } catch (e) {
-      console.warn('Backend reevaluation sync:', e);
-    }
-
-    setSession(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        status: 'RUNNING',
-        current_step: 'reevaluating',
-        state: {
-          ...prev.state,
-          iteration_count: prev.state.iteration_count + 1,
-          re_evaluation_requested: true,
-          audit_trail: [
-            ...prev.state.audit_trail,
-            {
-              timestamp,
-              agent_name: 'Clinician_Review',
-              action: 'REQUESTED RE-EVALUATION LOOP',
-              details: `Clinician Feedback: ${notes || 'Re-evaluate differential diagnosis with updated imaging parameters.'}`
-            }
-          ]
-        }
-      };
-    });
-
-    await runWorkflow();
+    await clinicalSessionsApi.reevaluateSession(session.session_id, { notes: notes ?? '' });
+    // The review endpoint resumes the graph; never start the session twice.
+    await pollSessionState(session.session_id);
   };
 
   const resetDemoSession = () => {

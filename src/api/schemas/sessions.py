@@ -5,12 +5,14 @@ from datetime import datetime
 
 from src.core.state import VitalSigns
 from src.core.urgency import UrgencyContext
+from src.core.routing import PathwayDecisions
 
 
 class VitalsPayload(VitalSigns):
     pass
 
 class SessionCreateRequest(BaseModel):
+    pathway_decisions: Optional[PathwayDecisions] = None
     urgency_context: Optional[UrgencyContext] = None
     patient_id: str = Field(..., json_schema_extra={"example": "PAT-88291"}, description="Patient identifier")
     raw_notes: List[str] = Field(default_factory=list, json_schema_extra={"example": ["Patient presents with sudden onset chest pain."]}, description="Clinical intake notes")
@@ -19,6 +21,7 @@ class SessionCreateRequest(BaseModel):
 
 
 class SessionRunRequest(BaseModel):
+    pathway_decisions: Optional[PathwayDecisions] = None
     urgency_context: Optional[UrgencyContext] = None
     raw_notes: Optional[List[str]] = None
     vitals: Optional[VitalsPayload] = None

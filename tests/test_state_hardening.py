@@ -20,6 +20,7 @@ def test_missing_age_blocks_triage():
     state: ClinicalState = {
         "patient_id": "P-HARDEN-001",
         "demographics": PatientDemographics(patient_id="P-HARDEN-001", age=None, gender="Female"),
+        "pathway_decisions": {"heart": "applicable", "curb65": "applicable", "wells": "applicable"},
         "raw_notes": ["Routine intake."],
         "vitals": None,
         "risk_scores": [],
@@ -51,6 +52,7 @@ def test_missing_heart_data_blocks_heart_calculation():
     state: ClinicalState = {
         "patient_id": "P-HARDEN-002",
         "demographics": PatientDemographics(patient_id="P-HARDEN-002", age=60, gender="Male"),
+        "pathway_decisions": {"heart": "applicable", "curb65": "applicable", "wells": "applicable"},
         "raw_notes": ["Patient presenting with acute chest pain."],
         "vitals": None,
         "risk_scores": [],
@@ -83,6 +85,7 @@ def test_missing_curb65_data_blocks_curb65_calculation():
     state: ClinicalState = {
         "patient_id": "P-HARDEN-003",
         "demographics": PatientDemographics(patient_id="P-HARDEN-003", age=70, gender="Female"),
+        "pathway_decisions": {"heart": "applicable", "curb65": "applicable", "wells": "applicable"},
         "raw_notes": ["Patient presents with acute shortness of breath."],
         "vitals": None,
         "risk_scores": [],
@@ -115,6 +118,7 @@ def test_missing_wells_data_blocks_wells_calculation():
     state: ClinicalState = {
         "patient_id": "P-HARDEN-004",
         "demographics": PatientDemographics(patient_id="P-HARDEN-004", age=45, gender="Male"),
+        "pathway_decisions": {"heart": "applicable", "curb65": "applicable", "wells": "applicable"},
         "raw_notes": ["Patient presenting with unilateral leg swelling."],
         "vitals": None,
         "risk_scores": [],

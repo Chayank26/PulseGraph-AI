@@ -37,6 +37,10 @@ def _to_json_serializable(obj: Any) -> Any:
     return obj
 
 
+class WorkflowConflictError(ValueError):
+    """A started session must use its existing request/review lifecycle."""
+
+
 class ClinicalWorkflowService:
     def __init__(self, db: Session, checkpointer: Optional[Any] = None):
         self.db = db
@@ -95,7 +99,8 @@ class ClinicalWorkflowService:
         raw_notes: Optional[List[str]] = None,
         vitals_payload: Optional[Dict[str, Any]] = None,
         image_path: Optional[str] = None,
-        urgency_context: Optional[Dict[str, Any]] = None
+        urgency_context: Optional[Dict[str, Any]] = None,
+        pathway_decisions: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Executes or continues the LangGraph workflow for a given session.
@@ -136,6 +141,8 @@ class ClinicalWorkflowService:
         )
 
         prior = self.graph.get_state({"configurable": {"thread_id": session.thread_id}})
+        if prior.values:
+            raise WorkflowConflictError("This session has already started. Resolve its pending request, use clinician review, or create a new session for a new assessment.")
         initial_state: ClinicalState = {
             "urgency_observation_revision": prior.values.get("urgency_observation_revision", 0) + 1,
             "urgency_resume_node": "triage",
@@ -144,6 +151,7 @@ class ClinicalWorkflowService:
             "demographics": demographics,
             "raw_notes": notes_list,
             "vitals": vitals,
+            "pathway_decisions": pathway_decisions if pathway_decisions is not None else intake.get("pathway_decisions"),
             "urgency_context": urgency_context if urgency_context is not None else intake.get("urgency_context"),
             "risk_scores": [],
             "differentials": [],
@@ -166,7 +174,9 @@ class ClinicalWorkflowService:
         state_values = snapshot.values
         next_step = snapshot.next[0] if snapshot.next else None
 
-        if next_step == "data_request_review":
+        if state_values.get("current_step") == "triage_manual_review_required":
+            session_status = "REQUIRES_CLINICIAN_ASSESSMENT"
+        elif next_step == "data_request_review":
             session_status = "WAITING_FOR_CLINICAL_DATA"
         elif next_step == "human_review":
             session_status = "WAITING_FOR_CLINICIAN_REVIEW"
@@ -251,7 +261,9 @@ class ClinicalWorkflowService:
         resumed_values = resumed_snapshot.values
         next_step = resumed_snapshot.next[0] if resumed_snapshot.next else None
 
-        if next_step == "data_request_review":
+        if resumed_values.get("current_step") == "triage_manual_review_required":
+            session_status = "REQUIRES_CLINICIAN_ASSESSMENT"
+        elif next_step == "data_request_review":
             session_status = "WAITING_FOR_CLINICAL_DATA"
         elif next_step == "human_review":
             session_status = "WAITING_FOR_CLINICIAN_REVIEW"

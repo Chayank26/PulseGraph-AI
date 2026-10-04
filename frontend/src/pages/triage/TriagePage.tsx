@@ -52,6 +52,27 @@ export const TriagePage: React.FC = () => {
         </div>
       </div>
 
+      {state.presentation?.routing && (
+        <section className="bg-white border border-[#DCD8BE] rounded-xl p-5 space-y-3" aria-label="Assessment routing">
+          <h3 className="triage-panel-title">ASSESSMENT ROUTING</h3>
+          <p className="text-sm">Presentation groups: {Object.keys(state.presentation.routing.groups).map(group => group.replace(/_/g, ' ')).join(', ') || 'Undifferentiated'}</p>
+          {state.presentation.routing.pathways.map(pathway => (
+            <div key={pathway.key} className="text-sm border-t pt-2">
+              <strong>{pathway.name} — {pathway.status.replace(/_/g, ' ')}</strong>
+              <p className="text-xs">{pathway.rationale}</p>
+              {pathway.unavailable_fields.length > 0 && <p className="text-xs">Unavailable: {pathway.unavailable_fields.join(', ')}</p>}
+            </div>
+          ))}
+          {state.presentation.routing.requires_clinician_assessment && (
+            <div role="status" className="bg-amber-50 border border-amber-600 rounded p-3">
+              <strong>Clinician assessment required</strong>
+              {state.presentation.routing.handoff_reasons.map(reason => <p className="text-sm" key={reason}>{reason}</p>)}
+              <p className="text-xs">Supported assessments may continue; unresolved concerns remain outside automated coverage.</p>
+            </div>
+          )}
+        </section>
+      )}
+
       {state.presentation && (
         <section className="bg-white border border-[#DCD8BE] rounded-xl p-5 space-y-3" aria-label="Structured presentation">
           <h3 className="triage-panel-title">STRUCTURED PRESENTATION</h3>

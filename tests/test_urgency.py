@@ -69,7 +69,7 @@ def test_rule_configuration_validation_and_version():
 
 
 def test_urgent_review_precedes_questions_and_requires_true(client):
-    created = client.post('/api/clinical/sessions',json={'patient_id':'P',
+    created = client.post('/api/clinical/sessions',json={'patient_id':'P', 'pathway_decisions': {'curb65':'applicable','wells':'applicable'},
         'vitals': {'heart_rate_bpm':140}, 'urgency_context': state()['urgency_context']})
     assert created.status_code == 201, created.text
     path = '/api/clinical/sessions/' + created.json()['session_id']
@@ -90,7 +90,7 @@ def test_urgent_review_precedes_questions_and_requires_true(client):
 
 
 def test_new_data_interrupts_resumption_before_more_questions(client):
-    created = client.post('/api/clinical/sessions',json={'patient_id':'P',
+    created = client.post('/api/clinical/sessions',json={'patient_id':'P', 'pathway_decisions': {'curb65':'applicable','wells':'applicable'},
         'vitals': {'heart_rate_bpm':80,'respiratory_rate':18,'blood_pressure_sys':120,'blood_pressure_dia':80},
         'urgency_context': state()['urgency_context']})
     path = '/api/clinical/sessions/' + created.json()['session_id']
@@ -115,7 +115,7 @@ def test_new_data_interrupts_resumption_before_more_questions(client):
 
 
 def test_approval_cannot_bypass_urgency_pause(client):
-    created = client.post('/api/clinical/sessions',json={'patient_id':'P',
+    created = client.post('/api/clinical/sessions',json={'patient_id':'P', 'pathway_decisions': {'curb65':'applicable','wells':'applicable'},
         'urgency_context': {'clinician_concern':True}})
     path = '/api/clinical/sessions/' + created.json()['session_id']
     client.post(path+'/run')

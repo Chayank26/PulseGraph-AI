@@ -10,6 +10,7 @@ WorkflowStep = Literal[
     "intake_age_required",
     "waiting_for_clinical_data",
     "triage_completed",
+    "triage_manual_review_required",
     "imaging_data_requested",
     "imaging_analyzed",
     "diagnostic_completed",
@@ -139,6 +140,7 @@ class SymbolicOverrideFlag(BaseModel):
 
 class ClinicalFieldRequirement(BaseModel):
     """Specification of a single requested clinical data field."""
+    allow_unavailable: bool = False
     field_key: str = Field(description="System identifier e.g. ecg_score, troponin_score, cardiac_risk_factors_count")
     label: str = Field(description="Human-readable label for UI form rendering")
     data_type: str = Field(description="float, int, bool, str, enum, file")
@@ -226,7 +228,7 @@ def merge_resolved_requests(left, right):
 
 def merge_risk_scores(left, right):
     """Replace recalculated scores instead of accumulating duplicate results."""
-    scores = {score.score_name: score for score in (left or [])}
+    scores = {}  # Each triage pass provides the current complete/partial score set.
     scores.update({score.score_name: score for score in (right or [])})
     return list(scores.values())
 
@@ -240,6 +242,7 @@ class ClinicalState(TypedDict):
     patient_id: str
     demographics: Optional[PatientDemographics]
     urgency: Optional[Dict[str, Any]]
+    pathway_decisions: Optional[Dict[str, Any]]
     urgency_context: Optional[Dict[str, Any]]
     urgency_resume_node: Optional[str]
     urgency_observation_revision: int

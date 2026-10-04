@@ -1,5 +1,6 @@
 import logging
 from uuid import uuid4
+from src.core.routing import UNAVAILABLE
 from src.core.clinical_parsing import parse_boolean, parse_enum_score, parse_number
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
@@ -67,6 +68,8 @@ def validate_response(
 
     for req_field in request.required_fields:
         val = response_data.get(req_field.field_key)
+        if val == UNAVAILABLE and req_field.allow_unavailable:
+            continue
         if val is None or (isinstance(val, str) and not val.strip()):
             errors.append(f"Missing required field '{req_field.label}' ({req_field.field_key}).")
         else:
@@ -77,6 +80,9 @@ def validate_response(
             elif key in ("history_score", "ecg_score", "troponin_score"):
                 if parse_enum_score(val) is None:
                     errors.append(f"Invalid {req_field.label}: value must be 0, 1, or 2.")
+            elif req_field.data_type == "enum":
+                if val not in (req_field.options or []):
+                    errors.append(f"Invalid choice for {req_field.label}.")
             elif req_field.data_type in ("int", "float"):
                 number = parse_number(val)
                 if number is None or (req_field.data_type == "int" and not number.is_integer()):
@@ -138,8 +144,11 @@ def apply_response_to_state(
     """
     Applies validated clinician responses to state vitals, demographics, and clinical notes.
     """
+    # Unavailable is an explicit answer, not a numeric measurement.
+    unavailable = {k: v for k, v in response_data.items() if v == UNAVAILABLE}
+    response_data = {k: v for k, v in response_data.items() if v != UNAVAILABLE}
     vitals = state.get("vitals")
-    notes_to_add = []
+    notes_to_add = [f"[ACQUIRED CLINICAL DATA]: {k} = {v}" for k, v in unavailable.items()]
 
     vital_keys = set(VitalSigns.model_fields)
     supplied_vitals = {key: value for key, value in response_data.items()

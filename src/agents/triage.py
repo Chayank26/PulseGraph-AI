@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Optional
 from src.core.state import ClinicalState, VitalSigns, RiskScore, AuditEntry, ClinicalFieldRequirement
 
 from src.core.data_requests import create_data_request
+from src.core.routing import PATHWAYS, UNAVAILABLE, plan_routing
 from src.core.presentation import extract_presentation, ClinicalPresentation
 from src.tools.calculators import calculate_wells_pe_score, calculate_heart_score, calculate_curb65_score
 
@@ -47,7 +48,7 @@ def get_validated_age(demographics: Any, acquired_data: Dict[str, Any]) -> Optio
     return None
 
 
-def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation) -> Dict[str, Any]:
+def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation, selected: set[str]) -> Dict[str, Any]:
     """
     Triage Agent Node:
     Ingests patient data, parses vitals and notes, and performs baseline clinical risk calculations
@@ -97,13 +98,6 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation) 
         }
 
 
-    # Baseline symptom indicators
-    present = {item.symptom for item in presentation.symptoms if item.status == "present"}
-    chest_pain = "chest_pain" in present
-    sob = "breathlessness" in present
-    dvt_signs = bool({"leg_swelling", "dvt"} & present)
-
-
     # Heart rate gt 100 evaluation using only structured vitals or explicit acquired data
     hr_val = vitals.heart_rate_bpm if (vitals and vitals.heart_rate_bpm is not None) else acquired_data.get("heart_rate_bpm")
     hr_gt_100: Optional[bool] = None
@@ -114,12 +108,11 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation) 
         hr_gt_100 = parse_boolean(acquired_data["heart_rate_gt_100"])
 
     new_risk_scores: List[RiskScore] = []
-    pending_requests = []
 
 
 
     # 1. HEART Score for Chest Pain Risk Assessment
-    if chest_pain:
+    if "heart" in selected:
         history_val = parse_enum_score(acquired_data.get("history_score"))
         ecg_val = parse_enum_score(acquired_data.get("ecg_score"))
         trop_val = parse_enum_score(acquired_data.get("troponin_score"))
@@ -196,8 +189,8 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation) 
 
 
 
-    # 2. CURB-65 Score for Pneumonia / Respiratory Distress
-    if sob:
+    # 2. Clinician-selected CURB-65 pneumonia assessment
+    if "curb65" in selected:
         confusion = parse_boolean(acquired_data.get("confusion"))
         bun_val = parse_number(acquired_data.get("bun_mg_dl"))
         rr_val = vitals.respiratory_rate if (vitals and vitals.respiratory_rate is not None) else parse_number(acquired_data.get("respiratory_rate"))
@@ -251,7 +244,7 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation) 
             req = create_data_request(
                 requesting_agent="triage",
                 pathway_name="CURB-65 Pneumonia Assessment",
-                reason="Respiratory distress requires complete CURB-65 parameters (Confusion, BUN, Respiratory Rate, BP).",
+                reason="The clinician-selected pneumonia assessment requires the following missing CURB-65 inputs.",
                 required_fields=curb_missing,
                 priority="HIGH"
             )
@@ -278,8 +271,8 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation) 
             )
             new_risk_scores.append(curb_score)
 
-    # 3. Wells PE Score (evaluated if DVT signs, tachycardia, or dyspnea present)
-    if (hr_gt_100 is True) or dvt_signs or sob:
+    # 3. Clinician-selected Wells PE assessment
+    if "wells" in selected:
         pe_most_likely = parse_boolean(acquired_data.get("pe_most_likely"))
         clinical_dvt = parse_boolean(acquired_data.get("clinical_signs_dvt"))
         immob = parse_boolean(acquired_data.get("immobilization_surgery"))
@@ -410,13 +403,16 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
     for symptom in presentation.symptoms:
         key = f"symptom_present_{symptom.symptom}"
         answer = parse_boolean(acquired.get(key))
-        if symptom.status == "conflicting" and answer is not None:
+        if symptom.status == "conflicting" and acquired.get(key) == UNAVAILABLE:
+            symptom.status = "uncertain"
+            symptom.clarification_source = key
+        elif symptom.status == "conflicting" and answer is not None:
             symptom.status = "present" if answer else "absent"
             symptom.clarification_source = key
         elif symptom.status == "conflicting":
             conflicts.append(ClinicalFieldRequirement(
                 field_key=key, label=f"Is {symptom.symptom.replace('_', ' ')} currently present?",
-                data_type="bool", required=True,
+                data_type="bool", required=True, allow_unavailable=True,
                 description="The complaint and notes contain contradictory statements. Confirm the current presentation."))
     if conflicts:
         request = create_data_request("triage", "Presentation clarification",
@@ -424,7 +420,39 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
         result = {"risk_scores": [], "pending_data_requests": [request],
                   "current_step": "waiting_for_clinical_data", "audit_trail": []}
     else:
-        result = _calculate_triage(state, presentation)
+        plan = plan_routing(state, presentation, acquired)
+        age = get_validated_age(state.get("demographics"), acquired)
+        confirmation_fields = [ClinicalFieldRequirement(
+            field_key=f"pathway_decision_{p.key}", label=p.name, data_type="enum", required=True,
+            options=["applicable", "not_applicable", "unknown"], description=p.rationale)
+            for p in plan.pathways if p.status == "NEEDS_CONFIRMATION"]
+        if age is None and acquired.get("age") != UNAVAILABLE:
+            result = _calculate_triage(state, presentation, set())
+        elif age is None:
+            plan.handoff_reasons.append("Age is unavailable; automated assessment cannot proceed.")
+            plan.requires_clinician_assessment = True
+            result = {"risk_scores": [], "current_step": "triage_manual_review_required"}
+        elif confirmation_fields:
+            request = create_data_request("triage", "Assessment applicability",
+                "Confirm only the assessments appropriate to this presentation. Unknown leads to clinician assessment rather than repeated questions.", confirmation_fields)
+            result = {"risk_scores": [], "pending_data_requests": [request], "current_step": "waiting_for_clinical_data"}
+        else:
+            selected = {p.key for p in plan.pathways if p.status == "READY"}
+            result = _calculate_triage(state, presentation, selected)
+            scores = {s.score_name for s in result.get("risk_scores", [])}
+            for pathway in plan.pathways:
+                definition = next(p for p in PATHWAYS if p.key == pathway.key)
+                if definition.score_name in scores:
+                    pathway.status = "COMPLETE"
+                elif any(r.pathway_name == pathway.name for r in result.get("pending_data_requests", [])):
+                    pathway.status = "NEEDS_DATA"
+            if not result.get("pending_data_requests") and plan.requires_clinician_assessment:
+                result["current_step"] = "triage_manual_review_required"
+        presentation.routing = plan
+        for request in result.get("pending_data_requests", []):
+            if request.pathway_name != "Assessment applicability":
+                for field in request.required_fields:
+                    field.allow_unavailable = True
     result["presentation"] = presentation.model_dump(mode="json")
     result["audit_trail"] = [AuditEntry(
         agent_name="TriageAgent", action="PRESENTATION_EXTRACTION",

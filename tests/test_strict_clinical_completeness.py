@@ -32,6 +32,7 @@ def base_state() -> ClinicalState:
     return {
         "patient_id": demographics.patient_id,
         "demographics": demographics,
+        "pathway_decisions": {"heart": "applicable", "curb65": "applicable", "wells": "applicable"},
         "raw_notes": [],
         "vitals": vitals,
         "risk_scores": [],
@@ -71,13 +72,13 @@ def test_1_no_age_requests_age_no_risk_scores(base_state):
     assert len(result.get("risk_scores", [])) == 0
 
 
-def test_2_age_present_no_pathway_symptoms_completes_without_inventing_data(base_state):
+def test_2_age_present_no_pathway_symptoms_hands_off_without_inventing_data(base_state):
     """TEST 2: Age present, no symptoms requiring a conditional pathway -> triage completes without inventing data."""
     base_state["raw_notes"] = ["Patient presenting for routine annual physical exam."]
     result = triage_agent_node(base_state)
 
     assert "pending_data_requests" not in result
-    assert result["current_step"] == "triage_completed"
+    assert result["current_step"] == "triage_manual_review_required"
     assert len(result["risk_scores"]) == 0
 
 

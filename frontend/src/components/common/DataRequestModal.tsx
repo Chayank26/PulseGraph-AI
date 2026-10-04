@@ -61,17 +61,26 @@ export const DataRequestModal: React.FC = () => {
                 <p className="text-[11px] text-[#66655C] mb-2">{field.description}</p>
               )}
 
-              {field.data_type === 'enum' && field.options ? (
+              {field.allow_unavailable && (
+                <label className="block text-xs mb-2">
+                  <input type="checkbox" checked={formData[field.field_key] === '__unavailable__'}
+                    onChange={event => handleInputChange(field.field_key, event.target.checked ? '__unavailable__' : undefined)} />
+                  {' '}Unknown / unavailable — request clinician assessment
+                </label>
+              )}
+              {formData[field.field_key] === '__unavailable__' ? (
+                <p className="text-xs">This input will remain unknown; dependent scores will not be calculated.</p>
+              ) : field.data_type === 'enum' && field.options ? (
                 <select
                   value={formData[field.field_key] ?? ''}
-                  onChange={(e) => handleInputChange(field.field_key, e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) => handleInputChange(field.field_key, e.target.value)}
                   required={field.required}
                   className="w-full bg-[#FAF8F2] border border-[#DCD8BE] rounded-lg p-2.5 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
                 >
                   <option value="">Select clinical score parameter...</option>
-                  {field.options.map((opt, i) => (
-                    <option key={i} value={i}>
-                      {opt}
+                  {field.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt.replace(/_/g, ' ')}
                     </option>
                   ))}
                 </select>

@@ -113,3 +113,57 @@ classification, pediatric/obstetric rules, full NEWS2, and automatic escalation
 notifications are not implemented in this phase.
 
 Apply `DEBUG=false venv/bin/alembic upgrade head` before restarting the backend.
+
+## Phase 4: presentation routing and targeted questions
+
+Presentation groups now include cardiovascular, respiratory, vascular,
+gastrointestinal, neurological, skin, urinary, musculoskeletal/injury, and
+systemic complaints. Multiple groups are retained. These are descriptive
+categories, not diagnoses or newly implemented treatment pathways.
+
+Calculator applicability is explicitly confirmed by the clinician. Relevant
+candidate assessments are grouped into one request with `applicable`,
+`not_applicable`, or `unknown` answers. No answer is preselected. In API workflows,
+validated `pathway_decisions` can be supplied at session creation or execution.
+A high pulse alone no longer activates Wells questions. Decisions are recorded
+with session input or acquired answers and reflected in persisted routing output.
+
+Applicability references:
+- HEART: adult acute chest-pain assessment in an emergency-care context:
+  https://www.acc.org/latest-in-cardiology/ten-points-to-remember/2022/10/10/23/15/2022-acc-expert-consensus-on-chest-pain
+- CURB-65: clinician-diagnosed adult community-acquired pneumonia in hospital:
+  https://www.nice.org.uk/guidance/ng250/chapter/Recommendations
+- Wells PE: clinician-suspected PE, not dyspnea or tachycardia alone:
+  https://www.nice.org.uk/guidance/ng158/chapter/Recommendations
+
+This implementation conservatively limits calculator routing to age >=18 and
+excludes known pregnancy. These are software coverage limits, not statements
+about every tool's validated population. Confirmation includes consideration of
+clinical exclusions; it is not an exhaustive automated exclusion check. Existing
+calculator formulas/interpretations remain unchanged (including the current
+Wells interpretation); this is not a full implementation of the cited clinical
+management guidelines. Local clinical validation remains necessary.
+
+Only selected tools ask for missing inputs. Triage fields may explicitly allow
+`__unavailable__`; this never becomes a normal number or a false boolean.
+Unavailable fields mark the affected assessment incomplete and stop repeated
+requests. Other selected assessments can finish, with their scores preserved.
+Urgency review cannot be bypassed with the unavailable option.
+
+Unsupported, uncertain, excluded, declined-all, and incomplete presentations
+produce an explicit `REQUIRES_CLINICIAN_ASSESSMENT` handoff when supported work is
+finished. The graph ends before imaging/diagnosis in these cases, and the UI
+stops polling and displays the handoff. Successful completion of a supported
+calculator does not imply coverage of an additional unsupported complaint.
+Current scores replace prior triage-pass scores to avoid retaining stale results.
+
+Routing is persisted within the presentation JSON and exposed in results/review
+responses. No database migration is required for this phase. Supported complete
+assessments still use the existing downstream workflow; conditional imaging is
+Phase 5. New clinical pathways and expanded extraction vocabulary remain later
+work, rather than fabricated assessments for currently unsupported groups.
+
+A second `/run` on an already-started session returns HTTP 409, preserving its
+pending requests instead of duplicating them. Continue via data resolution or
+clinician review; create a new session for a new assessment. The UI disables the
+initial run action after startup and does not restart the graph after reevaluation.

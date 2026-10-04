@@ -24,6 +24,7 @@ def base_clinical_state() -> ClinicalState:
     return {
         "patient_id": demographics.patient_id,
         "demographics": demographics,
+        "pathway_decisions": {"heart": "applicable", "curb65": "applicable", "wells": "applicable"},
         "raw_notes": ["Patient presenting with acute chest pain."],
         "vitals": vitals,
         "risk_scores": [],

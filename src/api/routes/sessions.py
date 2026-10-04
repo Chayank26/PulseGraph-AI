@@ -15,7 +15,7 @@ from src.api.schemas.sessions import (
 from src.db.models import DoctorModel
 from src.db.repositories.patient_repository import PatientRepository
 from src.db.repositories.session_repository import SessionRepository
-from src.services.clinical_workflow import ClinicalWorkflowService
+from src.services.clinical_workflow import ClinicalWorkflowService, WorkflowConflictError
 
 router = APIRouter(prefix="/api/clinical/sessions", tags=["Clinical Sessions & Assessment"])
 
@@ -71,11 +71,14 @@ def run_session(
         result = workflow_service.run_session(
             session_id=session_id,
             raw_notes=payload if isinstance(payload, list) else (payload.raw_notes if payload else None),
+            pathway_decisions=payload.pathway_decisions.model_dump() if isinstance(payload, SessionRunRequest) and payload.pathway_decisions else None,
             urgency_context=payload.urgency_context.model_dump() if isinstance(payload, SessionRunRequest) and payload.urgency_context else None,
             vitals_payload=payload.vitals.model_dump() if isinstance(payload, SessionRunRequest) and payload.vitals else None,
             image_path=(payload.image_path if isinstance(payload, SessionRunRequest) else None) or image_path
         )
         return result
+    except WorkflowConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:

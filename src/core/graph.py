@@ -180,6 +180,8 @@ def _check_data_request_routing(state: ClinicalState, default_next_node: str) ->
 
 
 def route_after_triage(state: ClinicalState) -> str:
+    if state.get("current_step") == "triage_manual_review_required":
+        return END
     return _check_data_request_routing(state, "imaging")
 
 

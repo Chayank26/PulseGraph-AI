@@ -66,7 +66,7 @@ export const AppHeader: React.FC = () => {
           {/* Action Controls */}
           <button
             onClick={() => runWorkflow()}
-            disabled={!!runningAgentId}
+            disabled={!!runningAgentId || session?.status !== 'INITIALIZED'}
             title="Run Multi-Agent Execution Pipeline"
             className={`flex items-center gap-1.5 bg-[#1A1A1C] text-white px-3.5 py-2 rounded-full text-xs font-medium hover:bg-black transition-colors ${
               runningAgentId ? 'opacity-50 cursor-not-allowed' : ''

@@ -38,7 +38,7 @@ def test_invalid_numbers_are_not_measurements(value):
 def test_saved_complaint_activates_triage_without_duplicate_notes():
     result = triage_agent_node({'demographics': PatientDemographics(
         patient_id='P', age=50, chief_complaint='chest pain'), 'raw_notes': []})
-    assert result['pending_data_requests'][0].pathway_name == 'HEART Score Assessment'
+    assert result['pending_data_requests'][0].pathway_name == 'Assessment applicability'
 
 
 def test_resolved_vitals_create_structured_state_when_originally_missing():
@@ -69,6 +69,8 @@ def client(monkeypatch):
         with factory() as db:
             yield db
     app = FastAPI()
+    from src.api.routes.patients import router as patients_router
+    app.include_router(patients_router)
     app.include_router(sessions_router)
     app.include_router(clinical_router)
     app.dependency_overrides[get_db] = database
@@ -80,7 +82,7 @@ def client(monkeypatch):
 
 def test_saved_intake_survives_create_then_run_and_resolution(client):
     created = client.post('/api/clinical/sessions', json={
-        'patient_id': 'P', 'raw_notes': ['Symptoms started today'],
+        'patient_id': 'P', 'pathway_decisions': {'curb65': 'applicable', 'wells': 'applicable'}, 'raw_notes': ['Symptoms started today'],
         'vitals': {'heart_rate_bpm': 80, 'respiratory_rate': 18,
                    'blood_pressure_sys': 120, 'blood_pressure_dia': 80},
     })
@@ -116,6 +118,6 @@ def test_run_object_body_and_invalid_intake(client):
     assert invalid.status_code == 422
     created = client.post('/api/clinical/sessions', json={'patient_id': 'P'})
     path = '/api/clinical/sessions/' + created.json()['session_id']
-    result = client.post(path + '/run', json={'raw_notes': ['chest pain'], 'vitals': {'heart_rate_bpm': 80}})
+    result = client.post(path + '/run', json={'raw_notes': ['chest pain'], 'pathway_decisions': {'heart': 'applicable', 'curb65': 'applicable', 'wells': 'applicable'}, 'vitals': {'heart_rate_bpm': 80}})
     assert result.status_code == 200, result.text
     assert result.json()['pending_requests'][0]['pathway_name'] == 'HEART Score Assessment'

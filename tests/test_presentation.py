@@ -88,4 +88,4 @@ def test_conflict_is_persisted_and_clinician_answer_resumes_triage(client):
     result = client.get(path + '/results').json()
     assert result['presentation']['symptoms'][0]['status'] == 'present'
     assert result['presentation']['symptoms'][0]['clarification_source'] == 'symptom_present_breathlessness'
-    assert client.get(path + '/data-requests').json()[0]['pathway_name'] == 'CURB-65 Pneumonia Assessment'
+    assert client.get(path + '/data-requests').json()[0]['pathway_name'] == 'Assessment applicability'
