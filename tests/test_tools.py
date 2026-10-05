@@ -13,7 +13,7 @@ def test_heart_score_low_risk():
         troponin_score=0
     )
     assert score.value == 0.0
-    assert "Low Risk" in score.interpretation
+    assert "band 0–3" in score.interpretation
 
 
 def test_heart_score_high_risk():
@@ -26,7 +26,7 @@ def test_heart_score_high_risk():
         troponin_score=2
     )
     assert score.value == 10.0
-    assert "High Risk" in score.interpretation
+    assert "band 7–10" in score.interpretation
 
 
 def test_curb65_score_severe():
@@ -40,7 +40,7 @@ def test_curb65_score_severe():
         age=68
     )
     assert score.value == 5.0
-    assert "High Mortality Risk" in score.interpretation
+    assert "band 3–5" in score.interpretation
 
 
 def test_drug_safety_allergy_alert():
@@ -65,7 +65,7 @@ def test_wells_pe_score_explicit_parameters():
         malignancy=False
     )
     assert score.value == 7.5  # 3.0 + 3.0 + 1.5 = 7.5
-    assert "High Risk" in score.interpretation
+    assert "PE likely" in score.interpretation
 
     # Omission of required parameter raises TypeError
     with pytest.raises(TypeError):

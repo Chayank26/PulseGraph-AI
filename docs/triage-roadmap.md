@@ -367,3 +367,21 @@ require the explicitly documented follow-up audit; Phase 8 as a whole is unfinis
 Next: Phase 8B — verify calculator source definitions, repair input gaps, remove
 unsupported probabilities/disposition text, attach provenance and test boundaries;
 reconcile medication-module vital alerts with the existing urgency screen.
+
+## Phase 8B1: calculator validation and output corrections (completed)
+
+Phase 8B is split to keep arithmetic/output changes separate from clinical input
+contract changes that affect questionnaires and resumed sessions. Removed fixed
+probabilities and disposition/treatment instructions from HEART/CURB-65 output;
+Wells now uses explicitly named NICE two-level classification. Added source,
+version, pending-review metadata and complete Wells input provenance. Calculator
+functions reject invalid inputs instead of clamping categories or accepting
+truthy nonbooleans. HEART and CURB-65 disclose unresolved input coverage in details.
+
+284 selected tests passed (one existing Starlette warning); no frontend change.
+See `docs/clinical/rule-audit.md` for source verification and limitations.
+
+Next 8B2: HEART atherosclerotic-history/risk-component collection and CURB-65 unit
+contract, including missing/unavailable answers, followed by urgency boundaries
+and removal/reconciliation of duplicate vital-treatment messages. Phase 8 remains
+in progress; no clinical approval has been obtained.

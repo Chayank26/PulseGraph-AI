@@ -1,9 +1,37 @@
-from typing import Dict, Any, Optional
+import math
 from src.core.state import RiskScore
+
+
+SOURCES = {
+    'HEART Score': 'https://www.heartscore.nl/resources/flyer.pdf',
+    'CURB-65 Score': 'https://doi.org/10.1136/thorax.58.5.377',
+    'Wells Score (PE)': 'https://www.nice.org.uk/guidance/ng158/chapter/Recommendations',
+}
+
+
+def provenance(name):
+    return {'rule_version': 'calculator-audit-v1', 'source': SOURCES[name],
+            'review_status': 'PENDING_CLINICAL_REVIEW',
+            'limitation': 'Score only; no patient-specific probability, treatment or disposition decision.'}
+
+
+def number(value, name, integer=False, minimum=0, maximum=None):
+    if (isinstance(value, bool) or not isinstance(value, (int, float)) or
+            not math.isfinite(value) or value < minimum or
+            (maximum is not None and value > maximum) or
+            (integer and int(value) != value)):
+        raise ValueError(f'{name} must be a finite valid numeric value')
+
+
+def boolean(value, name):
+    if type(value) is not bool:
+        raise ValueError(f'{name} requires an explicit boolean')
 
 
 def calculate_bmi(weight_kg: float, height_m: float) -> RiskScore:
     """Calculate Body Mass Index (BMI)."""
+    number(weight_kg, "weight_kg", minimum=0.000001)
+    number(height_m, "height_m")
     if height_m <= 0:
         raise ValueError("Height must be positive")
     
@@ -37,6 +65,11 @@ def calculate_wells_pe_score(
 ) -> RiskScore:
 
     """Calculate Wells' Criteria for Pulmonary Embolism (PE)."""
+    inputs = dict(clinical_signs_dvt=clinical_signs_dvt, pe_most_likely=pe_most_likely,
+                  heart_rate_gt_100=heart_rate_gt_100, immobilization_surgery=immobilization_surgery,
+                  previous_dvt_pe=previous_dvt_pe, hemoptysis=hemoptysis, malignancy=malignancy)
+    for key, value in inputs.items():
+        boolean(value, key)
     score = 0.0
     if clinical_signs_dvt:
         score += 3.0
@@ -53,12 +86,7 @@ def calculate_wells_pe_score(
     if malignancy:
         score += 1.0
 
-    if score > 6.0:
-        risk = "High Risk (>65% PE probability)"
-    elif score >= 2.0:
-        risk = "Moderate Risk (~30% PE probability)"
-    else:
-        risk = "Low Risk (~1.3% PE probability)"
+    risk = ('PE likely' if score > 4 else 'PE unlikely') + ' (two-level Wells classification; does not confirm or exclude PE)'
 
     return RiskScore(
         score_name="Wells Score (PE)",
@@ -66,9 +94,8 @@ def calculate_wells_pe_score(
         unit="points",
         interpretation=risk,
         details={
-            "clinical_signs_dvt": clinical_signs_dvt,
-            "pe_most_likely": pe_most_likely,
-            "heart_rate_gt_100": heart_rate_gt_100
+            **inputs,
+            **provenance('Wells Score (PE)')
         }
     )
 
@@ -87,26 +114,30 @@ def calculate_heart_score(
     - history_score: 0 (slight), 1 (moderate), 2 (highly suspicious)
     - ecg_score: 0 (normal), 1 (non-specific repolarization), 2 (ST depression)
     - age: age in years (<45 -> 0, 45-64 -> 1, >=65 -> 2)
-    - risk_factors_count: count of cardiac risk factors (0 -> 0, 1-2 -> 1, >=3 or CAD history -> 2)
+    - risk_factors_count: count of cardiac risk factors (0 -> 0, 1-2 -> 1, >=3 -> 2; atherosclerotic history is not captured)
     - troponin_score: 0 (<=normal), 1 (1-3x normal), 2 (>3x normal)
     """
+    for key, value in [('history_score', history_score), ('ecg_score', ecg_score), ('troponin_score', troponin_score)]:
+        number(value, key, integer=True, maximum=2)
+    number(age, 'age', integer=True, maximum=130)
+    number(risk_factors_count, 'risk_factors_count', integer=True)
     age_pts = 0 if age < 45 else (1 if age < 65 else 2)
     rf_pts = 0 if risk_factors_count == 0 else (1 if risk_factors_count <= 2 else 2)
     
     total_score = float(
-        max(0, min(2, history_score)) +
-        max(0, min(2, ecg_score)) +
+        history_score +
+        ecg_score +
         age_pts +
         rf_pts +
-        max(0, min(2, troponin_score))
+        troponin_score
     )
 
     if total_score <= 3:
-        risk = "Low Risk (0.9-1.7% MACE risk - Discharge Candidate)"
+        risk = "HEART score band 0–3; clinician assessment required"
     elif total_score <= 6:
-        risk = "Moderate Risk (12-16.6% MACE risk - Observation Unit / Inpatient)"
+        risk = "HEART score band 4–6; clinician assessment required"
     else:
-        risk = "High Risk (50-65% MACE risk - Immediate Invasive Intervention)"
+        risk = "HEART score band 7–10; clinician assessment required"
 
     return RiskScore(
         score_name="HEART Score",
@@ -114,6 +145,8 @@ def calculate_heart_score(
         unit="points",
         interpretation=risk,
         details={
+            **provenance('HEART Score'),
+            "coverage_limitation": "Count-based risk component; established atherosclerotic disease is not separately captured. Do not treat as a complete HEART implementation.",
             "history": history_score,
             "ecg": ecg_score,
             "age": age,
@@ -136,11 +169,16 @@ def calculate_curb65_score(
     
     Criteria (1 point each):
     - C: Confusion (abbreviated mental test score <= 8 or new disorientation)
-    - U: Urea > 19 mg/dL (BUN > 19 mg/dL / 7 mmol/L)
+    - U: Legacy BUN >19 mg/dL; unit-contract correction pending (not urea mg/dL).
     - R: Respiratory rate >= 30 breaths/min
     - B: Blood pressure (Systolic < 90 mmHg or Diastolic <= 60 mmHg)
     - 65: Age >= 65 years
     """
+    boolean(confusion, 'confusion')
+    for key, value in [('bun_mg_dl', bun_mg_dl), ('respiratory_rate', respiratory_rate),
+                       ('systolic_bp', systolic_bp), ('diastolic_bp', diastolic_bp)]:
+        number(value, key)
+    number(age, 'age', integer=True, maximum=130)
     score = 0.0
     if confusion:
         score += 1.0
@@ -154,11 +192,11 @@ def calculate_curb65_score(
         score += 1.0
 
     if score <= 1.0:
-        risk = "Low Mortality Risk (<1.5% - Outpatient Treatment)"
+        risk = "CURB-65 score band 0–1; clinician assessment required"
     elif score == 2.0:
-        risk = "Moderate Mortality Risk (9.2% - Consider Hospital Admission)"
+        risk = "CURB-65 score band 2; clinician assessment required"
     else:
-        risk = "High Mortality Risk (22-30% - Severe Pneumonia / ICU Consideration)"
+        risk = "CURB-65 score band 3–5; clinician assessment required"
 
     return RiskScore(
         score_name="CURB-65 Score",
@@ -166,6 +204,9 @@ def calculate_curb65_score(
         unit="points",
         interpretation=risk,
         details={
+            **provenance('CURB-65 Score'),
+            "coverage_limitation": "Legacy BUN threshold >19 mg/dL retained pending explicit urea unit-contract correction.",
+            "systolic_bp": systolic_bp, "diastolic_bp": diastolic_bp,
             "confusion": confusion,
             "bun_mg_dl": bun_mg_dl,
             "respiratory_rate": respiratory_rate,

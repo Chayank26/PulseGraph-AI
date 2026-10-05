@@ -84,3 +84,40 @@ No active symbolic evaluator exists in this revision.
 
 Phase 8A does not certify all active clinical content. Clinical sign-off, medication
 knowledge replacement, and independent evaluation remain outstanding.
+
+## Phase 8B1 update — calculator validation and output semantics
+
+Completed October 5, 2026. This subsection supersedes the interpretation-text and
+silent-clamping findings above; unresolved input-contract findings remain open.
+
+- HEART and CURB-65 now emit score bands with clinician-review wording, without
+  fixed outcome probabilities, discharge instructions or invasive-treatment advice.
+- Wells retains the seven existing point weights and now explicitly uses the NICE
+  two-level classification (>4 versus ≤4). Neither label confirms or excludes PE.
+  All seven supplied inputs are retained in score details.
+- These three calculators expose a rule version, source, pending-clinical-review
+  status and a limitation in result details. This metadata is not clinical approval.
+- Invalid categories, booleans-as-numbers, negative/nonfinite measurements and
+  nonboolean criterion answers are rejected by calculator functions. HEART no
+  longer silently clamps out-of-range categories. BMI gets numeric input checks.
+- HEART's missing atherosclerotic-disease input and CURB-65's legacy >19 mg/dL BUN
+  threshold are explicitly disclosed in result details. They are not corrected or
+  certified by this increment. No new fallback or inferred answer was introduced.
+
+Source checks: NICE NG158 table 2 was retrieved through search and supports the
+implemented two-level Wells classification. The official HEART author flyer at
+https://www.heartscore.nl/resources/flyer.pdf was retrieved and explicitly includes
+atherosclerotic disease in the risk component. Its age/troponin boundary wording
+requires reconciliation with the original study before finalizing the input
+contract. Existing age calculations are retained, with boundary regression tests;
+these tests document behavior rather than resolve the source ambiguity. CURB-65's
+original-study DOI is provenance, not a claim of completed unit verification.
+
+Validation: 284 selected tests passed, including calculator invalid-input and
+boundary cases, workflow regression cases and API freshness tests. One existing
+Starlette deprecation warning. No frontend changes or browser test in this increment.
+
+Next 8B2: explicit HEART risk-component contract, exact CURB-65 units and conversion,
+request/resumption updates, fixture migration, full urgency boundaries and duplicate
+medication-module vital alerts. Existing numerical scores may still be limited by
+those unresolved contracts; this is a prototype, not clinically approved scoring.
