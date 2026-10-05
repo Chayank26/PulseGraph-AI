@@ -1,5 +1,6 @@
 import urllib.request
 from src.agents.safety import safety_agent_node
+from src.core.medication_review import history_fingerprint
 from src.core.diagnostic import invalidate_diagnostics, input_fingerprint
 from src.core.state import PatientDemographics
 from src.tools.pharmacology import check_drug_safety_profile
@@ -12,13 +13,14 @@ def test_no_network_and_explicit_limited_coverage(monkeypatch):
         raise AssertionError('Medication checks must not call external services')
     monkeypatch.setattr(urllib.request, 'urlopen', forbidden)
     state = {'demographics': PatientDemographics(patient_id='P', current_medications=['Unknown drug'], allergies=[])}
+    state['medication_reconciliation'] = {'input_fingerprint':history_fingerprint(state['demographics']), 'medications':{'status':'recorded'}, 'allergies':{'status':'unknown'}}
     result = safety_agent_node(state)
     assert result['safety_flags'] == []
     review = result['presentation']['safety_review']
     assert review['interaction_provider'] == 'NOT_CONFIGURED'
     assert review['status'] == 'LIMITED_LOCAL_CHECKS'
-    assert review['allergy_history'] == 'NOT_RECORDED'
-    assert review['medication_history'] == 'RECORDED_UNVERIFIED'
+    assert review['allergy_history'] == 'UNKNOWN'
+    assert review['medication_history'] == 'RECORDED'
     assert result['audit_trail'][0].metadata['coverage'] == review
 
 
@@ -27,8 +29,9 @@ def test_blank_entries_do_not_create_allergy_matches():
 
 
 def test_local_alert_does_not_upgrade_coverage():
-    result = safety_agent_node({'demographics': PatientDemographics(patient_id='P',
-        current_medications=['Amoxicillin'], allergies=['Penicillin'])})
+    demographics = PatientDemographics(patient_id='P', current_medications=['Amoxicillin'], allergies=['Penicillin'])
+    result = safety_agent_node({'demographics':demographics, 'medication_reconciliation':{
+        'input_fingerprint':history_fingerprint(demographics), 'medications':{'status':'recorded'}, 'allergies':{'status':'recorded'}}})
     assert result['safety_flags']
     assert result['presentation']['safety_review']['status'] == 'LIMITED_LOCAL_CHECKS'
 

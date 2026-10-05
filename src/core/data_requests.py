@@ -66,6 +66,15 @@ def validate_response(
     if not response_data:
         return False, ["Response data cannot be empty."]
 
+    if any(k.startswith('medication_review_') for k in response_data) or request.pathway_name == 'Medication reconciliation':
+        if request.requesting_agent != 'safety' or request.pathway_name != 'Medication reconciliation':
+            return False, ['Medication history controls require the reconciliation request.']
+        from src.core.medication_review import parse_reconciliation
+        try:
+            parse_reconciliation(response_data)
+        except ValueError as exc:
+            return False, [str(exc)]
+
     if request.requesting_agent != "imaging" and any(k.startswith("imaging_") for k in response_data):
         return False, ["Imaging decisions must use the imaging review request."]
     if request.requesting_agent == "imaging":
@@ -198,6 +207,9 @@ def apply_response_to_state(
     """
     Applies validated clinician responses to state vitals, demographics, and clinical notes.
     """
+    if any(k.startswith('medication_review_') for k in response_data):
+        from src.core.medication_review import apply_reconciliation
+        return apply_reconciliation(state, response_data)
     imaging_updates = {}
     if 'diagnostic_followup_action' in response_data:
         imaging_updates['diagnostic_followup_disposition'] = response_data['diagnostic_followup_action']

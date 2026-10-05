@@ -17,42 +17,16 @@ def safety_agent_node(state: ClinicalState) -> Dict[str, Any]:
     allergies = demographics.allergies if demographics else []
     vitals = state.get("vitals")
 
-    # Check if medications are unrecorded when explicitly required for safety auditing
-    if "meds_unrecorded" in combined_notes or "medications_missing" in combined_notes:
-        logger.info("Medication history unrecorded for safety audit. Generating ClinicalDataRequest.")
-        req = create_data_request(
-            requesting_agent="safety",
-            pathway_name="Medication & Allergy History",
-            reason="Pharmacology safety auditing requires active medication history and document allergy records.",
-            required_fields=[
-                ClinicalFieldRequirement(
-                    field_key="current_medications_list",
-                    label="Current Active Medications",
-                    data_type="str",
-                    required=True,
-                    description="Comma-separated list of active prescription and OTC medications"
-                ),
-                ClinicalFieldRequirement(
-                    field_key="allergies_list",
-                    label="Documented Allergies",
-                    data_type="str",
-                    required=False,
-                    description="Documented drug or food allergies"
-                )
-            ],
-            priority="HIGH"
-        )
-        audit_entry = AuditEntry(
-            agent_name="SafetyAgent",
-            action="DATA_REQUEST_CREATED",
-            summary="Medication record unrecorded. Created ClinicalDataRequest.",
-            metadata={"request_id": req.request_id}
-        )
-        return {
-            "pending_data_requests": [req],
-            "audit_trail": [audit_entry],
-            "current_step": "safety_data_requested"
-        }
+    from src.core.medication_review import history_fingerprint, reconciliation_request
+    from src.tools.medication_provider import configured_provider, assess_interactions
+    reconciliation = state.get('medication_reconciliation')
+    current = bool(reconciliation and demographics and reconciliation.get('input_fingerprint') == history_fingerprint(demographics))
+    needs_history = bool(medications or allergies or 'meds_unrecorded' in combined_notes or 'medications_missing' in combined_notes)
+    if needs_history and not current:
+        req = reconciliation_request()
+        return {'pending_data_requests': [req], 'current_step': 'safety_data_requested',
+            'audit_trail': [AuditEntry(agent_name='SafetyAgent', action='DATA_REQUEST_CREATED',
+                summary='Explicit medication and allergy reconciliation requested.', metadata={'request_id':req.request_id})]}
 
     # Limited local checks; coverage is independent of the number of flags.
     safety_flags: List[SafetyFlag] = check_drug_safety_profile(
@@ -62,6 +36,22 @@ def safety_agent_node(state: ClinicalState) -> Dict[str, Any]:
     )
 
     coverage = medication_coverage(medications, allergies)
+    if current:
+        coverage['medication_history'] = reconciliation['medications']['status'].upper()
+        coverage['allergy_history'] = reconciliation['allergies']['status'].upper()
+    if current and any(reconciliation[name]['status'] in ('unknown', 'unavailable') for name in ('medications', 'allergies')):
+        coverage['limitations'].append('History remains incomplete; checks use previously recorded entries, if any, without confirming completeness.')
+    interaction = assess_interactions(medications, configured_provider())
+    coverage['interaction_provider'] = interaction['status']
+    coverage['provider_assessment'] = interaction['result']
+    coverage['limitations'][0] = ('No replacement interaction provider is configured.' if interaction['status'] == 'NOT_CONFIGURED'
+        else 'Provider coverage is limited to its reported scope. Failure or missing pairs do not establish safety.')
+    if interaction['result']:
+        for pair in interaction['result']['pairs']:
+            if pair['status'] == 'alert':
+                safety_flags.append(SafetyFlag(severity=pair['severity'], category='DRUG_INTERACTION',
+                    title='Provider-reported interaction requires review', description=pair['description'],
+                    source_agent=interaction['result']['provider']))
     presentation = dict(state.get('presentation') or {})
     presentation['safety_review'] = coverage
     audit_entry = AuditEntry(

@@ -56,9 +56,10 @@ export const SafetyPage: React.FC = () => {
         <h3 className="font-bold flex items-center gap-2"><Pill size={16} /> Medication review coverage</h3>
         <p>{coverage ? 'Limited local checks only' : 'Medication review has not run for the current assessment.'}</p>
         {coverage && <>
-          <p>Comprehensive interaction provider: not configured</p>
-          <p>Medication history: {coverage.medication_history === 'NOT_RECORDED' ? 'Not recorded' : 'Recorded; reconciliation not verified'}</p>
-          <p>Allergy history: {coverage.allergy_history === 'NOT_RECORDED' ? 'Not recorded' : 'Recorded; confirmation required'}</p>
+          <p>Interaction assessment: {coverage.interaction_provider.replaceAll('_', ' ')}</p>
+          <p>Medication history: {coverage.medication_history.replaceAll('_', ' ')}</p>
+          <p>Allergy history: {coverage.allergy_history.replaceAll('_', ' ')}</p>
+          {coverage.provider_assessment && <p>Provider: {coverage.provider_assessment.provider} · Source version: {coverage.provider_assessment.source_version} · Scope: {coverage.provider_assessment.scope}</p>}
           <ul className="list-disc pl-5 text-sm space-y-2">
             {coverage.limitations.map((item, index) => <li key={index}>{item}</li>)}
           </ul>

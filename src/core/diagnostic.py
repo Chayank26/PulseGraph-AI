@@ -11,6 +11,7 @@ class DiagnosticContext(BaseModel):
     risk_scores: list[RiskScore] = Field(default_factory=list)
     pathway_decisions: dict = Field(default_factory=dict)
     missing_observations: list[str] = Field(default_factory=list)
+    medication_history: dict = Field(default_factory=dict)
     followup_answers: dict = Field(default_factory=dict)
     limitations: list[str] = Field(default_factory=list)
 
@@ -34,7 +35,7 @@ def build_diagnostic_context(state) -> DiagnosticContext:
         limitations.append('Uninterpreted narrative requires clinician assessment.')
     if presentation.routing:
         limitations.extend(presentation.routing.handoff_reasons)
-    return DiagnosticContext(presentation=presentation, demographics=demographics, vitals=vitals,
+    return DiagnosticContext(medication_history=state.get('medication_reconciliation') or {}, presentation=presentation, demographics=demographics, vitals=vitals,
         risk_scores=state.get('risk_scores', []), pathway_decisions=state.get('pathway_decisions') or {},
         missing_observations=[key for key in VitalSigns.model_fields if getattr(vitals, key, None) is None],
         followup_answers=state.get('diagnostic_followup_answers') or {}, limitations=limitations)
@@ -51,7 +52,7 @@ def input_fingerprint(state):
     inputs = {key: state.get(key) for key in (
         'demographics', 'raw_notes', 'vitals', 'pathway_decisions',
         'imaging_decision', 'imaging_response', 'image_path', 'urgency_context',
-        'diagnostic_followup_answers', 'diagnostic_followup_disposition')}
+        'diagnostic_followup_answers', 'diagnostic_followup_disposition', 'medication_reconciliation')}
     inputs['presentation'] = {k: v for k, v in (state.get('presentation') or {}).items() if k not in ('diagnostic_review', 'symbolic_review', 'evidence_review', 'safety_review')}
     inputs['risk_scores'] = [{k: v for k, v in encode(score).items() if k != 'calculated_at'} for score in state.get('risk_scores', [])]
     return hashlib.sha256(json.dumps(inputs, default=encode, sort_keys=True).encode()).hexdigest()

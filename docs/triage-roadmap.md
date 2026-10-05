@@ -551,3 +551,25 @@ storage is reused. See `docs/clinical/medication-coverage.md`.
 replacement-provider contract, normalization/coverage failure handling and explicit
 medication-history reconciliation. Real provider activation and clinical review
 remain outstanding; Phase 13 is not complete.
+
+## Phase 13B: provider contract and session history reconciliation (completed)
+
+Added a strict provider-neutral interaction result contract with source version,
+normalization ambiguity, pair-level provenance, partial coverage and explicit
+failure states. No production adapter is configured; synthetic providers exercise
+the contract. Provider-reported alert severity is required rather than invented.
+
+Medication/allergy entries or a legacy missing-history marker now trigger owner-only
+reconciliation. Recorded/confirmed-none/unknown/unavailable remain distinct, unknown
+preserves earlier unverified entries, and changed lists require renewed review.
+Responses update session state, invalidate derived results and pass through urgency
+and triage. Entirely empty histories remain NOT_RECORDED unless acquisition was
+requested. The UI shows history and provider coverage states. No database migration.
+
+418 regression tests passed; 22 medication-focused tests passed after final severity
+and ownership additions. Frontend build and 49/49 synthetic workflow cases passed.
+See `docs/clinical/medication-coverage.md` for scope and deployment limitations.
+
+Next Phase 14: a clinically specified non-cardiopulmonary pathway. Phase 13's bounded
+engineering work is complete; live provider selection/activation and independent
+clinical review remain outstanding and are not implied by test success.
