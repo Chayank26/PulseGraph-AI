@@ -1619,7 +1619,8 @@
         "decision": "required",
         "reason": "Synthetic assessment-dependent study",
         "modality": "Ultrasound",
-        "anatomy": "abdomen"
+        "anatomy": "abdomen",
+        "assessment_question": "What finding would clarify the presenting concern?"
       }
     },
     "responses": [
@@ -1666,7 +1667,8 @@
         "decision": "required",
         "reason": "Synthetic assessment-dependent study",
         "modality": "Ultrasound",
-        "anatomy": "abdomen"
+        "anatomy": "abdomen",
+        "assessment_question": "What finding would clarify the presenting concern?"
       }
     },
     "responses": [
@@ -1713,7 +1715,8 @@
         "decision": "required",
         "reason": "Synthetic assessment-dependent study",
         "modality": "Ultrasound",
-        "anatomy": "abdomen"
+        "anatomy": "abdomen",
+        "assessment_question": "What finding would clarify the presenting concern?"
       }
     },
     "responses": [

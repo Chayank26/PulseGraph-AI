@@ -493,3 +493,25 @@ model activation remains pending. See `docs/clinical/diagnostic-questions.md`.
 
 374 selected tests passed and frontend build passed. Next: Phase 12, imaging
 recommendations connected to assessment questions with clinician confirmation.
+
+## Phase 12A: clinician-authored imaging questions and freshness (completed)
+
+Phase 12 is split because imaging currently precedes diagnostic generation.
+Required imaging now records an explicit assessment question, requesting it from
+legacy intake when absent. An unavailable question leads to clinician assessment.
+A supplied report is available for review, not automatically an answered question
+or a verified indication. The UI exposes these distinctions.
+
+Required plans bind to the current intake, observations, calculator results and
+routing context. Changed inputs clear the active report and require a fresh
+imaging decision; replacing a decision clears old responses and overrides.
+Existing urgency and ownership checks remain. No database migration.
+
+385 selected regression tests passed, 49/49 strict synthetic workflow cases passed,
+and frontend production build passed. See `docs/clinical/imaging-assessment.md`
+for scope and legacy-checkpoint limitations.
+
+Next: Phase 12B, model-proposed imaging after assessment with clinician confirmation.
+That capability is not implemented in 12A; model generation remains disabled by
+default. Optional/no-imaging freshness and clinical indication validation are not
+established by this phase.

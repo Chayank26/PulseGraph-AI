@@ -12,7 +12,7 @@ export const ImagingPage = () => {
   );
   const plan = session.state.presentation?.imaging_plan;
   const labels = {
-    NEEDS_DECISION: 'Clinician decision needed', WAITING_FOR_REPORT: 'Waiting for the requested report',
+    NEEDS_ASSESSMENT_QUESTION: 'Assessment question needed', NEEDS_DECISION: 'Clinician decision needed', WAITING_FOR_REPORT: 'Waiting for the requested report',
     REPORT_PROVIDED: 'Report provided', SKIPPED: 'Continuing without imaging',
     OVERRIDDEN: 'Continuing with clinician override', REQUIRES_CLINICIAN_ASSESSMENT: 'Clinician assessment required',
   };
@@ -27,6 +27,9 @@ export const ImagingPage = () => {
           <h2 className="text-xl font-bold">{labels[plan.status]}</h2>
           <p><strong>Decision:</strong> {plan.decision?.replace(/_/g, ' ') || 'Not confirmed'}</p>
           <p>{plan.reason}</p>
+          <p><strong>Assessment question:</strong> {plan.assessment_question || 'Not specified'}</p>
+          <p><strong>Question status:</strong> {plan.question_status?.replace(/_/g, ' ') || 'Not recorded'}</p>
+          <p className="text-sm">The imaging indication is clinician-authored and has not been independently verified against evidence. A supplied report does not automatically answer the assessment question.</p>
           {plan.modality && <p><strong>Requested study:</strong> {plan.modality} — {plan.anatomy}</p>}
           {plan.study_reference && <p><strong>Study reference:</strong> {plan.study_reference}</p>}
           {plan.report && <section className="bg-stone-50 p-4 rounded-lg">

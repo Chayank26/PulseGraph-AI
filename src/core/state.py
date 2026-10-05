@@ -261,6 +261,7 @@ class ClinicalState(TypedDict):
     patient_id: str
     demographics: Optional[PatientDemographics]
     urgency: Optional[Dict[str, Any]]
+    imaging_assessment_fingerprint: Optional[str]
     imaging_decision: Optional[Dict[str, Any]]
     imaging_response: Optional[Dict[str, Any]]
     image_path: Optional[str]

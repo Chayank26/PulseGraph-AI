@@ -76,6 +76,10 @@ def validate_response(
             if request.pathway_name == "Imaging decision":
                 from src.core.imaging import decision_from_response
                 decision_from_response(response_data)
+            elif request.pathway_name == 'Imaging assessment question':
+                value = response_data.get('imaging_assessment_question')
+                if not isinstance(value, str) or not value.strip() or len(value) > 2000 or value == '__unknown__':
+                    return False, ['A written assessment question is required.']
             elif request.pathway_name == "Required imaging report":
                 action = response_data.get("imaging_action")
                 key = "imaging_report" if action == "submit_report" else "imaging_override_reason"
@@ -202,6 +206,17 @@ def apply_response_to_state(
     if "imaging_decision" in response_data:
         from src.core.imaging import decision_from_response
         imaging_updates["imaging_decision"] = decision_from_response(response_data).model_dump()
+        imaging_updates['imaging_response'] = None
+        imaging_updates['imaging_assessment_fingerprint'] = None
+    elif 'imaging_assessment_question' in response_data:
+        from src.core.imaging import ImagingDecision
+        decision = dict(state.get('imaging_decision') or {})
+        question = response_data['imaging_assessment_question']
+        if question == '__unavailable__':
+            decision.update(decision='uncertain', assessment_question=None, report=None, reason='Assessment question unavailable; clinician assessment required.')
+        else:
+            decision['assessment_question'] = question
+        imaging_updates['imaging_decision'] = ImagingDecision.model_validate(decision).model_dump()
     elif "imaging_action" in response_data:
         imaging_updates["imaging_response"] = dict(response_data)
     # Keep reports and decisions structured; do not feed them to keyword diagnosis.

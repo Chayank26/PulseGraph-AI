@@ -9,7 +9,7 @@ from test_triage_foundation import client
 
 
 def decision(kind='optional', **kwargs):
-    return {'decision': kind, 'reason': 'Reviewed clinical context', **kwargs}
+    return {'decision': kind, 'reason': 'Reviewed clinical context', **({'assessment_question':'What finding would clarify the presenting concern?'} if kind == 'required' else {}), **kwargs}
 
 
 def evaluate(value=None, **extra):

@@ -197,7 +197,10 @@ export interface AgentInfo {
 
 
 export interface ImagingPlan {
-  status: 'NEEDS_DECISION' | 'WAITING_FOR_REPORT' | 'REPORT_PROVIDED' | 'SKIPPED' | 'OVERRIDDEN' | 'REQUIRES_CLINICIAN_ASSESSMENT';
+  assessment_question?: string | null;
+  question_status?: string;
+  evidence_status?: string;
+  status: 'NEEDS_ASSESSMENT_QUESTION' | 'NEEDS_DECISION' | 'WAITING_FOR_REPORT' | 'REPORT_PROVIDED' | 'SKIPPED' | 'OVERRIDDEN' | 'REQUIRES_CLINICIAN_ASSESSMENT';
   decision: 'no_imaging' | 'optional' | 'required' | 'uncertain' | null;
   reason: string;
   modality?: string | null;
