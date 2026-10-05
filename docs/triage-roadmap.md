@@ -515,3 +515,21 @@ Next: Phase 12B, model-proposed imaging after assessment with clinician confirma
 That capability is not implemented in 12A; model generation remains disabled by
 default. Optional/no-imaging freshness and clinical indication validation are not
 established by this phase.
+
+## Phase 12B: model-proposed imaging with clinician confirmation (completed)
+
+The differential-v3 schema permits one candidate-linked imaging suggestion with
+an assessment question and structurally validated evidence references. Suggestions
+open an explicit owner-only clinician review after diagnostic clarification.
+Reject/optional/required/uncertain decisions require a written reason; only a
+clinician-required decision requests a report. Responses clear stale derived
+outputs, pass through urgency/triage, and preserve the existing report override and
+handoff behavior. One suggestion review per session prevents repeat model loops.
+
+The intake imaging step remains; this adds a post-diagnostic review checkpoint.
+The existing generic request UI is reused, without preselected answers or a schema
+migration. Model generation remains disabled by default. See
+`docs/clinical/imaging-assessment.md` for limitations and activation boundaries.
+
+398 selected regression tests passed and 49/49 strict synthetic workflow cases
+passed. Tests use synthetic providers, not live-model or clinical evaluation.

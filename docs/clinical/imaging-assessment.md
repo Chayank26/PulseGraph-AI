@@ -34,3 +34,37 @@ These are software checks, not clinical validation or a browser usability study.
 Phase 12B will address model-proposed imaging after assessment with explicit
 clinician confirmation. The present graph still processes imaging before
 diagnostic generation. Model generation remains disabled by default.
+
+## Phase 12B: model-proposed imaging review
+
+The differential-v3 output contract permits one optional imaging suggestion with a
+candidate name, modality, anatomy, assessment question and evidence IDs. The
+candidate must exist in the same proposal and the evidence IDs must belong to that
+candidate and the supplied corpus. Invalid references reject the generation.
+These structural checks do not verify medical appropriateness or entailment.
+Abstention cannot contain an imaging suggestion.
+
+After optional diagnostic clarification finishes, a suggestion opens a clinician
+review request using the existing data-request UI. No answer is preselected. The
+session owner must choose reject, optional, required or uncertain and provide a
+written reason. Rejection preserves the existing imaging decision; optional allows
+continuation without a report; required enters the existing report/override flow;
+uncertain hands off for clinician assessment. New decisions clear earlier reports
+and overrides. Responses invalidate provisional diagnostic results and return
+through urgency and triage before reassessment. The original intake imaging step
+remains in place; model suggestions are an additional post-diagnostic checkpoint.
+
+One model imaging review is permitted per session, including subsequent diagnostic
+reruns. This conservative cap avoids repeat suggestions and recursive report
+requests; it is not a complete multi-study workup planner. A clinician can reject
+an unsuitable proposed study and use manual assessment for a different study.
+Suggestions and request IDs are recorded in audit metadata; responses record the
+clinician's decision and reason. The existing audit persistence can repeat stored
+audit entries during synchronization, so audit row counts are not event counts.
+
+Generation remains disabled by default. Tests use a synthetic provider, with no
+live model calls or patient-data transfer. 398 selected tests and 49/49 strict
+synthetic workflow cases passed. No new frontend component or database migration
+was necessary; the existing generic request form renders the new review fields.
+Clinical indication quality, real-model performance and browser usability remain
+unmeasured.

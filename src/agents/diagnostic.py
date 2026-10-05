@@ -10,6 +10,7 @@ from config.settings import settings
 def diagnostic_agent_node(state):
     context = build_diagnostic_context(state)
     differentials = []
+    suggestion = None
     generation = {'status': 'ABSTAINED', 'reason': 'provider_not_configured',
                   'prompt_version': PROMPT_VERSION, 'prompt_sha256': hashlib.sha256(SYSTEM_PROMPT.encode()).hexdigest(), 'backend': settings.diagnostic_backend,
                   'model': settings.diagnostic_model or None}
@@ -28,6 +29,7 @@ def diagnostic_agent_node(state):
                 raw = provider.generate(payload, Proposal.model_json_schema())
                 generation['response_sha256'] = hashlib.sha256(raw.encode()).hexdigest()
                 differentials, reason = validate_proposal(raw, payload, settings.max_diagnostic_candidates)
+                suggestion = Proposal.model_validate_json(raw).imaging_suggestion
                 generation.update(status='PROPOSED' if differentials else 'ABSTAINED', reason=reason)
     except Exception:
         # Do not expose provider exceptions, raw output or possible patient data.
@@ -60,4 +62,14 @@ def diagnostic_agent_node(state):
         result['audit_trail'].append(AuditEntry(agent_name='DiagnosticAgent', action='DIAGNOSTIC_CLARIFICATION_REQUESTED',
             summary=request.reason, metadata={'request_id':request.request_id,
                 'round':result['diagnostic_followup_rounds'], 'fields':[f.model_dump() for f in request.optional_fields]}))
+    if not request and suggestion and not state.get('imaging_suggestion_reviewed'):
+        from src.core.imaging_suggestions import suggestion_request
+        result.update(imaging_model_suggestion=suggestion.model_dump(),
+                      pending_data_requests=[suggestion_request(suggestion)],
+                      current_step='waiting_for_clinical_data')
+        result['audit_trail'].append(AuditEntry(agent_name='DiagnosticAgent',
+            action='IMAGING_SUGGESTION_REVIEW_REQUESTED',
+            summary='Unvalidated model imaging suggestion requires clinician decision.',
+            metadata={'suggestion': suggestion.model_dump(), 'input_fingerprint': fingerprint,
+                      'request_id': result['pending_data_requests'][0].request_id}))
     return result

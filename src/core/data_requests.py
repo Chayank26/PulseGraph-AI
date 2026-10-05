@@ -73,7 +73,11 @@ def validate_response(
         if set(response_data) - allowed:
             return False, ["Unexpected fields in imaging response."]
         try:
-            if request.pathway_name == "Imaging decision":
+            if request.pathway_name == 'Model imaging suggestion':
+                value = response_data.get('imaging_suggestion_reason')
+                if not isinstance(value, str) or not value.strip() or len(value) > 2000 or value.strip() in ('__unknown__', '__unavailable__'):
+                    return False, ['A written clinician reason is required.']
+            elif request.pathway_name == "Imaging decision":
                 from src.core.imaging import decision_from_response
                 decision_from_response(response_data)
             elif request.pathway_name == 'Imaging assessment question':
@@ -203,7 +207,21 @@ def apply_response_to_state(
         # Preserve unknown separately in resolved requests; do not coerce to a measurement.
         response_data = {k:v for k,v in response_data.items() if v != '__unknown__' and v not in (None, '')}
 
-    if "imaging_decision" in response_data:
+    if 'imaging_suggestion_action' in response_data:
+        from src.core.imaging import ImagingDecision
+        proposal = state.get('imaging_model_suggestion')
+        if not proposal:
+            raise ValueError('No imaging suggestion is available for review.')
+        action = response_data['imaging_suggestion_action']
+        imaging_updates['imaging_suggestion_reviewed'] = True
+        if action != 'reject':
+            imaging_updates['imaging_decision'] = ImagingDecision(
+                decision=action, reason=response_data['imaging_suggestion_reason'],
+                modality=proposal['modality'], anatomy=proposal['anatomy'],
+                assessment_question=proposal['assessment_question']).model_dump()
+            imaging_updates['imaging_response'] = None
+            imaging_updates['imaging_assessment_fingerprint'] = None
+    elif "imaging_decision" in response_data:
         from src.core.imaging import decision_from_response
         imaging_updates["imaging_decision"] = decision_from_response(response_data).model_dump()
         imaging_updates['imaging_response'] = None
