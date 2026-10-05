@@ -36,7 +36,7 @@ def test_append_only_audit_log_persistence_e2e():
     # 4. Resolve data request
     client.post(
         f"/api/clinical/sessions/{session_id}/data-requests/{req_id}/resolve",
-        json={"response_data": {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2}},
+        json={"response_data": {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2, "atherosclerotic_disease": False}},
         headers=headers
     )
 

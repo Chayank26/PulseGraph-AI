@@ -121,3 +121,51 @@ Next 8B2: explicit HEART risk-component contract, exact CURB-65 units and conver
 request/resumption updates, fixture migration, full urgency boundaries and duplicate
 medication-module vital alerts. Existing numerical scores may still be limited by
 those unresolved contracts; this is a prototype, not clinically approved scoring.
+
+## Phase 8B2 update — clinical input contracts and urgency boundaries
+
+HEART now requires an explicit `atherosclerotic_disease` boolean in both the
+calculator and the triage request contract. A true answer assigns two risk-component
+points regardless of count. A false answer uses the existing count mapping.
+Missing answers are requested, not inferred from history keywords; unavailable
+answers produce an incomplete-assessment handoff. Existing saved sessions with
+count-only inputs must provide this additional answer on reassessment. No database
+migration is needed. Synthetic fixtures explicitly record negative history where
+that is the intended test case; missing-history behavior has its own regression.
+
+CURB-65 retains the `bun_mg_dl` field, explicitly meaning blood urea nitrogen in
+mg/dL. It converts using 0.357 to mmol/L and compares the unrounded value with >7.
+It does not accept urea mg/dL or mmol/L in that field. The factor and converted value
+are persisted in score details; calculator version is now calculator-audit-v2.
+Values between the old >19 threshold and the converted threshold can change score.
+The conversion factor is a published rounded convention, not an assertion of
+unlimited laboratory precision. Previously saved scores are not rewritten.
+
+Sources verified October 5, 2026:
+- Author HEART chart: https://www.heartscore.nl/resources/flyer.pdf (atherosclerotic history).
+- Original CURB-65 abstract: https://pubmed.ncbi.nlm.nih.gov/12728155/
+  and publisher PDF search record: https://thorax.bmj.com/content/thoraxjnl/58/5/377.full.pdf
+  (urea >7 mmol/L). Publisher HTML returned 403; the primary-study abstract and
+  indexed PDF supply the criterion.
+- Labcorp conversion table: https://www.labcorp.com/test-menu/resources/si-unit-conversion-table
+  (BUN mg/dL to mmol/L factor 0.357).
+- Current NICE NG250 recommendations were accessible through indexed search at
+  https://www.nice.org.uk/guidance/NG250/chapter/recommendations.
+
+Medication-module duplicate SpO2/heart-rate flags and automatic oxygen-treatment
+wording were removed. Vital observations continue through the independent scoped
+urgency node. This does not expand urgency coverage or validate medication safety.
+Added fractional threshold-adjacency tests for every physiological urgency bound,
+and age-16/pregnancy applicability tests. Existing missingness, acknowledgment,
+clinician-concern and individualized-oxygen tests remain in the focused suite.
+
+Validation: 310 selected tests passed; strict synthetic evaluation 49/49 passed.
+Includes API acquisition/resumption/persistence, unavailable history, invalid
+history type, BUN threshold conversion and urgency boundaries. One existing
+Starlette warning. No frontend source changes or browser interaction tests.
+
+Clinical approval remains pending. HEART age/troponin category definitions and
+local assay interpretation still require qualified clinical sign-off (the source
+flyer's boundary wording was noted above). No diagnostic validation, medication
+knowledge completeness, or real-world effectiveness is claimed. Phase 8's
+technical changes are complete; the independent review requirement remains open.

@@ -74,7 +74,7 @@ def test_data_request_flow_api_lifecycle():
     # 7. Test valid resolution -> resumes execution directly at triage node and proceeds to human_review
     valid_resolve_resp = client.post(
         f"/api/clinical/sessions/{session_id}/data-requests/{req_id}/resolve",
-        json={"response_data": {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2}},
+        json={"response_data": {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2, "atherosclerotic_disease": False}},
         headers=headers
     )
     assert valid_resolve_resp.status_code == 200

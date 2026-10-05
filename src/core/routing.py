@@ -27,7 +27,7 @@ class PathwayDefinition(BaseModel):
 PATHWAYS = [
     PathwayDefinition(key='heart', name='HEART Score Assessment', symptoms={'chest_pain'}, covered_symptoms={'chest_pain'},
         applicability='Clinician confirms this adult acute chest-pain presentation is suitable for the HEART assessment in an emergency-care context; exclusions and urgent alternatives have been considered.',
-        required_fields={'history_score','ecg_score','troponin_score','cardiac_risk_factors_count'}, score_name='HEART Score',
+        required_fields={'history_score','ecg_score','troponin_score','cardiac_risk_factors_count','atherosclerotic_disease'}, score_name='HEART Score',
         source='https://www.acc.org/latest-in-cardiology/ten-points-to-remember/2022/10/10/23/15/2022-acc-expert-consensus-on-chest-pain'),
     PathwayDefinition(key='curb65', name='CURB-65 Pneumonia Assessment', symptoms={'breathlessness','cough'}, covered_symptoms={'breathlessness','cough','fever'},
         applicability='Clinician has made a diagnosis of community-acquired pneumonia in this adult in hospital and confirms CURB-65 is appropriate. Breathlessness alone is insufficient.',

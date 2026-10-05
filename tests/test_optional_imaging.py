@@ -65,7 +65,7 @@ def test_override_requires_reason_and_report_action_requires_report():
 def start(client, imaging=None):
     client.put('/api/patients/P', json={'chief_complaint':'chest pain'})
     payload = {'patient_id':'P', 'pathway_decisions':{'heart':'applicable'},
-        'raw_notes':['history_score=0 ecg_score=0 troponin_score=0 cardiac_risk_factors_count=0']}
+        'raw_notes':['history_score=0 ecg_score=0 troponin_score=0 cardiac_risk_factors_count=0 atherosclerotic_disease=false']}
     if imaging: payload['imaging_decision'] = imaging
     created = client.post('/api/clinical/sessions', json=payload)
     assert created.status_code == 201, created.text

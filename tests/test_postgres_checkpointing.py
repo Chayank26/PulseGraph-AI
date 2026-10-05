@@ -70,7 +70,7 @@ def test_postgres_checkpointer_reconstruction_and_thread_persistence(db_session)
     res2 = service_b.resolve_data_request(
         session_id=session_id,
         request_id=req_id,
-        response_data={"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2}
+        response_data={"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2, "atherosclerotic_disease": False}
     )
     assert res2["status"] == "WAITING_FOR_CLINICIAN_REVIEW"
     assert res2["next_node"] == "human_review"

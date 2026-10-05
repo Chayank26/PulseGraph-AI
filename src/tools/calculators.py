@@ -10,7 +10,7 @@ SOURCES = {
 
 
 def provenance(name):
-    return {'rule_version': 'calculator-audit-v1', 'source': SOURCES[name],
+    return {'rule_version': 'calculator-audit-v2', 'source': SOURCES[name],
             'review_status': 'PENDING_CLINICAL_REVIEW',
             'limitation': 'Score only; no patient-specific probability, treatment or disposition decision.'}
 
@@ -105,7 +105,8 @@ def calculate_heart_score(
     ecg_score: int,
     age: int,
     risk_factors_count: int,
-    troponin_score: int
+    troponin_score: int,
+    atherosclerotic_disease: bool
 ) -> RiskScore:
     """
     Calculate HEART Score for Major Adverse Cardiac Events (MACE) in Emergency Department Chest Pain.
@@ -114,15 +115,16 @@ def calculate_heart_score(
     - history_score: 0 (slight), 1 (moderate), 2 (highly suspicious)
     - ecg_score: 0 (normal), 1 (non-specific repolarization), 2 (ST depression)
     - age: age in years (<45 -> 0, 45-64 -> 1, >=65 -> 2)
-    - risk_factors_count: count of cardiac risk factors (0 -> 0, 1-2 -> 1, >=3 -> 2; atherosclerotic history is not captured)
+    - risk_factors_count: count of cardiac risk factors (0 -> 0, 1-2 -> 1, >=3 -> 2; established atherosclerotic disease overrides count to 2 points)
     - troponin_score: 0 (<=normal), 1 (1-3x normal), 2 (>3x normal)
     """
     for key, value in [('history_score', history_score), ('ecg_score', ecg_score), ('troponin_score', troponin_score)]:
         number(value, key, integer=True, maximum=2)
     number(age, 'age', integer=True, maximum=130)
     number(risk_factors_count, 'risk_factors_count', integer=True)
+    boolean(atherosclerotic_disease, 'atherosclerotic_disease')
     age_pts = 0 if age < 45 else (1 if age < 65 else 2)
-    rf_pts = 0 if risk_factors_count == 0 else (1 if risk_factors_count <= 2 else 2)
+    rf_pts = 2 if atherosclerotic_disease else 0 if risk_factors_count == 0 else (1 if risk_factors_count <= 2 else 2)
     
     total_score = float(
         history_score +
@@ -146,7 +148,8 @@ def calculate_heart_score(
         interpretation=risk,
         details={
             **provenance('HEART Score'),
-            "coverage_limitation": "Count-based risk component; established atherosclerotic disease is not separately captured. Do not treat as a complete HEART implementation.",
+            "atherosclerotic_disease": atherosclerotic_disease,
+            "risk_component_points": rf_pts,
             "history": history_score,
             "ecg": ecg_score,
             "age": age,
@@ -169,7 +172,7 @@ def calculate_curb65_score(
     
     Criteria (1 point each):
     - C: Confusion (abbreviated mental test score <= 8 or new disorientation)
-    - U: Legacy BUN >19 mg/dL; unit-contract correction pending (not urea mg/dL).
+    - U: Urea >7 mmol/L, converted from BUN mg/dL using 0.357; not urea mg/dL.
     - R: Respiratory rate >= 30 breaths/min
     - B: Blood pressure (Systolic < 90 mmHg or Diastolic <= 60 mmHg)
     - 65: Age >= 65 years
@@ -182,7 +185,8 @@ def calculate_curb65_score(
     score = 0.0
     if confusion:
         score += 1.0
-    if bun_mg_dl > 19.0:
+    urea_mmol_l = bun_mg_dl * 0.357
+    if urea_mmol_l > 7.0:
         score += 1.0
     if respiratory_rate >= 30.0:
         score += 1.0
@@ -205,7 +209,9 @@ def calculate_curb65_score(
         interpretation=risk,
         details={
             **provenance('CURB-65 Score'),
-            "coverage_limitation": "Legacy BUN threshold >19 mg/dL retained pending explicit urea unit-contract correction.",
+            "urea_mmol_l": urea_mmol_l,
+            "bun_to_urea_factor": 0.357,
+            "conversion_source": "https://www.labcorp.com/test-menu/resources/si-unit-conversion-table",
             "systolic_bp": systolic_bp, "diastolic_bp": diastolic_bp,
             "confusion": confusion,
             "bun_mg_dl": bun_mg_dl,

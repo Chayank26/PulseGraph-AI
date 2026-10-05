@@ -99,7 +99,7 @@ def test_e2e_conditional_clinical_data_acquisition_flow():
         "history_score": 2,                 # 2 = Highly suspicious history
         "ecg_score": 1,                     # 1 = Nonspecific repolarization disturbance
         "troponin_score": 0,                # 0 = Normal
-        "cardiac_risk_factors_count": 2     # HTN + Hyperlipidemia
+        "cardiac_risk_factors_count": 2, "atherosclerotic_disease": False     # HTN + Hyperlipidemia
     }
 
 

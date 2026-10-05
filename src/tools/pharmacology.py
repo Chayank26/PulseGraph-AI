@@ -138,27 +138,6 @@ def check_drug_safety_profile(
                 )
             )
 
-    # 4. Check Vital Threshold Safety Bounds
-    if vitals:
-        if vitals.spo2_percent and vitals.spo2_percent < 90.0:
-            flags.append(
-                SafetyFlag(
-                    severity="CRITICAL",
-                    category="VITAL_ALERT",
-                    title="Critical Hypoxia Alert",
-                    description=f"SpO2 is dangerously low ({vitals.spo2_percent}%). Immediate supplemental oxygen indicated.",
-                    source_agent="VitalsGuardrail"
-                )
-            )
-        if vitals.heart_rate_bpm and vitals.heart_rate_bpm > 130.0:
-            flags.append(
-                SafetyFlag(
-                    severity="HIGH",
-                    category="VITAL_ALERT",
-                    title="Severe Tachycardia Alert",
-                    description=f"Heart rate is severely elevated ({vitals.heart_rate_bpm} bpm).",
-                    source_agent="VitalsGuardrail"
-                )
-            )
-
+    # Vital observations are assessed by the scoped urgency node, not duplicate
+    # treatment rules with different thresholds and no applicability checks.
     return flags

@@ -385,3 +385,22 @@ Next 8B2: HEART atherosclerotic-history/risk-component collection and CURB-65 un
 contract, including missing/unavailable answers, followed by urgency boundaries
 and removal/reconciliation of duplicate vital-treatment messages. Phase 8 remains
 in progress; no clinical approval has been obtained.
+
+## Phase 8B2: clinical input contracts and urgency boundaries (completed)
+
+HEART now explicitly requests established atherosclerotic disease, uses two risk
+points when present, and hands off if that input is unavailable. Old count-only
+intake is not silently treated as negative. CURB-65 converts its explicitly labeled
+BUN mg/dL input to mmol/L with the published 0.357 factor before comparing >7;
+conversion provenance is saved. Calculator version advances to calculator-audit-v2.
+Fixtures now explicitly provide the added input where intended. No schema migration.
+
+Removed medication-module duplicate vital flags/treatment wording in favor of the
+existing scoped urgency screen. Added fractional boundaries, scope tests and API
+request/resumption/persistence coverage. 310 selected tests passed; regenerated
+strict evaluation reports show 49/49 cases passing, expansion_ready remains false.
+Clinical review and assay/category sign-off remain pending; see the rule audit.
+
+Next: Phase 9 — traceable evidence retrieval, with source provenance and explicit
+insufficient-support outcomes. The clinical-review requirement is not satisfied by
+the completed software tests.

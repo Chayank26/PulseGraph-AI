@@ -50,7 +50,7 @@ def test_clinical_graph_neuro_symbolic_execution():
     assert req.requesting_agent == "triage"
 
     # 2. Clinician supplies missing HEART score parameters and resolves request
-    resp = {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2}
+    resp = {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2, "atherosclerotic_disease": False}
     resolved = resolve_request(req, resp)
     state_updates = apply_response_to_state(snapshot.values, resp)
     state_updates["pending_data_requests"] = [resolved]

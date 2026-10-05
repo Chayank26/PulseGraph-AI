@@ -55,7 +55,7 @@ def test_multiple_groups_preserved_with_supported_score_and_handoff():
         '[ACQUIRED CLINICAL DATA]: history_score = 1',
         '[ACQUIRED CLINICAL DATA]: ecg_score = 0',
         '[ACQUIRED CLINICAL DATA]: troponin_score = 0',
-        '[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0'])
+        '[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0', "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"])
     assert result['current_step'] == 'triage_manual_review_required'
     assert result['risk_scores'][0].score_name == 'HEART Score'
     assert set(result['presentation']['routing']['groups']) == {'cardiovascular','gastrointestinal'}

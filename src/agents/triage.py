@@ -119,7 +119,12 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation, 
         rf_num = parse_number(acquired_data.get("cardiac_risk_factors_count"))
         rf_val = int(rf_num) if (rf_num is not None and rf_num >= 0 and rf_num.is_integer()) else None
 
+        disease_val = parse_boolean(acquired_data.get("atherosclerotic_disease"))
         heart_missing = []
+        if disease_val is None:
+            heart_missing.append(ClinicalFieldRequirement(field_key="atherosclerotic_disease",
+                label="Established atherosclerotic disease", data_type="bool", required=True,
+                description="Confirm documented coronary or systemic atherosclerotic disease; this gives 2 HEART risk-component points regardless of risk-factor count."))
         if history_val is None:
             heart_missing.append(ClinicalFieldRequirement(
                 field_key="history_score",
@@ -183,7 +188,8 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation, 
                 ecg_score=ecg_val,
                 age=age,
                 risk_factors_count=rf_val,
-                troponin_score=trop_val
+                troponin_score=trop_val,
+                atherosclerotic_disease=disease_val
             )
             new_risk_scores.append(heart_score)
 
@@ -209,10 +215,10 @@ def _calculate_triage(state: ClinicalState, presentation: ClinicalPresentation, 
         if bun_val is None:
             curb_missing.append(ClinicalFieldRequirement(
                 field_key="bun_mg_dl",
-                label="Blood Urea Nitrogen (BUN)",
+                label="Blood Urea Nitrogen (BUN, mg/dL)",
                 data_type="float",
                 required=True,
-                description="BUN level in mg/dL (>19 mg/dL is 1 point)"
+                description="Enter blood urea nitrogen in mg/dL, not urea mg/dL or mmol/L. Converted using 0.357 to mmol/L; greater than 7 mmol/L gives 1 point."
             ))
         if rr_val is None:
             curb_missing.append(ClinicalFieldRequirement(

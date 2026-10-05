@@ -11,7 +11,7 @@ def test_heart_score_low_risk():
         age=30,
         risk_factors_count=0,
         troponin_score=0
-    )
+    , atherosclerotic_disease=False)
     assert score.value == 0.0
     assert "band 0–3" in score.interpretation
 
@@ -24,7 +24,7 @@ def test_heart_score_high_risk():
         age=70,
         risk_factors_count=3,
         troponin_score=2
-    )
+    , atherosclerotic_disease=False)
     assert score.value == 10.0
     assert "band 7–10" in score.interpretation
 

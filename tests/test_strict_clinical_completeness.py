@@ -93,7 +93,7 @@ def test_3_chest_pain_no_heart_inputs_requests_all_missing_heart_no_heart_score(
     req = result["pending_data_requests"][0]
     assert req.pathway_name == "HEART Score Assessment"
     field_keys = [f.field_key for f in req.required_fields]
-    assert set(field_keys) == {"history_score", "ecg_score", "troponin_score", "cardiac_risk_factors_count"}
+    assert set(field_keys) == {"history_score", "ecg_score", "troponin_score", "cardiac_risk_factors_count", "atherosclerotic_disease"}
     assert result["current_step"] == "waiting_for_clinical_data"
 
     heart_scores = [s for s in result.get("risk_scores", []) if s.score_name == "HEART Score"]
@@ -130,7 +130,7 @@ def test_5_chest_pain_all_heart_inputs_calculates_heart_exact_values_no_defaults
         "[ACQUIRED CLINICAL DATA]: history_score = 2",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 1",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 2"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 2", "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
     ]
     result = triage_agent_node(base_state)
 
@@ -225,7 +225,7 @@ def test_9_chest_pain_and_dyspnea_sequential_blocking_requests(base_state):
     assert res1["current_step"] == "waiting_for_clinical_data"
 
     # Resolve HEART request
-    resp1 = {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2}
+    resp1 = {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2, "atherosclerotic_disease": False}
     resolved1 = resolve_request(req1, resp1)
     base_state["resolved_data_requests"] = [resolved1]
     base_state["pending_data_requests"] = []
@@ -270,7 +270,7 @@ def test_10_resolved_request_uses_clinician_response_does_not_ask_again(base_sta
             ClinicalFieldRequirement(field_key="cardiac_risk_factors_count", label="RF", data_type="int", required=True)
         ]
     )
-    resolved = resolve_request(req, {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2})
+    resolved = resolve_request(req, {"history_score": 2, "ecg_score": 1, "troponin_score": 0, "cardiac_risk_factors_count": 2, "atherosclerotic_disease": False})
     base_state["resolved_data_requests"] = [resolved]
 
     result = triage_agent_node(base_state)

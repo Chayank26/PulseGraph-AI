@@ -4,7 +4,7 @@ from src.tools.calculators import calculate_heart_score, calculate_curb65_score,
 
 @pytest.mark.parametrize('age,points', [(44,0),(45,1),(64,1),(65,2)])
 def test_heart_age_boundaries(age, points):
-    result = calculate_heart_score(0,0,age,0,0)
+    result = calculate_heart_score(0,0,age,0,0, atherosclerotic_disease=False)
     assert result.value == points
     assert result.details['review_status'] == 'PENDING_CLINICAL_REVIEW'
     assert result.details['source'].startswith('https://')
@@ -13,7 +13,7 @@ def test_heart_age_boundaries(age, points):
 @pytest.mark.parametrize('value', [True,-1,3,1.5,float('nan'),float('inf'),'1'])
 def test_invalid_heart_categories_are_rejected(value):
     with pytest.raises(ValueError):
-        calculate_heart_score(value,0,40,0,0)
+        calculate_heart_score(value,0,40,0,0, atherosclerotic_disease=False)
 
 
 @pytest.mark.parametrize('value', [None,0,1,'false','true'])

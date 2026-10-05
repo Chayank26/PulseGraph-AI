@@ -627,7 +627,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "no_imaging",
@@ -755,7 +756,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "no_imaging",
@@ -996,7 +998,8 @@
         "history_score": 0,
         "ecg_score": 0,
         "troponin_score": 0,
-        "cardiac_risk_factors_count": 0
+        "cardiac_risk_factors_count": 0,
+        "atherosclerotic_disease": false
       }
     ],
     "expected": {
@@ -1009,6 +1012,7 @@
           "agent": "triage",
           "pathway": "HEART Score Assessment",
           "fields": [
+            "atherosclerotic_disease",
             "cardiac_risk_factors_count",
             "ecg_score",
             "history_score",
@@ -1046,7 +1050,8 @@
         "history_score": 0,
         "ecg_score": 0,
         "troponin_score": "__unavailable__",
-        "cardiac_risk_factors_count": 0
+        "cardiac_risk_factors_count": 0,
+        "atherosclerotic_disease": false
       }
     ],
     "expected": {
@@ -1487,7 +1492,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "no_imaging",
@@ -1526,7 +1532,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "optional",
@@ -1565,7 +1572,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "uncertain",
@@ -1604,7 +1612,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "required",
@@ -1650,7 +1659,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "required",
@@ -1696,7 +1706,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "required",
@@ -1797,7 +1808,8 @@
         "[ACQUIRED CLINICAL DATA]: history_score = 0",
         "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
         "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
-        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0",
+        "[ACQUIRED CLINICAL DATA]: atherosclerotic_disease = false"
       ],
       "imaging_decision": {
         "decision": "no_imaging",
