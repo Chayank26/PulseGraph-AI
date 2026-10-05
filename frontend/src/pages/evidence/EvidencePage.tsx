@@ -36,13 +36,13 @@ export const EvidencePage: React.FC = () => {
       <div className="evidence-banner">
         <div>
           <div className="evidence-banner-meta">
-            AGENT 04 • PUBMED & CLINICAL GUIDELINE VECTOR RAG
+            AGENT 04 • VERSIONED LOCAL PASSAGE RETRIEVAL
           </div>
           <h1 className="evidence-banner-title">
             EVIDENCE RAG AGENT
           </h1>
           <p className="evidence-banner-subtitle">
-            Retrieves peer-reviewed PubMed literature, AHA/ACC/ESC clinical guidelines, and vector citations.
+            Retrieves related passages from a small local collection. A match does not establish a diagnosis.
           </p>
         </div>
 
@@ -52,6 +52,12 @@ export const EvidencePage: React.FC = () => {
         </div>
       </div>
 
+      <div className="text-xs space-y-2">
+        <p>Retrieval: {session.state.presentation?.evidence_review?.status || 'NOT RUN'}</p>
+        <p>{session.state.presentation?.evidence_review?.reason}</p>
+        {session.state.presentation?.evidence_review?.limitations.map((text, i) => <p key={i}>{text}</p>)}
+        {session.state.presentation?.evidence_review?.claims.map((claim, i) => <p key={i}>{claim.claim}: {claim.status} — {claim.reason}</p>)}
+      </div>
       {/* Main Evidence Workspace */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -59,13 +65,13 @@ export const EvidencePage: React.FC = () => {
             <BookOpen size={16} className="text-black" />
             <span>RETRIEVED GUIDELINES & CITATIONS ({evidenceList.length})</span>
           </h3>
-          <span className="text-xs font-mono text-[#8C8A7B]">VECTOR EMBEDDING MATCH SCORE THRESHOLD &gt; 0.85</span>
+          <span className="text-xs font-mono text-[#8C8A7B]">TOPIC MATCHES — SUPPORT NOT VERIFIED</span>
         </div>
 
         <div className="space-y-6">
           {evidenceList && evidenceList.length > 0 ? (
             evidenceList.map((item, idx) => {
-              const matchPct = item.relevance_score ? Math.round(item.relevance_score * 100) : 90;
+
               return (
                 <div
                   key={idx}
@@ -83,7 +89,7 @@ export const EvidencePage: React.FC = () => {
                     </div>
 
                     <div className="evidence-rel-badge">
-                      {matchPct}% VECTOR RELEVANCE MATCH
+                      {item.support_status || 'UNASSESSED'}
                     </div>
                   </div>
 
@@ -94,16 +100,17 @@ export const EvidencePage: React.FC = () => {
                     </p>
                   </div>
 
+                  <p className="text-xs">Related candidate: {item.claim || 'Unspecified'}<br />Version: {item.source_version || 'Unrecorded'}<br />Verified: {item.verified_on || 'Unrecorded'}; retrieved: {item.retrieved_at || 'Unrecorded'}<br />Passage hash: {item.content_sha256 || 'Unrecorded'}</p>
                   {item.url_or_doi && (
                     <div className="pt-2 flex items-center justify-between text-xs font-mono text-[#66655C]">
-                      <span>DOI / PubMed ID: {item.url_or_doi}</span>
+                      <span>Source: {item.url_or_doi}</span>
                       <a
-                        href={`https://doi.org/${item.url_or_doi}`}
+                        href={/^https?:\/\//.test(item.url_or_doi) ? item.url_or_doi : `https://doi.org/${encodeURI(item.url_or_doi)}`}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-1 font-bold text-black hover:underline uppercase text-[11px]"
                       >
-                        <span>View Peer-Reviewed Reference</span>
+                        <span>View Source</span>
                         <ExternalLink size={12} />
                       </a>
                     </div>
@@ -113,7 +120,7 @@ export const EvidencePage: React.FC = () => {
             })
           ) : (
             <div className="bg-white border border-[#DCD8BE] rounded-2xl p-12 text-center text-xs font-mono text-[#8C8A7B]">
-              Evidence RAG retrieval pending... Run workflow pipeline to search PubMed & clinical guideline indices.
+              No usable passages available. Check retrieval status and coverage below.
             </div>
           )}
         </div>

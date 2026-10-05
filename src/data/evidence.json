@@ -1,0 +1,27 @@
+{
+  "version": "evidence-seed-v1",
+  "documents": [
+    {
+      "id": "nice-ng158-1.1.17",
+      "title": "Venous thromboembolic diseases: diagnosis, management and thrombophilia testing",
+      "publisher": "NICE",
+      "url": "https://www.nice.org.uk/guidance/ng158/chapter/Recommendations",
+      "source_version": "NG158 recommendation 1.1.17 [2012]; accessed 2026-10-05",
+      "verified_on": "2026-10-05",
+      "review_due": "2027-01-03",
+      "topics": ["pulmonary", "embolism", "wells", "pe"],
+      "passage": "If PE is suspected, use the 2‑level PE Wells score (table 2) to estimate the clinical probability of PE."
+    },
+    {
+      "id": "aha-chest-pain-2021-summary",
+      "title": "2021 Guideline for the Evaluation and Diagnosis of Chest Pain",
+      "publisher": "American Heart Association",
+      "url": "https://professional.heart.org/en/science-news/2021-guideline-for-the-evaluation-and-diagnosis-of-chest-pain",
+      "source_version": "Official summary updated 2021-10-28; accessed 2026-10-05",
+      "verified_on": "2026-10-05",
+      "review_due": "2027-01-03",
+      "topics": ["chest", "pain", "coronary", "syndrome", "nstemi"],
+      "passage": "Structured Risk Assessment Should Be Used."
+    }
+  ]
+}

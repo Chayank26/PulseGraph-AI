@@ -404,3 +404,20 @@ Clinical review and assay/category sign-off remain pending; see the rule audit.
 Next: Phase 9 — traceable evidence retrieval, with source provenance and explicit
 insufficient-support outcomes. The clinical-review requirement is not satisfied by
 the completed software tests.
+
+## Phase 9A: traceable local passage retrieval (completed)
+
+Replaced fixed differential-to-citation branches and invented relevance scores
+with a versioned local collection and deterministic topic-overlap retrieval.
+Two short official-source excerpts seed the collection. Per-candidate outcomes,
+source versions, timestamps and content hashes persist with results. Missing,
+invalid, unmatched and out-of-review-date sources produce explicit limitations;
+retrieved passages are related context only, never diagnostic confirmation.
+Evidence UI shows provenance and actual status, with correct source links and
+no fabricated percentage. Generated metadata is excluded from input fingerprints;
+reevaluation invalidates evidence. No database migration or live network service.
+
+316 selected tests and frontend build passed. Clinical retrieval quality and
+browser interactions remain untested. See `docs/clinical/evidence-retrieval.md`.
+Phase 9 is split: next 9B adds controlled source updates and claim-support review
+contracts/evaluation. Comprehensive evidence grounding is not yet implemented.

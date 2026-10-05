@@ -94,6 +94,14 @@ class SafetyFlag(BaseModel):
 
 
 class ClinicalEvidence(BaseModel):
+    document_id: Optional[str] = None
+    claim_id: Optional[str] = None
+    claim: Optional[str] = None
+    support_status: str = 'UNASSESSED'
+    source_version: Optional[str] = None
+    verified_on: Optional[str] = None
+    retrieved_at: Optional[str] = None
+    content_sha256: Optional[str] = None
     """Retrieved medical literature, guideline snippet, or trial citation."""
     title: str
     authors: Optional[str] = None

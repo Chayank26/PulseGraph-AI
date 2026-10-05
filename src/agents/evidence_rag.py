@@ -1,76 +1,13 @@
-import logging
-from typing import Dict, Any, List
-from src.core.state import ClinicalState, ClinicalEvidence, AuditEntry
-
-logger = logging.getLogger("PulseGraph.EvidenceRAGAgent")
+"""Retrieve traceable local passages without asserting diagnostic validation."""
+from src.core.state import AuditEntry
+from src.core.evidence import retrieve
 
 
-def evidence_rag_agent_node(state: ClinicalState) -> Dict[str, Any]:
-    """
-    Evidence RAG Agent Node:
-    Retrieves clinical practice guidelines, peer-reviewed literature citations,
-    and institutional evidence to validate proposed differential diagnoses.
-    """
-    logger.info("Running EvidenceRAGAgent to ground recommendations with medical evidence.")
-    
-    differentials = state.get("differentials", [])
-    retrieved_evidence: List[ClinicalEvidence] = []
-
-    for diff in differentials:
-        if "Pulmonary Embolism" in diff.condition_name:
-            retrieved_evidence.append(
-                ClinicalEvidence(
-                    title="2019 ESC Guidelines for the diagnosis and management of acute pulmonary embolism",
-                    authors="Konstantinides SV, et al.",
-                    source="European Heart Journal / PubMed",
-                    url_or_doi="10.1093/eurheartj/ehz405",
-                    snippet="CT pulmonary angiography is the diagnostic imaging modality of choice in patients with high clinical probability of PE or positive D-dimer.",
-                    relevance_score=0.95
-                )
-            )
-        elif "Acute Coronary Syndrome" in diff.condition_name:
-            retrieved_evidence.append(
-                ClinicalEvidence(
-                    title="2021 AHA/ACC Guideline for the Evaluation and Diagnosis of Chest Pain",
-                    authors="Gulati M, et al.",
-                    source="Journal of the American College of Cardiology",
-                    url_or_doi="10.1016/j.jacc.2021.07.053",
-                    snippet="In patients with acute chest pain, high-sensitivity cardiac troponins are recommended to rapidly rule in or rule out myocardial injury.",
-                    relevance_score=0.94
-                )
-            )
-        elif "Hypertensive" in diff.condition_name or "Cardiomegaly" in diff.condition_name:
-            retrieved_evidence.append(
-                ClinicalEvidence(
-                    title="2022 AHA/ACC/HFSA Guideline for the Management of Heart Failure",
-                    authors="Heidenreich PA, et al.",
-                    source="Circulation / American Heart Association",
-                    url_or_doi="10.1161/CIR.0000000000001063",
-                    snippet="Patients with radiographic cardiomegaly and hypertension should undergo prompt echocardiographic assessment of ventricular ejection fraction and geometry.",
-                    relevance_score=0.96
-                )
-            )
-        elif "Pleural Effusion" in diff.condition_name:
-            retrieved_evidence.append(
-                ClinicalEvidence(
-                    title="BTS Clinical Statement on the Investigation and Management of Pleural Effusion",
-                    authors="Roberts ME, et al.",
-                    source="Thorax / BMJ",
-                    url_or_doi="10.1136/thorax-2022-219784",
-                    snippet="Thoracic ultrasound and diagnostic fluid analysis are recommended to characterize blunted costophrenic angles and rule out parapneumonic exudates.",
-                    relevance_score=0.91
-                )
-            )
-
-    audit_entry = AuditEntry(
-        agent_name="EvidenceRAGAgent",
-        action="EVIDENCE_RETRIEVAL",
-        summary=f"Retrieved {len(retrieved_evidence)} clinical guideline citations.",
-        metadata={"citations_retrieved": len(retrieved_evidence)}
-    )
-
-    return {
-        "evidence": retrieved_evidence,
-        "audit_trail": [audit_entry],
-        "current_step": "evidence_retrieved"
-    }
+def evidence_rag_agent_node(state):
+    evidence, review = retrieve(state.get('differentials', []))
+    presentation = dict(state.get('presentation') or {})
+    presentation['evidence_review'] = review
+    return {'evidence': evidence, 'presentation': presentation,
+        'audit_trail': [AuditEntry(agent_name='EvidenceRAGAgent', action='EVIDENCE_RETRIEVAL',
+            summary=f"Local passage retrieval: {review['status']}; {len(evidence)} passages.", metadata=review)],
+        'current_step': 'evidence_retrieved'}
