@@ -249,3 +249,57 @@ The conservative residual-text check can also flag benign unfamiliar wording;
 comprehensive language understanding and independent clinical validation remain
 outside the demonstrated scope. No migration is needed: fragment fields default
 to empty for older persisted presentations.
+
+## Phase 7A: structured diagnostic inputs (completed)
+
+Split Phase 7 into two reviewable increments. Phase 7A introduces a typed
+DiagnosticContext carrying the validated presentation, exact source spans,
+demographics/history/medications/allergies, available vitals and missing vital
+fields, calculator results, applicability decisions, imaging plan/report, and
+coverage limitations. The diagnostic audit records the context used for the run.
+When no saved presentation exists, bounded extraction supplies a clearly marked
+legacy fallback. A saved triage presentation remains authoritative.
+
+The existing chest-pain and breathlessness candidate branches now require current
+positive assertions. Absent, historical, other-person, uncertain, and conflicting
+findings do not activate them. History-only and legacy simulated-imaging branches
+were removed. Reports are retained without automatic interpretation; absence of
+imaging is not normal imaging. Candidate evidence quotes only actual positive
+source mentions. Unsupported probability labels, diagnosis codes and fixed
+workup recommendations were removed from these demonstration candidates pending
+clinical audit. These remain unvalidated candidate rules, not a diagnostic model.
+
+Differentials now replace the previous graph result, including an empty result,
+instead of accumulating across reevaluations. This does not yet invalidate stored
+outputs immediately when upstream inputs change. Focused verification: 233 tests
+passed, with one existing Starlette TestClient deprecation warning. No migration
+or model/network service is introduced.
+
+### Phase 7B: result freshness and frontend integration (next)
+
+- Track the input revision used for diagnostic outputs and propagate invalidation
+  through persisted results, downstream evidence, and clinician approval.
+- Ensure changed inputs are re-extracted/reassessed before diagnostic reruns;
+  Phase 7A deliberately trusts the supplied triage snapshot.
+- Repair the existing frontend/backend differential schema mismatch (frontend
+  expects disease_name and percentage likelihood; backend supplies condition_name
+  and a textual likelihood). Display “Not estimated” without invented percentages.
+- Expose context limitations and source evidence in diagnostic/review views.
+- Verify API persistence, rerun/resume behavior and review freshness end to end.
+
+### Subsequent roadmap
+
+8. Inventory, source-check and clinically review deterministic rule semantics.
+9. Implement traceable evidence retrieval with explicit insufficient support.
+10. Add a bounded, schema-validated, evidence-grounded differential agent.
+11. Add targeted follow-up questions with missing/unavailable handling and limits.
+12. Connect clinician-confirmed imaging decisions to assessment questions.
+13. Replace obsolete medication services and make coverage/failure explicit.
+14. Add one clinically specified non-cardiopulmonary pathway.
+15. Improve the consolidated clinician review workspace and versioned approval.
+16. Independent clinical annotation, workflow evaluation and recovery testing.
+
+Each increment includes regression checks and a stop for review with a short
+suggested commit message. Independent clinical review and data/provider decisions
+remain prerequisites where relevant; passing software tests does not establish
+clinical validity. The manuscript remains its historical implementation snapshot.

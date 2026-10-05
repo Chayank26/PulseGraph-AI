@@ -257,7 +257,7 @@ class ClinicalState(TypedDict):
     raw_notes: Annotated[List[str], merge_list]
     vitals: Optional[VitalSigns]
     risk_scores: Annotated[List[RiskScore], merge_risk_scores]
-    differentials: Annotated[List[DiagnosticDifferential], merge_list]
+    differentials: List[DiagnosticDifferential]
     imaging_data: Optional[ImagingData]
     safety_flags: Annotated[List[SafetyFlag], merge_list]
     symbolic_overrides: Annotated[List[SymbolicOverrideFlag], merge_list]
