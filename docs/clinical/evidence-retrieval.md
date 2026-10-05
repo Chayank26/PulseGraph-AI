@@ -48,3 +48,35 @@ Next Phase 9B: controlled source ingestion/update tooling, provenance checks and
 reviewable diffs; expand the collection under source/licensing constraints; define
 claim-support review contracts and independently annotated retrieval evaluation.
 Model-based support checking must not equate topical similarity with entailment.
+
+## Phase 9B1 — controlled update reports and claim-review contract
+
+Run `venv/bin/python -m scripts.review_evidence path/to/proposed.json` to compare
+a proposed collection against the active collection. `--current` selects another
+baseline. The command is read-only: it prints added/removed/changed records with
+full before/after content and both file hashes. Exit 1 indicates invalid input,
+stale dates, malformed topics, non-HTTPS sources or changed content without a
+version change. Exit 0 means technical validation only. It does not confirm source
+identity, passage accuracy, currency, licensing or clinical correctness.
+
+Update procedure: prepare a separate proposed JSON; verify each passage, date,
+version and source URL against the original publisher; check permission to include
+it; inspect the report; replace the active file through ordinary reviewed source
+control. Do not extend review dates without checking the source. No automatic
+fetch, overwrite, publication or clinical approval is performed. The active seed
+collection remains unchanged in this increment.
+
+`ClaimReview` records an exact claim, document ID, corpus and passage hashes,
+reviewer attribution, date, rationale and one of DIRECT_SUPPORT, PARTIAL_SUPPORT,
+CONFLICTING or INSUFFICIENT_SUPPORT. Validation rejects changed claims, changed
+collections, missing/changed passages and out-of-date reviews. These are recorded
+judgments, not computed entailment. Reviewer names are unverified strings in this
+offline contract, explicitly reported as unauthenticated. A valid record therefore
+cannot upgrade live retrieval output or authorize clinical use. The live workflow
+continues to label all matches RELATED_CONTEXT_ONLY.
+
+Tests exercise all four verdicts with synthetic judgments, binding/staleness,
+source removal, review-date expiry, version requirements, and CLI no-write/error
+behavior. These are contract tests, not an independently annotated support-quality
+benchmark. Phase 9B2 remains: authenticated review workflow, controlled ingestion,
+expanded source coverage and independent claim-support/retrieval evaluation.

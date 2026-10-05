@@ -421,3 +421,16 @@ reevaluation invalidates evidence. No database migration or live network service
 browser interactions remain untested. See `docs/clinical/evidence-retrieval.md`.
 Phase 9 is split: next 9B adds controlled source updates and claim-support review
 contracts/evaluation. Comprehensive evidence grounding is not yet implemented.
+
+## Phase 9B1: source-update reports and claim-review contracts (completed)
+
+Added read-only `scripts.review_evidence` with full before/after record diffs,
+content hashes, version/date/topic checks and nonzero failure exits. Added an
+offline four-verdict claim-review schema bound to exact claim/corpus/passage and
+review dates. Recorded reviewer names are not authenticated and cannot upgrade
+runtime evidence support. No new medical content or live network access introduced.
+
+72 focused tests passed across source review, retrieval, API freshness and synthetic
+triage evaluation. No frontend change. Source expansion and independent clinical
+support-quality evaluation remain incomplete. Next Phase 9B2 adds authenticated
+review integration and ingestion/evaluation work; live matches remain context only.
