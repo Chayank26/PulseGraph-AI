@@ -342,3 +342,28 @@ request locking mechanism; infrastructure recovery/concurrency testing remains
 Phase 16. Narrative feedback remains subject to bounded extraction and may cause
 conservative handoff. Diagnostic candidates and downstream clinical rules remain
 unvalidated demonstrations. Phase 8 is next: clinical-rule inventory and audit.
+
+## Phase 8A: clinical-rule inventory and symbolic restrictions (completed)
+
+Phase 8 is split into 8A (inventory and removal of unsupported treatment overrides)
+and 8B (calculator semantics, input contracts and urgency boundaries). The full
+inventory and source-check status are in `docs/clinical/rule-audit.md`.
+
+Four legacy symbolic rules are disabled: blanket beta-blocker withholding,
+procedure escalation from simulated pneumothorax findings, contrast contraindication
+from history keywords, and the mislabeled qSOFA/septic-shock treatment bundle.
+No replacement treatment logic is introduced. Runtime metadata and audit events
+explicitly report unavailable checks; symbolic and review views expose the
+limitation. The limited urgency screen remains separate. Historical saved rule
+outputs are not rewritten. Generated symbolic-review metadata is excluded from
+patient-input fingerprints so review approval remains consistent.
+
+Validation: focused regression suite (243 tests) passed; an additional API test
+checks availability persistence and approval compatibility. Frontend production
+build passed. Clinical approval is not claimed, and browser interaction was not
+tested. Active calculator interpretation strings and medication-module rules still
+require the explicitly documented follow-up audit; Phase 8 as a whole is unfinished.
+
+Next: Phase 8B — verify calculator source definitions, repair input gaps, remove
+unsupported probabilities/disposition text, attach provenance and test boundaries;
+reconcile medication-module vital alerts with the existing urgency screen.

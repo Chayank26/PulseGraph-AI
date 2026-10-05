@@ -1,30 +1,19 @@
-import logging
-from typing import Dict, Any, List
-from src.core.state import ClinicalState, SymbolicOverrideFlag, AuditEntry
-from src.core.symbolic_rules import evaluate_symbolic_rules
-
-logger = logging.getLogger("PulseGraph.SymbolicGuardrailAgent")
+"""Expose symbolic-rule availability without claiming a completed safety check."""
+from copy import deepcopy
+from src.core.state import ClinicalState, AuditEntry
+from src.core.symbolic_rules import evaluate_symbolic_rules, SYMBOLIC_RULE_REVIEW
 
 
-def symbolic_guardrail_agent_node(state: ClinicalState) -> Dict[str, Any]:
-    """
-    Deterministic Symbolic Guardrail Node:
-    Runs strict code-based clinical rule trees over patient vitals, medications,
-    diagnostic differentials, and imaging findings to generate non-negotiable overrides.
-    """
-    logger.info("Running Symbolic Guardrail Node (Neuro-Symbolic Override Engine)...")
-    
-    overrides: List[SymbolicOverrideFlag] = evaluate_symbolic_rules(state)
-
-    audit_entry = AuditEntry(
-        agent_name="SymbolicGuardrailAgent",
-        action="SYMBOLIC_RULE_AUDIT",
-        summary=f"Evaluated deterministic decision tree rules. Generated {len(overrides)} symbolic override flags.",
-        metadata={"symbolic_overrides_count": len(overrides)}
-    )
-
+def symbolic_guardrail_agent_node(state: ClinicalState):
+    review = deepcopy(SYMBOLIC_RULE_REVIEW)
+    presentation = dict(state.get('presentation') or {})
+    presentation['symbolic_review'] = review
     return {
-        "symbolic_overrides": overrides,
-        "audit_trail": [audit_entry],
-        "current_step": "symbolic_guardrails_evaluated"
+        'symbolic_overrides': evaluate_symbolic_rules(state),
+        'presentation': presentation,
+        'audit_trail': [AuditEntry(agent_name='SymbolicGuardrailAgent',
+            action='SYMBOLIC_RULES_UNAVAILABLE',
+            summary='Four legacy treatment overrides disabled pending clinical review; no symbolic safety assessment performed.',
+            metadata=review)],
+        'current_step': 'symbolic_guardrails_evaluated',
     }

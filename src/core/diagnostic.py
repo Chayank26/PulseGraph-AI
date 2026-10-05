@@ -50,7 +50,7 @@ def input_fingerprint(state):
     inputs = {key: state.get(key) for key in (
         'demographics', 'raw_notes', 'vitals', 'pathway_decisions',
         'imaging_decision', 'imaging_response', 'image_path', 'urgency_context')}
-    inputs['presentation'] = {k: v for k, v in (state.get('presentation') or {}).items() if k != 'diagnostic_review'}
+    inputs['presentation'] = {k: v for k, v in (state.get('presentation') or {}).items() if k not in ('diagnostic_review', 'symbolic_review')}
     inputs['risk_scores'] = [{k: v for k, v in encode(score).items() if k != 'calculated_at'} for score in state.get('risk_scores', [])]
     return hashlib.sha256(json.dumps(inputs, default=encode, sort_keys=True).encode()).hexdigest()
 

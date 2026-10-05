@@ -199,6 +199,7 @@ export interface ImagingPlan {
 }
 
 export interface ClinicalPresentation {
+  symbolic_review?: { status: string; limitations: string[]; rules: { rule_id: string; status: string; reason: string }[] };
   diagnostic_review?: { status: string; input_fingerprint?: string; limitations?: string[] };
   imaging_plan?: ImagingPlan | null;
   routing?: {

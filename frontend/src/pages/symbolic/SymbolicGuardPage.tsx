@@ -27,6 +27,7 @@ export const SymbolicGuardPage: React.FC = () => {
     );
   }
 
+  const review = session.state.presentation?.symbolic_review;
   const overrides = session.state.symbolic_overrides || [];
 
 
@@ -43,13 +44,13 @@ export const SymbolicGuardPage: React.FC = () => {
             SYMBOLIC GUARDRAIL AGENT
           </h1>
           <p className="symbolic-banner-subtitle">
-            Evaluates non-negotiable deterministic safety rules independently of probabilistic LLMs.
+            Legacy symbolic treatment rules are unavailable pending clinical review.
           </p>
         </div>
 
         <div className="symbolic-banner-badge">
           <ShieldCheck size={16} />
-          <span>STATUS: ACTIVE & ENFORCED</span>
+          <span>STATUS: UNAVAILABLE — REVIEW PENDING</span>
         </div>
       </div>
 
@@ -59,7 +60,7 @@ export const SymbolicGuardPage: React.FC = () => {
           Why Deterministic Symbolic Guardrails?
         </h3>
         <p className="text-xs text-[#4A4943] leading-relaxed font-sans font-normal max-w-4xl">
-          Unlike pure Large Language Model systems that rely solely on probabilistic pattern matching, PulseGraph enforces strict symbolic rule engines. If a probabilistic LLM recommendation violates a deterministic medical safety threshold (such as heparin dosage caps, absolute allergy contraindications, or organ clearance limits), the Symbolic Guardrail automatically triggers a mandatory override and requires explicit clinician authorization.
+          Four legacy treatment overrides have been disabled. No symbolic alerts does not establish patient safety. The separate limited urgency screen remains available; clinician assessment is required.
         </p>
       </div>
 
@@ -67,10 +68,11 @@ export const SymbolicGuardPage: React.FC = () => {
       <div className="space-y-6">
         <h3 className="font-serif uppercase tracking-widest text-xs font-bold text-[#66655C] flex items-center gap-2">
           <Terminal size={16} className="text-black" />
-          <span>EVALUATED DETERMINISTIC SYMBOLIC RULES ({overrides.length})</span>
+          <span>RECORDED SYMBOLIC OVERRIDES ({overrides.length})</span>
         </h3>
 
         <div className="space-y-6">
+          {review?.rules.map(rule => <div key={rule.rule_id} className="p-3 border rounded text-xs"><strong>{rule.rule_id}: {rule.status}</strong><p>{rule.reason}</p></div>)}
           {overrides && overrides.length > 0 ? (
             overrides.map((rule, idx) => (
               <div
@@ -115,7 +117,7 @@ export const SymbolicGuardPage: React.FC = () => {
             ))
           ) : (
             <div className="bg-white border border-[#DCD8BE] rounded-2xl p-12 text-center text-xs font-mono text-[#8C8A7B]">
-              No deterministic symbolic rule overrides triggered for this patient session.
+              Symbolic treatment checks are unavailable pending clinical review. No safety conclusion can be drawn from this empty list.
             </div>
           )}
         </div>

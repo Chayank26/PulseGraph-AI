@@ -240,6 +240,7 @@ export const ReviewPage: React.FC = () => {
                 </div>
               )}
 
+              <p className="text-xs">{state.presentation?.symbolic_review?.limitations?.join(' ')}</p>
               <ul className="text-xs space-y-1">{state.presentation?.diagnostic_review?.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul>
               <button
                 onClick={handleApprove}
