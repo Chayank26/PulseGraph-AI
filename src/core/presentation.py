@@ -41,6 +41,7 @@ class UnrecognizedFragment(BaseModel):
 
 class ClinicalPresentation(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    diagnostic_review: dict | None = None
     imaging_plan: dict | None = None
     routing: RoutingPlan | None = None
     extractor_version: str = 'rules-v2'

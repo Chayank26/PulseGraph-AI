@@ -87,10 +87,10 @@ export const mockClinicalSession: ClinicalSession = {
     ],
     differentials: [
       {
-        disease_name: 'Acute Coronary Syndrome (NSTEMI / STEMI)',
+        condition_name: 'Acute Coronary Syndrome (NSTEMI / STEMI)',
         icd10_code: 'I24.9',
-        likelihood_percentage: 82,
-        clinical_rationale: 'High HEART score (7), ST-segment depression in anterior leads V2-V4, elevated initial troponin I (1.42 ng/mL), and classic retrosternal radiation.',
+        likelihood: 'Not estimated',
+        rationale: 'High HEART score (7), ST-segment depression in anterior leads V2-V4, elevated initial troponin I (1.42 ng/mL), and classic retrosternal radiation.',
         recommended_workup: [
           'Immediate 12-lead ECG repeat',
           'Urgent Cardiac Catheterization / PCI',
@@ -99,20 +99,20 @@ export const mockClinicalSession: ClinicalSession = {
         ]
       },
       {
-        disease_name: 'Pulmonary Embolism',
+        condition_name: 'Pulmonary Embolism',
         icd10_code: 'I26.99',
-        likelihood_percentage: 14,
-        clinical_rationale: 'Hypoxemia (SpO2 94%), tachypnea (RR 22), sub-segmental opacity on initial portable CXR, and moderate Wells PE score.',
+        likelihood: 'Not estimated',
+        rationale: 'Hypoxemia (SpO2 94%), tachypnea (RR 22), sub-segmental opacity on initial portable CXR, and moderate Wells PE score.',
         recommended_workup: [
           'STAT High-sensitivity D-Dimer',
           'CT Pulmonary Angiography (CTPA) if renal function allows'
         ]
       },
       {
-        disease_name: 'Acute Pericarditis',
+        condition_name: 'Acute Pericarditis',
         icd10_code: 'I30.9',
-        likelihood_percentage: 4,
-        clinical_rationale: 'Considered due to substernal chest pain, but lack of positional change relief or PR depression makes ACS far more probable.',
+        likelihood: 'Not estimated',
+        rationale: 'Considered due to substernal chest pain, but lack of positional change relief or PR depression makes ACS far more probable.',
         recommended_workup: [
           'Echocardiogram to assess pericardial effusion'
         ]

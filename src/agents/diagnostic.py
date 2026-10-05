@@ -1,7 +1,7 @@
 """Bounded legacy candidates using assertion-aware findings, pending clinical audit."""
 from typing import Dict, Any
 from src.core.state import ClinicalState, DiagnosticDifferential, AuditEntry
-from src.core.diagnostic import build_diagnostic_context
+from src.core.diagnostic import build_diagnostic_context, input_fingerprint
 
 
 def diagnostic_agent_node(state: ClinicalState) -> Dict[str, Any]:
@@ -26,7 +26,14 @@ def diagnostic_agent_node(state: ClinicalState) -> Dict[str, Any]:
                       'The recorded symptom does not establish this diagnosis. '
                       'No imaging findings or diagnostic probabilities have been inferred.',
             supporting_evidence=evidence, recommended_workup=[]))
+    presentation = context.presentation.model_dump(mode='json')
+    fingerprint = input_fingerprint({**state, 'presentation': presentation})
+    presentation['diagnostic_review'] = {'status': 'CURRENT', 'input_fingerprint': fingerprint,
+                                         'limitations': context.limitations}
     return {
+        'diagnostic_fingerprint': fingerprint,
+        'presentation': presentation,
+        'approved_by_clinician': False,
         'differentials': differentials,
         'audit_trail': [AuditEntry(agent_name='DiagnosticAgent', action='DIFFERENTIAL_GENERATION',
             summary=f'Generated {len(differentials)} unvalidated candidates from current positive findings.',

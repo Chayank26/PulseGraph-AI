@@ -54,10 +54,11 @@ export interface RiskScore {
 }
 
 export interface DiagnosticDifferential {
-  disease_name: string;
-  icd10_code: string;
-  likelihood_percentage: number;
-  clinical_rationale: string;
+  condition_name: string;
+  icd10_code?: string | null;
+  likelihood: string;
+  supporting_evidence?: string[];
+  rationale: string;
   recommended_workup: string[];
 }
 
@@ -198,6 +199,7 @@ export interface ImagingPlan {
 }
 
 export interface ClinicalPresentation {
+  diagnostic_review?: { status: string; input_fingerprint?: string; limitations?: string[] };
   imaging_plan?: ImagingPlan | null;
   routing?: {
     groups: Record<string, string[]>;

@@ -355,9 +355,9 @@ export const DashboardPage: React.FC = () => {
                   {state.differentials.slice(0, 3).map((diff, idx) => (
                     <li key={idx} className="dashboard-diff-item">
                       <span className="dashboard-diff-num">{idx + 1}.</span>
-                      <span>{diff.disease_name.split(' (')[0]}</span>{' '}
+                      <span>{diff.condition_name.split(' (')[0]}</span>{' '}
                       <span className="dashboard-diff-pct">
-                        ({diff.likelihood_percentage}%)
+                        ({diff.likelihood})
                       </span>
                     </li>
                   ))}

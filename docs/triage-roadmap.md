@@ -303,3 +303,42 @@ Each increment includes regression checks and a stop for review with a short
 suggested commit message. Independent clinical review and data/provider decisions
 remain prerequisites where relevant; passing software tests does not establish
 clinical validity. The manuscript remains its historical implementation snapshot.
+
+## Phase 7B: result freshness and frontend integration (completed)
+
+Diagnostic runs now record a stable fingerprint of session clinical inputs,
+structured presentation and score content (excluding generated timestamps and
+review metadata). The presentation stores current diagnostic review metadata and
+limitations, using the existing JSON persistence field without a migration.
+Approval requires a matching fingerprint at the human-review checkpoint; older
+checkpoints without one require reevaluation.
+
+Reevaluation clears diagnostic, evidence, safety and symbolic outputs and approval
+before graph execution, and persists the clearing before continuing. Feedback is
+retained as narrative for bounded extraction and passes through urgency and
+triage, so a newly unsupported complaint can stop with a handoff. Contradictory
+feedback requires clarification rather than silently replacing prior assertions.
+Answers received after diagnosis also clear derived results and restart assessment.
+Evidence, safety and symbolic output channels replace their previous lists rather
+than accumulate obsolete entries. Reevaluation beyond the existing iteration cap
+is rejected before altering results.
+
+Frontend diagnostic, dashboard, review and export consumers now use the backend
+condition_name/rationale/textual-likelihood fields. Removed the diagnostic
+percentage meter and probability claims; source quotations and limitations are
+visible. Approval is disabled for non-current or non-review states. The client
+clears old derived results while reevaluation is pending and refreshes on failure.
+Demo fixtures were updated to the same shape.
+
+Validation: 239 focused regression tests passed; production frontend build passed.
+New API tests cover persisted clearing on handoff, evidence replacement, successful
+approval after reassessment, rejection of mismatched fingerprints, and the
+iteration cap preserving current results. One existing Starlette deprecation
+warning remains. Browser interaction testing was not performed.
+
+Scope: fingerprints bind session snapshots, not subsequent edits to the separate
+patient directory. This is not an atomic cross-store transaction or a concurrent
+request locking mechanism; infrastructure recovery/concurrency testing remains
+Phase 16. Narrative feedback remains subject to bounded extraction and may cause
+conservative handoff. Diagnostic candidates and downstream clinical rules remain
+unvalidated demonstrations. Phase 8 is next: clinical-rule inventory and audit.

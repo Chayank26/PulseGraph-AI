@@ -243,6 +243,7 @@ class ClinicalState(TypedDict):
     Maintains immutable audit records, running diagnostic differentials,
     imaging analysis, symbolic override flags, retrieved evidence, and safety guardrails.
     """
+    diagnostic_fingerprint: Optional[str]
     patient_id: str
     demographics: Optional[PatientDemographics]
     urgency: Optional[Dict[str, Any]]
@@ -259,9 +260,9 @@ class ClinicalState(TypedDict):
     risk_scores: Annotated[List[RiskScore], merge_risk_scores]
     differentials: List[DiagnosticDifferential]
     imaging_data: Optional[ImagingData]
-    safety_flags: Annotated[List[SafetyFlag], merge_list]
-    symbolic_overrides: Annotated[List[SymbolicOverrideFlag], merge_list]
-    evidence: Annotated[List[ClinicalEvidence], merge_list]
+    safety_flags: List[SafetyFlag]
+    symbolic_overrides: List[SymbolicOverrideFlag]
+    evidence: List[ClinicalEvidence]
     audit_trail: Annotated[List[AuditEntry], merge_list]
     current_step: WorkflowStep
     error_logs: Annotated[List[str], merge_list]

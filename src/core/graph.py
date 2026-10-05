@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.core.state import ClinicalState, AuditEntry
+from src.core.diagnostic import invalidate_diagnostics
 from src.core.data_requests import get_pending_requests
 from src.agents.triage import triage_agent_node
 from src.agents.urgency import urgency_agent_node
@@ -144,8 +145,6 @@ def feedback_processor_node(state: ClinicalState) -> Dict[str, Any]:
 
     logger.info(f"Processing clinician feedback for iteration {current_count}/{MAX_ITERATIONS}. Doctor: {doctor_id}")
 
-    feedback_text = f"[PHYSICIAN FEEDBACK - LOOP {current_count} by {doctor_id}]: {notes}"
-
     audit_entry = AuditEntry(
         agent_name="FeedbackProcessorNode",
         action="FEEDBACK_RE_EVALUATION",
@@ -154,10 +153,11 @@ def feedback_processor_node(state: ClinicalState) -> Dict[str, Any]:
     )
 
     return {
-        "urgency_resume_node": "diagnostic",
+        **invalidate_diagnostics(state),
+        "urgency_resume_node": "triage",
         "active_data_request_id": None,
         "iteration_count": current_count,
-        "raw_notes": [feedback_text],
+        "raw_notes": [notes] if notes else [],
         "re_evaluation_requested": False,
         "audit_trail": [audit_entry],
         "current_step": "clinician_re_evaluation_requested"

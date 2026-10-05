@@ -35,13 +35,13 @@ export const DiagnosticPage: React.FC = () => {
       <div className="diagnostic-banner">
         <div>
           <div className="diagnostic-banner-meta">
-            AGENT 03 • PROBABILISTIC CLINICAL REASONING
+            AGENT 03 • STRUCTURED CLINICAL FINDINGS
           </div>
           <h1 className="diagnostic-banner-title">
             DIFFERENTIAL DIAGNOSIS AGENT
           </h1>
           <p className="diagnostic-banner-subtitle">
-            Synthesizes Bayesian probabilistic likelihoods, ICD-10 disease candidates, and clinical rationale.
+            Shows limited symptom-based candidates and their recorded source evidence.
           </p>
         </div>
 
@@ -55,10 +55,11 @@ export const DiagnosticPage: React.FC = () => {
       <div className="bg-[#FAF8F2] border border-[#E2DFC9] rounded-xl p-4 flex items-center gap-3 text-xs text-[#66655C]">
         <AlertTriangle size={18} className="text-[#E19B4C] flex-shrink-0" />
         <p>
-          <strong className="font-bold text-black uppercase">Decision Support Disclaimer:</strong> These differential candidates are AI-generated probabilistic estimations based on multimodal state inputs. Final diagnosis requires attending physician evaluation.
+          <strong className="font-bold text-black uppercase">Decision Support Disclaimer:</strong> These candidates use unvalidated demonstration rules; likelihood is not estimated. Final diagnosis requires attending physician evaluation.
         </p>
       </div>
 
+      <ul className="text-xs space-y-2">{session.state.presentation?.diagnostic_review?.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul>
       {/* Differentials List */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -66,7 +67,7 @@ export const DiagnosticPage: React.FC = () => {
             <Stethoscope size={16} className="text-black" />
             <span>SYNTHESIZED DIFFERENTIAL HYPOTHESES ({differentials.length})</span>
           </h3>
-          <span className="text-xs font-mono text-[#8C8A7B]">ICD-10 CLASSIFICATION ENCODED</span>
+          <span className="text-xs font-mono text-[#8C8A7B]">CLINICIAN REVIEW REQUIRED</span>
         </div>
 
         <div className="space-y-6">
@@ -82,36 +83,23 @@ export const DiagnosticPage: React.FC = () => {
                       {idx + 1}
                     </span>
                     <div>
-                      <h3 className="font-serif italic text-2xl font-bold text-black">{diff.disease_name}</h3>
-                      <span className="font-mono text-xs font-semibold text-[#66655C]">ICD-10: {diff.icd10_code}</span>
+                      <h3 className="font-serif italic text-2xl font-bold text-black">{diff.condition_name}</h3>
+                      <span className="font-mono text-xs font-semibold text-[#66655C]">ICD-10: {diff.icd10_code || 'Not assigned'}</span>
                     </div>
                   </div>
 
                   <div className="diagnostic-pct-badge">
-                    {diff.likelihood_percentage}% LIKELIHOOD
+                    {diff.likelihood} LIKELIHOOD
                   </div>
                 </div>
 
-                {/* Likelihood Probability Meter */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] font-mono font-bold text-[#66655C] uppercase">
-                    <span>Bayesian Probability Estimate</span>
-                    <span>{diff.likelihood_percentage}%</span>
-                  </div>
-                  <div className="w-full bg-[#E2DFC9] h-2.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-black h-full transition-all duration-500"
-                      style={{ width: `${diff.likelihood_percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-
+                <ul>{diff.supporting_evidence?.map((item, i) => <li key={i} className="text-xs">{item}</li>)}</ul>
                 <div className="space-y-2 font-sans">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#66655C]">
                     Clinical Rationale
                   </h4>
                   <p className="text-xs text-[#1A1A1C] leading-relaxed font-normal bg-white border border-[#DCD8BE] rounded-xl p-4">
-                    {diff.clinical_rationale}
+                    {diff.rationale}
                   </p>
                 </div>
 
@@ -133,7 +121,7 @@ export const DiagnosticPage: React.FC = () => {
             ))
           ) : (
             <div className="bg-white border border-[#DCD8BE] rounded-2xl p-12 text-center text-xs font-mono text-[#8C8A7B]">
-              Differential diagnosis synthesis pending... Run workflow pipeline to compute probabilistic hypotheses.
+              Differential diagnosis synthesis pending... No candidates are available. Check workflow status and assessment limitations.
             </div>
           )}
         </div>

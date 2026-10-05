@@ -37,3 +37,28 @@ def build_diagnostic_context(state) -> DiagnosticContext:
         risk_scores=state.get('risk_scores', []), pathway_decisions=state.get('pathway_decisions') or {},
         missing_observations=[key for key in VitalSigns.model_fields if getattr(vitals, key, None) is None],
         limitations=limitations)
+
+
+def input_fingerprint(state):
+    """Stable fingerprint of clinical inputs, excluding generated output timestamps."""
+    import hashlib
+    import json
+    def encode(value):
+        if hasattr(value, 'model_dump'):
+            return value.model_dump(mode='json')
+        raise TypeError(type(value).__name__)
+    inputs = {key: state.get(key) for key in (
+        'demographics', 'raw_notes', 'vitals', 'pathway_decisions',
+        'imaging_decision', 'imaging_response', 'image_path', 'urgency_context')}
+    inputs['presentation'] = {k: v for k, v in (state.get('presentation') or {}).items() if k != 'diagnostic_review'}
+    inputs['risk_scores'] = [{k: v for k, v in encode(score).items() if k != 'calculated_at'} for score in state.get('risk_scores', [])]
+    return hashlib.sha256(json.dumps(inputs, default=encode, sort_keys=True).encode()).hexdigest()
+
+
+def invalidate_diagnostics(state):
+    presentation = dict(state.get('presentation') or {})
+    if presentation:
+        presentation['diagnostic_review'] = {'status': 'STALE', 'limitations': ['Inputs changed; reassessment is required.']}
+    return {'differentials': [], 'evidence': [], 'safety_flags': [], 'symbolic_overrides': [],
+            'approved_by_clinician': False, 'diagnostic_fingerprint': None,
+            'presentation': presentation or None}

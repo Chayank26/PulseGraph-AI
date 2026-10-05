@@ -106,13 +106,13 @@ export const ReviewPage: React.FC = () => {
             {primaryDiff ? (
               <div className="bg-white border-2 border-black rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-base text-black">{primaryDiff.disease_name}</span>
+                  <span className="font-bold text-base text-black">{primaryDiff.condition_name}</span>
                   <span className="font-mono text-xs font-bold text-black bg-[#D6E3F5] px-3 py-1 rounded-full border border-black">
-                    ICD-10: {primaryDiff.icd10_code} • {primaryDiff.likelihood_percentage}%
+                    ICD-10: {primaryDiff.icd10_code || 'Not assigned'} • {primaryDiff.likelihood}
                   </span>
                 </div>
                 <p className="text-xs text-[#4A4943] leading-relaxed font-sans">
-                  {primaryDiff.clinical_rationale}
+                  {primaryDiff.rationale}
                 </p>
               </div>
             ) : (
@@ -240,9 +240,10 @@ export const ReviewPage: React.FC = () => {
                 </div>
               )}
 
+              <ul className="text-xs space-y-1">{state.presentation?.diagnostic_review?.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul>
               <button
                 onClick={handleApprove}
-                disabled={submitting || session.status === 'APPROVED'}
+                disabled={submitting || session.status !== 'WAITING_FOR_CLINICIAN_REVIEW' || state.presentation?.diagnostic_review?.status !== 'CURRENT'}
                 className="w-full bg-[#1C3829] text-white py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black transition shadow-lg"
               >
                 <CheckCircle size={15} className="text-[#9DB08F]" />

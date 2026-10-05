@@ -14,9 +14,9 @@ export const EhrExportModal: React.FC<EhrExportModalProps> = ({ isOpen, onClose,
   if (!isOpen) return null;
 
   const topDifferential = session.state.differentials?.[0] || {
-    disease_name: 'Diagnostic Synthesis Pending',
+    condition_name: 'Diagnostic Synthesis Pending',
     icd10_code: 'R69',
-    likelihood_percentage: 0
+    likelihood: 'Not estimated'
   };
 
   const topRiskScore = session.state.risk_scores?.[0] || {
@@ -68,14 +68,14 @@ export const EhrExportModal: React.FC<EhrExportModalProps> = ({ isOpen, onClose,
               display: `Attending Physician ${session.doctor_id}`
             }
           ],
-          conclusion: `Primary Hypothesis: ${topDifferential.disease_name} (ICD-10: ${topDifferential.icd10_code}, Likelihood: ${topDifferential.likelihood_percentage}%). Calculated ${topRiskScore.score_name}: ${topRiskScore.score_value} (${topRiskScore.risk_level}).`,
+          conclusion: `Primary Hypothesis: ${topDifferential.condition_name} (ICD-10: ${topDifferential.icd10_code}, Likelihood: ${topDifferential.likelihood}). Calculated ${topRiskScore.score_name}: ${topRiskScore.score_value} (${topRiskScore.risk_level}).`,
           conclusionCode: [
             {
               coding: [
                 {
                   system: "http://hl7.org/fhir/sid/icd-10",
                   code: topDifferential.icd10_code,
-                  display: topDifferential.disease_name
+                  display: topDifferential.condition_name
                 }
               ]
             }

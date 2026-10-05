@@ -10,7 +10,8 @@ from src.core.state import (
     VitalSigns,
     ClinicianIdentity
 )
-from src.core.graph import build_clinical_graph
+from src.core.graph import build_clinical_graph, MAX_ITERATIONS
+from src.core.diagnostic import input_fingerprint, invalidate_diagnostics
 from src.core.data_requests import (
     resolve_request as core_resolve_request,
     apply_response_to_state,
@@ -251,9 +252,15 @@ class ClinicalWorkflowService:
                 summary="Clinician reviewed flagged observations and permitted assessment continuation.",
                 metadata={"doctor_id": reviewing_doctor_id, "request_id": request_id}))
 
+        if snapshot.values.get('diagnostic_fingerprint'):
+            state_updates.update(invalidate_diagnostics(snapshot.values))
+            state_updates.update(active_data_request_id=None, urgency_resume_node='triage')
+
         # Route from the review checkpoint back to the requesting agent.
         # Inferring the last writer (triage) would skip its unfinished scores.
         self.graph.update_state(thread_config, state_updates, as_node="data_request_review")
+
+        self._sync_audit_and_results(session, self.graph.get_state(thread_config).values)
 
         # Resume graph execution
         logger.info(f"Resuming graph after resolving data request [{request_id}].")
@@ -307,6 +314,10 @@ class ClinicalWorkflowService:
             raise ValueError("Clinical review actions require the human-review checkpoint; pending data or urgency review must be completed first.")
 
 
+        snapshot = self.graph.get_state(thread_config)
+        if not snapshot.values.get('diagnostic_fingerprint') or snapshot.values['diagnostic_fingerprint'] != input_fingerprint(snapshot.values):
+            raise WorkflowConflictError('Diagnostic results are stale. Request reevaluation before approval.')
+
         self.graph.update_state(
             thread_config,
             {
@@ -356,23 +367,28 @@ class ClinicalWorkflowService:
             raise ValueError("Clinical review actions require the human-review checkpoint; pending data or urgency review must be completed first.")
 
 
+        if self.graph.get_state(thread_config).values.get('iteration_count', 0) >= MAX_ITERATIONS:
+            raise WorkflowConflictError('Reevaluation limit reached; clinician takeover is required.')
+
         self.graph.update_state(
             thread_config,
             {
                 "authenticated_clinician": clinician,
                 "approved_by_clinician": False,
                 "re_evaluation_requested": True,
+                **invalidate_diagnostics(self.graph.get_state(thread_config).values),
                 "clinician_notes": notes
             }
         )
 
+        self._sync_audit_and_results(session, self.graph.get_state(thread_config).values)
         self.graph.invoke(None, config=thread_config)
 
         resumed_snapshot = self.graph.get_state(thread_config)
         resumed_values = resumed_snapshot.values
         next_step = resumed_snapshot.next[0] if resumed_snapshot.next else None
 
-        session_status = ("WAITING_FOR_CLINICAL_DATA" if next_step == "data_request_review" else
+        session_status = ("REQUIRES_CLINICIAN_ASSESSMENT" if resumed_values.get('current_step') in ('triage_manual_review_required', 'imaging_manual_review_required') else "WAITING_FOR_CLINICAL_DATA" if next_step == "data_request_review" else
                           "WAITING_FOR_CLINICIAN_REVIEW" if next_step == "human_review" else "RE_EVALUATION_IN_PROGRESS")
 
         self.sess_repo.update_session_status(

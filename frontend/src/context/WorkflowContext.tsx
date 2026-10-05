@@ -427,7 +427,19 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const reevaluateSession = async (notes?: string) => {
     if (!session) return;
-    await clinicalSessionsApi.reevaluateSession(session.session_id, { notes: notes ?? '' });
+    setSession(prev => prev ? { ...prev, state: { ...prev.state,
+      differentials: [], evidence: [], safety_flags: [], symbolic_overrides: [],
+      approved_by_clinician: false,
+      presentation: prev.state.presentation ? { ...prev.state.presentation,
+        diagnostic_review: { status: 'STALE', limitations: ['Reassessment requested.'] }
+      } : undefined
+    } } : prev);
+    try {
+      await clinicalSessionsApi.reevaluateSession(session.session_id, { notes: notes ?? '' });
+    } catch (error) {
+      await pollSessionState(session.session_id);
+      throw error;
+    }
     // The review endpoint resumes the graph; never start the session twice.
     await pollSessionState(session.session_id);
   };
