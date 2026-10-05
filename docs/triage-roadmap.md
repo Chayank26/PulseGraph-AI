@@ -476,3 +476,20 @@ claiming model-backed diagnostic quality or real-world benefit.
 Phase 10 verification: 357 focused tests passed; 49/49 strict workflow cases passed;
 frontend production build passed. The local adapter was tested with a stub transport,
 not a running model. Actual activation remains pending the deployment selection.
+
+## Phase 11: bounded targeted follow-up questions (completed)
+
+Valid diagnostic proposals can request optional clarification of existing missing
+observation fields. Questions name their candidate purpose, reuse known/answered
+values, preserve unknown versus unavailable, and allow clinician-directed review.
+Limits are three fields per round and two rounds per session. New measurements
+invalidate derived outputs and pass through urgency/triage again. Ownership and
+response validation apply at the API; followup state participates in freshness
+fingerprints. Prompt version is differential-v2. No database migration.
+
+Scope is the existing seven observation fields, not arbitrary generated questions
+or test orders. Abstention-only model outputs do not request clarification. Live
+model activation remains pending. See `docs/clinical/diagnostic-questions.md`.
+
+374 selected tests passed and frontend build passed. Next: Phase 12, imaging
+recommendations connected to assessment questions with clinician confirmation.

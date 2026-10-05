@@ -87,6 +87,31 @@ def validate_response(
         except ValueError as exc:
             return False, [str(exc)]
 
+    if request.requesting_agent == 'diagnostic':
+        allowed = {f.field_key for f in request.required_fields + request.optional_fields}
+        if set(response_data) - allowed:
+            return False, ['Unexpected diagnostic response fields.']
+        action = response_data.get('diagnostic_followup_action')
+        if action == 'proceed_to_review':
+            if any(v not in (None, '') for k, v in response_data.items() if k != 'diagnostic_followup_action'):
+                return False, ['Continuing without clarification cannot also submit measurements.']
+        elif action == 'provide_values':
+            for field in request.optional_fields:
+                value = response_data.get(field.field_key)
+                if value in ('__unknown__', '__unavailable__'):
+                    continue
+                number = parse_number(value)
+                if number is None:
+                    return False, ['Provide every requested observation or mark it unknown/unavailable.']
+                try:
+                    VitalSigns(**{field.field_key: number})
+                except ValueError:
+                    return False, ['Invalid diagnostic observation.']
+        else:
+            return False, ['Select how diagnostic assessment should continue.']
+    elif any(key.startswith('diagnostic_followup_') for key in response_data):
+        return False, ['Diagnostic controls require a diagnostic clarification request.']
+
     for req_field in request.required_fields:
         val = response_data.get(req_field.field_key)
         if val == UNAVAILABLE and req_field.allow_unavailable:
@@ -166,6 +191,14 @@ def apply_response_to_state(
     Applies validated clinician responses to state vitals, demographics, and clinical notes.
     """
     imaging_updates = {}
+    if 'diagnostic_followup_action' in response_data:
+        imaging_updates['diagnostic_followup_disposition'] = response_data['diagnostic_followup_action']
+        imaging_updates['diagnostic_followup_answers'] = {**(state.get('diagnostic_followup_answers') or {}),
+            **{k:v for k,v in response_data.items() if k in VitalSigns.model_fields and v not in (None, '')}}
+        response_data = {k:v for k,v in response_data.items() if k != 'diagnostic_followup_action'}
+        # Preserve unknown separately in resolved requests; do not coerce to a measurement.
+        response_data = {k:v for k,v in response_data.items() if v != '__unknown__' and v not in (None, '')}
+
     if "imaging_decision" in response_data:
         from src.core.imaging import decision_from_response
         imaging_updates["imaging_decision"] = decision_from_response(response_data).model_dump()

@@ -229,8 +229,8 @@ class ClinicalWorkflowService:
         if not target_req:
             raise ValueError(f"ClinicalDataRequest [{request_id}] not found in session pending requests.")
 
-        if target_req.requesting_agent in ("urgency_check", "imaging") and reviewing_doctor_id != session.doctor_id:
-            raise ValueError("Urgency and imaging decisions must be reviewed by the session's authenticated clinician.")
+        if target_req.requesting_agent in ("urgency_check", "imaging", "diagnostic") and reviewing_doctor_id != session.doctor_id:
+            raise ValueError("Urgency, imaging and diagnostic decisions must be reviewed by the session's authenticated clinician.")
 
         # Validate clinician input against field requirements
         validate_response(target_req, response_data)

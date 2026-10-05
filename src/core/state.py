@@ -254,6 +254,9 @@ class ClinicalState(TypedDict):
     Maintains immutable audit records, running diagnostic differentials,
     imaging analysis, symbolic override flags, retrieved evidence, and safety guardrails.
     """
+    diagnostic_followup_answers: Optional[Dict[str, Any]]
+    diagnostic_followup_rounds: int
+    diagnostic_followup_disposition: Optional[str]
     diagnostic_fingerprint: Optional[str]
     patient_id: str
     demographics: Optional[PatientDemographics]

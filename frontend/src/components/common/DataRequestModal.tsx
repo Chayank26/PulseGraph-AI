@@ -21,7 +21,8 @@ const DataRequestForm: React.FC = () => {
     setSubmitting(true);
     setError('');
     try {
-      await resolveDataRequest(activeRequest.request_id, formData);
+      const response = activeRequest.requesting_agent === 'diagnostic' && formData.diagnostic_followup_action === 'proceed_to_review' ? { diagnostic_followup_action: 'proceed_to_review' } : formData;
+      await resolveDataRequest(activeRequest.request_id, response);
       setFormData({});
     } catch {
       setError('Unable to save these answers. Check the values and try again.');
@@ -37,7 +38,7 @@ const DataRequestForm: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="bg-[#E19B4C] text-black text-xs font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5">
             <HelpCircle size={14} />
-            <span>CLINICAL DATA REQUIRED — {activeRequest.requesting_agent.toUpperCase()} AGENT</span>
+            <span>{activeRequest.requesting_agent === 'diagnostic' ? 'OPTIONAL CLARIFICATION' : 'CLINICAL DATA REQUIRED'} — {activeRequest.requesting_agent.toUpperCase()} AGENT</span>
           </div>
           <span className="text-[11px] font-mono text-[#66655C]">{activeRequest.request_id}</span>
         </div>
@@ -68,14 +69,19 @@ const DataRequestForm: React.FC = () => {
                 <p className="text-[11px] text-[#66655C] mb-2">{field.description}</p>
               )}
 
-              {field.allow_unavailable && (
+              {activeRequest.requesting_agent === 'diagnostic' && field.allow_unavailable ? (
+                <select aria-label={`${field.label} availability`} value={['__unknown__', '__unavailable__'].includes(formData[field.field_key]) ? formData[field.field_key] : ''}
+                  onChange={event => handleInputChange(field.field_key, event.target.value || undefined)}>
+                  <option value="">Enter a value</option><option value="__unknown__">Unknown</option><option value="__unavailable__">Unavailable</option>
+                </select>
+              ) : field.allow_unavailable && (
                 <label className="block text-xs mb-2">
                   <input type="checkbox" checked={formData[field.field_key] === '__unavailable__'}
                     onChange={event => handleInputChange(field.field_key, event.target.checked ? '__unavailable__' : undefined)} />
                   {' '}Unknown / unavailable — request clinician assessment
                 </label>
               )}
-              {formData[field.field_key] === '__unavailable__' ? (
+              {['__unknown__', '__unavailable__'].includes(formData[field.field_key]) ? (
                 <p className="text-xs">This information will remain unavailable; dependent assessment cannot be completed.</p>
               ) : field.data_type === 'enum' && field.options ? (
                 <select
