@@ -29,7 +29,7 @@ def test_synthetic_workflow(case):
 
 
 def test_errors_are_not_classified_as_known_gaps(monkeypatch):
-    case = next(case for case in CASES if case.known_gap)
+    case = CASES[0].model_copy(update={'known_gap': 'Injected evaluator integrity case'})
     def fail(_):
         raise RuntimeError('Injected runtime failure')
     monkeypatch.setattr(triage, 'replay', fail)
@@ -37,7 +37,7 @@ def test_errors_are_not_classified_as_known_gaps(monkeypatch):
 
 
 def test_fixed_known_gap_requires_reclassification(monkeypatch):
-    case = next(case for case in CASES if case.known_gap)
+    case = CASES[0].model_copy(update={'known_gap': 'Injected evaluator integrity case'})
     monkeypatch.setattr(triage, 'replay', lambda _: case.expected.model_dump(exclude_unset=True))
     assert triage.assess_case(case)['outcome'] == 'UNEXPECTED_PASS'
 

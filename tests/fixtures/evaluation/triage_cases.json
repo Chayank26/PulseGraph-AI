@@ -1769,8 +1769,7 @@
       "symptoms": {
         "chest_pain": "present"
       }
-    },
-    "known_gap": "Common paraphrase is outside the extraction vocabulary; current behavior is handoff without recognition."
+    }
   },
   {
     "id": "gap-partial-recognition",
@@ -1809,7 +1808,6 @@
     "expected": {
       "next_node": "END",
       "step": "triage_manual_review_required"
-    },
-    "known_gap": "An unrecognized concurrent concern is not detected when another symptom is recognized; supported work can proceed."
+    }
   }
 ]

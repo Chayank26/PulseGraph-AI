@@ -89,3 +89,46 @@ def test_conflict_is_persisted_and_clinician_answer_resumes_triage(client):
     assert result['presentation']['symptoms'][0]['status'] == 'present'
     assert result['presentation']['symptoms'][0]['clarification_source'] == 'symptom_present_breathlessness'
     assert client.get(path + '/data-requests').json()[0]['pathway_name'] == 'Assessment applicability'
+
+
+@pytest.mark.parametrize('text,status', [
+    ('pain in my chest','present'), ('Pain in the chest','present'),
+    ('My chest hurts','present'), ('No pain in my chest','absent'),
+    ('Previous pain in her chest','historical'), ('Father has pain in his chest','other_person'),
+    ('Possible pain in my chest','uncertain')])
+def test_chest_paraphrases_retain_context_and_exact_spans(text,status):
+    result = extract_presentation(text,[])
+    assert result.symptoms[0].symptom == 'chest_pain'
+    assert result.symptoms[0].status == status
+    mention = result.symptoms[0].mentions[0]
+    assert text[mention.start:mention.end] == mention.quote
+    assert not result.unrecognized_fragments
+
+
+@pytest.mark.parametrize('complaint,notes', [
+    ('chest pain and blurred vision',[]),
+    ('chest pain. Blurred vision',[]),
+    ('chest pain',['Blurred vision']),
+    ('blurred vision with chest pain',[]),
+    ('chest pain and ringing in my ears',[]),
+    ('pain in my chest; unusual sensation in my arm',[])])
+def test_partial_recognition_preserves_unknown_text_and_hands_off(complaint,notes):
+    from src.core.state import PatientDemographics
+    result = triage_agent_node({'demographics':PatientDemographics(patient_id='P',age=50,chief_complaint=complaint),
+        'pathway_decisions':{'heart':'applicable'}, 'raw_notes':notes+[
+            '[ACQUIRED CLINICAL DATA]: history_score = 0', '[ACQUIRED CLINICAL DATA]: ecg_score = 0',
+            '[ACQUIRED CLINICAL DATA]: troponin_score = 0', '[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0']})
+    assert result['current_step'] == 'triage_manual_review_required'
+    assert result['risk_scores'][0].score_name == 'HEART Score'
+    presentation = ClinicalPresentation.model_validate(result['presentation'])
+    assert presentation.unrecognized_fragments
+    assert any('Uninterpreted text' in reason for reason in presentation.routing.handoff_reasons)
+
+
+def test_unrecognized_span_validation_and_benign_attributes():
+    result = extract_presentation('Severe right chest pain for 2 days', ['Symptoms started today'])
+    assert not result.unrecognized_fragments
+    result = extract_presentation('chest pain and blurred vision',[]).model_dump()
+    result['unrecognized_fragments'][0]['quote'] = 'invented'
+    with pytest.raises(ValidationError):
+        ClinicalPresentation.model_validate(result)

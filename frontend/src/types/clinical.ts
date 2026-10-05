@@ -218,6 +218,7 @@ export interface ClinicalPresentation {
     }[];
   }[];
   unrecognized_sources: string[];
+  unrecognized_fragments?: { source_id: string; start: number; end: number; quote: string }[];
   limitations: string[];
 }
 

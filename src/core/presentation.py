@@ -32,11 +32,19 @@ class SymptomSummary(BaseModel):
     clarification_source: str | None = None
 
 
+class UnrecognizedFragment(BaseModel):
+    source_id: str
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+    quote: str
+
+
 class ClinicalPresentation(BaseModel):
     model_config = ConfigDict(extra='forbid')
     imaging_plan: dict | None = None
     routing: RoutingPlan | None = None
-    extractor_version: str = 'rules-v1'
+    extractor_version: str = 'rules-v2'
+    unrecognized_fragments: list[UnrecognizedFragment] = Field(default_factory=list)
     sources: list[SourceText]
     symptoms: list[SymptomSummary]
     unrecognized_sources: list[str]
@@ -63,6 +71,10 @@ class ClinicalPresentation(BaseModel):
                 for detail in (mention.time_course, mention.severity, mention.location):
                     if detail is not None and detail not in mention.context:
                         raise ValueError('Extracted attributes must be copied from source context')
+        for fragment in self.unrecognized_fragments:
+            text = sources.get(fragment.source_id)
+            if text is None or fragment.end <= fragment.start or text[fragment.start:fragment.end] != fragment.quote:
+                raise ValueError('Unrecognized fragments must match the supplied source text')
         if any(source not in sources for source in self.unrecognized_sources):
             raise ValueError('Unrecognized source references must exist')
         return self
@@ -70,11 +82,11 @@ class ClinicalPresentation(BaseModel):
 
 # Extraction vocabulary is independent of the currently available calculators.
 SYMPTOMS = {
-    'chest_pain': r'chest pain|chest discomfort|chest tightness',
+    'chest_pain': r'chest pain|chest discomfort|chest tightness|pain in (?:my |the |his |her )?chest|(?:my |the )?chest hurts',
     'breathlessness': r'shortness of breath|dyspn(?:ea|oea)|breathlessness|difficulty breathing',
     'leg_swelling': r'leg swelling|swollen leg(?:s)?',
     'dvt': r'dvt|deep vein thrombosis',
-    'abdominal_pain': r'abdominal pain|stomach pain|belly pain',
+    'abdominal_pain': r'abdominal pain|stomach pain|belly pain|pain in (?:my |the |his |her )?(?:abdomen|stomach|belly)',
     'headache': r'headache(?:s)?',
     'fever': r'fever|febrile',
     'cough': r'cough(?:ing)?',
@@ -83,7 +95,7 @@ SYMPTOMS = {
     'dizziness': r'dizziness|dizzy|lightheadedness',
     'weakness': r'weakness',
     'rash': r'rash',
-    'back_pain': r'back pain',
+    'back_pain': r'back pain|pain in (?:my |the |his |her )?back',
     'dysuria': r'dysuria|painful urination',
     'injury': r'injury|injuries|trauma',
 }
@@ -116,6 +128,23 @@ def _status(prefix: str, suffix: str) -> str:
     return status
 
 
+# Only discard known grammar/attributes, never an open-ended trailing phrase.
+# Remaining narrative is a coverage gap, not a new symptom or a negative finding.
+NEUTRAL = re.compile(
+    r"\b(?:patient|presents|presenting|with|reports|reporting|complains|complaint|symptoms?|"
+    r"of|in|the|a|an|my|his|her|and|or|also|has|have|had|is|was|are|were|"
+    r"episode|episodes|started|began|today|yesterday|currently|now|experiencing|"
+    r"present|absent|denied|not|resolved|for|since)\b", re.I)
+STRUCTURED_VALUE = re.compile(r"\b[a-z_]+=(?:[^\s,;]+)", re.I)
+
+
+def _has_unparsed_text(clause: str) -> bool:
+    residual = clause
+    for pattern in [*PATTERNS.values(), TIME, LOCATION, SEVERITY, CUES, STRUCTURED_VALUE, NEUTRAL]:
+        residual = pattern.sub(' ', residual)
+    return bool(re.search(r"[a-zA-Z]", residual))
+
+
 def extract_presentation(complaint: str, notes: list[str]) -> ClinicalPresentation:
     sources = [SourceText(source_id='chief_complaint', text=complaint)] if complaint.strip() else []
     # Structured answers and generated administrative/history notes are not symptom assertions.
@@ -124,6 +153,7 @@ def extract_presentation(complaint: str, notes: list[str]) -> ClinicalPresentati
             sources.append(SourceText(source_id=f'raw_notes[{i}]', text=note))
     mentions: dict[str, list[SymptomMention]] = {}
     unmatched = []
+    fragments = []
     for source in sources:
         found = False
         start = 0
@@ -141,6 +171,11 @@ def extract_presentation(complaint: str, notes: list[str]) -> ClinicalPresentati
                     quote=match.group(), context=clause.strip(),
                     time_course=time.group() if time else None, severity=severity.group() if severity else None, location=location.group() if location else None)
                 mentions.setdefault(key, []).append(mention)
+            if _has_unparsed_text(clause):
+                left = len(clause) - len(clause.lstrip())
+                right = len(clause.rstrip())
+                fragments.append(UnrecognizedFragment(source_id=source.source_id,
+                    start=start + left, end=start + right, quote=clause[left:right]))
             start = boundary.end() if boundary else end
         if not found:
             unmatched.append(source.source_id)
@@ -152,4 +187,4 @@ def extract_presentation(complaint: str, notes: list[str]) -> ClinicalPresentati
         else:
             status = next(s for s in ('present', 'uncertain', 'absent', 'historical', 'other_person') if s in statuses)
         symptoms.append(SymptomSummary(symptom=key, status=status, mentions=evidence))
-    return ClinicalPresentation(sources=sources, symptoms=symptoms, unrecognized_sources=unmatched)
+    return ClinicalPresentation(sources=sources, symptoms=symptoms, unrecognized_sources=unmatched, unrecognized_fragments=fragments)

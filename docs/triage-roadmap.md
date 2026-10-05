@@ -237,3 +237,15 @@ See `docs/evaluation/README.md` for commands, scope, limitations, and entry
 criteria for a new pathway. `docs/evaluation/triage-report.json` and `.md` record
 the baseline. No database migration or frontend change is required. The research
 paper remains the earlier Phase 4 snapshot, not a claim of these later results.
+
+### Extraction gap follow-up
+
+Rules-v2 adds bounded chest/abdominal/back pain paraphrases while preserving
+assertion context and exact source spans. Unparsed narrative fragments now retain
+source offsets and trigger clinician handoff even alongside a completed supported
+calculator. This closes both original Phase 6 gap cases without relabeling their
+expected outcomes. The corpus now has 49 passing cases and no known-gap markers.
+The conservative residual-text check can also flag benign unfamiliar wording;
+comprehensive language understanding and independent clinical validation remain
+outside the demonstrated scope. No migration is needed: fragment fields default
+to empty for older persisted presentations.

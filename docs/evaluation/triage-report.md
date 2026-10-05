@@ -2,7 +2,7 @@
 
 Developer-authored synthetic graph replay; not clinical accuracy, independent validation, API authorization, or persistence testing.
 
-Cases: **49**. Outcomes: `{"KNOWN_GAP": 2, "PASS": 47}`.
+Cases: **49**. Outcomes: `{"PASS": 49}`.
 
 Passing regression checks does not authorize clinical deployment or new pathways.
 
@@ -13,7 +13,7 @@ Passing regression checks does not authorize clinical deployment or new pathways
 | coverage boundaries | 6 | 0 | 0 |
 | data acquisition | 4 | 0 | 0 |
 | imaging decisions | 6 | 0 | 0 |
-| language challenges | 0 | 2 | 0 |
+| language challenges | 2 | 0 | 0 |
 | presentation groups | 9 | 0 | 0 |
 | supported calculations | 3 | 0 | 0 |
 | urgency precedence | 9 | 0 | 0 |
@@ -70,8 +70,8 @@ Passing regression checks does not authorize clinical deployment or new pathways
 | required-requires_clinician_assessment | PASS |  |
 | required-overridden | PASS |  |
 | unknown-complaint | PASS |  |
-| gap-paraphrase | KNOWN_GAP | Common paraphrase is outside the extraction vocabulary; current behavior is handoff without recognition. |
-| gap-partial-recognition | KNOWN_GAP | An unrecognized concurrent concern is not detected when another symptom is recognized; supported work can proceed. |
+| gap-paraphrase | PASS |  |
+| gap-partial-recognition | PASS |  |
 
 ## Expansion gate
 

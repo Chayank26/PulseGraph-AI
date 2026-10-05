@@ -35,8 +35,8 @@ PYTHONDONTWRITEBYTECODE=1 DEBUG=false CHECKPOINT_BACKEND=memory \
   venv/bin/python -m scripts.evaluate_triage --require-no-known-gaps
 ```
 
-This stricter command currently exits **1 intentionally** because two documented
-gaps remain. The normal regression gate and readiness to expand clinical scope
+This stricter command now exits **0**: both previously documented cases meet
+their expected behavior. The normal regression gate and readiness to expand clinical scope
 are separate: the report always marks expansion unready pending independent
 clinical review and an annotated evaluation corpus.
 
@@ -64,20 +64,21 @@ connections. The runner does not test authentication, database persistence,
 browser interactions, real image interpretation, or patient outcomes; existing
 API regression tests remain the evidence for their narrower tested contracts.
 
-## Observed gaps
+## Previously observed gaps (now regression cases)
 
-| Case | Desired behavior | Observed boundary |
-| --- | --- | --- |
-| `gap-paraphrase` | Recognize “pain in my chest” as a current chest-pain mention | The phrase is unrecognized and the case hands off without identifying that symptom. |
-| `gap-partial-recognition` | Preserve the need for clinician assessment for an additional unsupported complaint | “Chest pain and blurred vision” recognizes only chest pain; after a confirmed HEART assessment and no-imaging decision the graph reaches human review without a triage coverage handoff. |
+| Case | Fix |
+| --- | --- |
+| `gap-paraphrase` | Explicit chest-pain paraphrases are recognized with original source spans and assertion context. |
+| `gap-partial-recognition` | Unparsed narrative fragments are preserved with source spans and trigger clinician handoff even when a supported calculator completes. |
 
-The second gap means that a successful supported assessment cannot be assumed to
-cover all concerns in free text. Raw source text remains available, but retaining
-it does not establish recognition. These cases intentionally retain desired
-expectations and report the discrepancy, instead of relabeling the current
-behavior as correct. They appear as explicit `KNOWN_GAP` outcomes and pytest
-expected failures. Runtime errors are never accepted as known gaps. If a gap
-starts passing, the runner and tests require its classification to be updated.
+Both cases now pass normally; their desired expectations were retained and only
+`known_gap` labels were removed. Rules-v2 masks recognized concepts, bounded
+attributes, and a small grammar vocabulary, then flags remaining narrative text.
+This intentionally favors handoff over assuming complete coverage. Benign text
+outside the small grammar vocabulary can also cause handoff. It is not unrestricted
+language understanding, and these two fixes do not establish perfect extraction.
+The evaluator still supports explicit known-gap cases and treats runtime errors
+or unexpectedly passing known gaps as failures requiring review.
 
 ## Gate for adding a pathway
 

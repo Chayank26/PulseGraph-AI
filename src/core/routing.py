@@ -72,6 +72,8 @@ def plan_routing(state, presentation, acquired) -> RoutingPlan:
     groups = {name: sorted(present & symptoms) for name, symptoms in GROUPS.items() if present & symptoms}
     uncertain = [s.symptom for s in presentation.symptoms if s.status in ('uncertain','conflicting')]
     reasons = [f'Uncertain presentation requires clinician assessment: {", ".join(uncertain)}.'] if uncertain else []
+    for fragment in presentation.unrecognized_fragments:
+        reasons.append(f'Uninterpreted text requires clinician assessment ({fragment.source_id}): {fragment.quote}')
     demographics = state.get('demographics')
     age = demographics.age if demographics else None
     excluded = age is not None and age < 18 or (state.get('urgency_context') or {}).get('pregnant') is True

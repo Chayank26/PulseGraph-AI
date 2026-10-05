@@ -7,7 +7,7 @@
     "pydantic": "2.13.4",
     "pytest": "9.1.1"
   },
-  "corpus_sha256": "79945adb1f731992077316d9662e0c220b06eba63a516417e2f1faa167b6b306",
+  "corpus_sha256": "203e346e0b4c4f4b35c3c1160457d63dc0ce8816b7386f3517598a483144ddd3",
   "source_sha256": {
     "src/agents/diagnostic.py": "17a56f146b85050ed859caf98d127ad5883a7ae43308811b8c6385ef317ceff8",
     "src/agents/evidence_rag.py": "fc1db733abe1e27ab07f1cbe80edb1cb9ea117323934efc9f9cc11eaa686133e",
@@ -39,8 +39,8 @@
     "src/core/data_requests.py": "40b07dabd251e37095976d03b7e5288429f723e4f5131421fcdb11eb61ce330b",
     "src/core/graph.py": "239cd43ff3647ab6371a7502700243beeec989cb26dcc6377c9249a2ef4f4720",
     "src/core/imaging.py": "09c0b1de2b1ee3ca4a8be9dcc8b55b2cbc82509202ffab13499beee7bcf11019",
-    "src/core/presentation.py": "abba47ecd28f025e6421b7d04b80f4d5dabb453beb8a6df4058113141dd7f37d",
-    "src/core/routing.py": "a003f7c22e60162c4081a05f8a91a843fd1bf1a5f844e34e4fad288300aaae6e",
+    "src/core/presentation.py": "f1ece403eec32d5447a57bcca0611120876cd364fbf31dd35c35af340a3a8e81",
+    "src/core/routing.py": "128829c2c0a293d92ae233e30d321874744ea47600bff4cc055d450255a9401a",
     "src/core/state.py": "8ce2fcdb5d529d9cc5793803cdf9270a9d5749267c54d15de5cc2500b5e912b1",
     "src/core/symbolic_rules.py": "4b857f2b97bcde1d0ca4942f663a4f3bbccb39aa8062e8e5735aedc4c0bf4784",
     "src/core/urgency.py": "95d77b7098d14c8bbb9a43ffeffb204628eac484ff8ffc433060e38791fee631",
@@ -76,8 +76,7 @@
   },
   "total": 49,
   "counts": {
-    "PASS": 47,
-    "KNOWN_GAP": 2
+    "PASS": 49
   },
   "regression_gate_passed": true,
   "expansion_ready": false,
@@ -1906,49 +1905,54 @@
     {
       "id": "gap-paraphrase",
       "category": "language challenges",
-      "outcome": "KNOWN_GAP",
-      "known_gap": "Common paraphrase is outside the extraction vocabulary; current behavior is handoff without recognition.",
+      "outcome": "PASS",
+      "known_gap": null,
       "expected": {
         "symptoms": {
           "chest_pain": "present"
         }
       },
       "observed": {
-        "next_node": "END",
-        "step": "triage_manual_review_required",
-        "symptoms": {},
-        "groups": [],
+        "next_node": "data_request_review",
+        "step": "waiting_for_clinical_data",
+        "symptoms": {
+          "chest_pain": "present"
+        },
+        "groups": [
+          "cardiovascular"
+        ],
         "pathways": {
-          "heart": "NOT_APPLICABLE",
+          "heart": "NEEDS_CONFIRMATION",
           "curb65": "NOT_APPLICABLE",
           "wells": "NOT_APPLICABLE"
         },
         "scores": {},
-        "questions": [],
+        "questions": [
+          {
+            "agent": "triage",
+            "pathway": "Assessment applicability",
+            "fields": [
+              "pathway_decision_heart"
+            ]
+          }
+        ],
         "urgency_status": "NO_TRIGGER_DETECTED",
         "imaging_status": null
       },
-      "mismatches": {
-        "symptoms": {
-          "expected": {
-            "chest_pain": "present"
-          },
-          "observed": {}
-        }
-      }
+      "mismatches": {}
     },
     {
       "id": "gap-partial-recognition",
       "category": "language challenges",
-      "outcome": "KNOWN_GAP",
-      "known_gap": "An unrecognized concurrent concern is not detected when another symptom is recognized; supported work can proceed.",
+      "outcome": "PASS",
+      "known_gap": null,
       "expected": {
         "next_node": "END",
         "step": "triage_manual_review_required"
       },
       "observed": {
-        "next_node": "human_review",
-        "step": "symbolic_guardrails_evaluated",
+        "next_node": "END",
+        "step": "triage_manual_review_required",
         "symptoms": {
           "chest_pain": "present"
         },
@@ -1965,18 +1969,9 @@
         },
         "questions": [],
         "urgency_status": "NO_TRIGGER_DETECTED",
-        "imaging_status": "SKIPPED"
+        "imaging_status": null
       },
-      "mismatches": {
-        "next_node": {
-          "expected": "END",
-          "observed": "human_review"
-        },
-        "step": {
-          "expected": "triage_manual_review_required",
-          "observed": "symbolic_guardrails_evaluated"
-        }
-      }
+      "mismatches": {}
     }
   ]
 }
