@@ -533,3 +533,21 @@ migration. Model generation remains disabled by default. See
 
 398 selected regression tests passed and 49/49 strict synthetic workflow cases
 passed. Tests use synthetic providers, not live-model or clinical evaluation.
+
+## Phase 13A: retire obsolete medication service and expose coverage (completed)
+
+Removed the discontinued RxNav interaction call and its first-word identifier
+lookup from medication screening. Limited local alerts remain, with explicit
+provider-not-configured status, rule version and coverage limitations stored in
+results and audit metadata. Empty histories are not treated as confirmed negatives.
+Blank entries no longer create substring allergy matches. Derived coverage is
+excluded from diagnostic fingerprints/model prompts and cleared on invalidation.
+
+The safety UI now reports coverage independently of alerts and removes unsupported
+renal clearance, dose adjustment, NKDA and drug-audit-pass claims. Existing JSON
+storage is reused. See `docs/clinical/medication-coverage.md`.
+
+403 selected tests and the frontend production build passed. Next Phase 13B:
+replacement-provider contract, normalization/coverage failure handling and explicit
+medication-history reconciliation. Real provider activation and clinical review
+remain outstanding; Phase 13 is not complete.

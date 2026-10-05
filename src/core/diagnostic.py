@@ -52,13 +52,14 @@ def input_fingerprint(state):
         'demographics', 'raw_notes', 'vitals', 'pathway_decisions',
         'imaging_decision', 'imaging_response', 'image_path', 'urgency_context',
         'diagnostic_followup_answers', 'diagnostic_followup_disposition')}
-    inputs['presentation'] = {k: v for k, v in (state.get('presentation') or {}).items() if k not in ('diagnostic_review', 'symbolic_review', 'evidence_review')}
+    inputs['presentation'] = {k: v for k, v in (state.get('presentation') or {}).items() if k not in ('diagnostic_review', 'symbolic_review', 'evidence_review', 'safety_review')}
     inputs['risk_scores'] = [{k: v for k, v in encode(score).items() if k != 'calculated_at'} for score in state.get('risk_scores', [])]
     return hashlib.sha256(json.dumps(inputs, default=encode, sort_keys=True).encode()).hexdigest()
 
 
 def invalidate_diagnostics(state):
     presentation = dict(state.get('presentation') or {})
+    presentation.pop('safety_review', None)
     if presentation:
         presentation['evidence_review'] = {'status': 'STALE', 'claims': [], 'limitations': ['Reassessment required.']}
         presentation['diagnostic_review'] = {'status': 'STALE', 'limitations': ['Inputs changed; reassessment is required.']}

@@ -214,6 +214,7 @@ export interface ImagingPlan {
 
 export interface ClinicalPresentation {
   evidence_review?: { corpus_sha256?: string; status: string; reason?: string; limitations: string[]; claims: { claim: string; status: string; reason: string }[] };
+  safety_review?: { status: string; interaction_provider: string; rule_version: string; medication_history: string; allergy_history: string; limitations: string[] };
   symbolic_review?: { status: string; limitations: string[]; rules: { rule_id: string; status: string; reason: string }[] };
   diagnostic_review?: { generation?: { status: string; reason: string; model?: string; backend: string; prompt_version: string }; status: string; input_fingerprint?: string; limitations?: string[] };
   imaging_plan?: ImagingPlan | null;

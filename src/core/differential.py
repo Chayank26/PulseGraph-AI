@@ -77,7 +77,7 @@ def prepare_context(context):
     if len(documents) > 20:
         raise ValueError('Evidence context exceeds bounded collection size')
     clinical = context.model_dump(mode='json')
-    for key in ('diagnostic_review', 'symbolic_review', 'evidence_review'):
+    for key in ('diagnostic_review', 'symbolic_review', 'evidence_review', 'safety_review'):
         clinical['presentation'].pop(key, None)
     # Identity is not needed for generation. Narrative can still contain identifiers.
     if clinical['demographics']:

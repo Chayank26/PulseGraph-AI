@@ -27,7 +27,8 @@ export const SafetyPage: React.FC = () => {
   }
 
   const safetyFlags = session.state.safety_flags || [];
-  const status = agentStatuses.safety || 'COMPLETED';
+  const status = agentStatuses.safety || 'NOT_STARTED';
+  const coverage = session.state.presentation?.safety_review;
 
   return (
     <div className="safety-shell animate-fade-in font-sans">
@@ -41,7 +42,7 @@ export const SafetyPage: React.FC = () => {
             SAFETY AGENT
           </h1>
           <p className="safety-banner-subtitle">
-            Audits drug-drug interactions, allergy contraindications, and organ clearance thresholds.
+            Shows limited local medication alerts and the checks that remain unavailable.
           </p>
         </div>
 
@@ -51,60 +52,17 @@ export const SafetyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Organ Clearance & Lab Threshold Monitor */}
       <div className="bg-[#FAF8F2] border-2 border-black rounded-2xl p-6 space-y-4">
-        <h3 className="font-serif uppercase tracking-widest text-xs font-bold text-[#66655C] flex items-center gap-2">
-          <Pill size={16} className="text-black" />
-          <span>ORGAN CLEARANCE & PHYSIOLOGICAL AUDIT MONITOR</span>
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
-          <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-1">
-            <span className="text-[10px] text-[#66655C] uppercase font-bold">Renal Function Profile</span>
-            <p className="font-bold text-black text-sm">
-              {activePatient?.chronic_conditions?.some(c => c.toLowerCase().includes('kidney') || c.toLowerCase().includes('renal'))
-                ? 'Impaired Clearance Flagged'
-                : 'Baseline Normal'}
-            </p>
-            <p className={`text-[10px] font-bold ${
-              activePatient?.chronic_conditions?.some(c => c.toLowerCase().includes('kidney') || c.toLowerCase().includes('renal'))
-                ? 'text-red-800'
-                : 'text-green-800'
-            }`}>
-              {activePatient?.chronic_conditions?.some(c => c.toLowerCase().includes('kidney') || c.toLowerCase().includes('renal'))
-                ? 'DOSE ADJUSTMENT REQUIRED'
-                : 'RENAL THRESHOLD PASS'}
-            </p>
-          </div>
-
-          <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-1">
-            <span className="text-[10px] text-[#66655C] uppercase font-bold">Documented Allergy Audit</span>
-            <p className="font-bold text-black text-sm">
-              {activePatient?.allergies && activePatient.allergies.length > 0
-                ? `${activePatient.allergies.length} Allergy Conflict(s) Monitored`
-                : 'No Documented Allergies (NKDA)'}
-            </p>
-            <p className={`text-[10px] font-bold ${
-              activePatient?.allergies && activePatient.allergies.length > 0 ? 'text-amber-800' : 'text-green-800'
-            }`}>
-              {activePatient?.allergies && activePatient.allergies.length > 0 ? 'ACTIVE CONTRAINDICATION SCREENING' : 'NO CONTRAINDICATION DETECTED'}
-            </p>
-          </div>
-
-          <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-1">
-            <span className="text-[10px] text-[#66655C] uppercase font-bold">Active Drug-Drug Screen</span>
-            <p className="font-bold text-black text-sm">
-              {activePatient?.current_medications && activePatient.current_medications.length > 0
-                ? `${activePatient.current_medications.length} Prescriptions Screened`
-                : 'No Active Medications'}
-            </p>
-            <p className={`text-[10px] font-bold ${
-              safetyFlags.length > 0 ? 'text-red-800' : 'text-green-800'
-            }`}>
-              {safetyFlags.length > 0 ? `${safetyFlags.length} SAFETY FLAG(S) ACTIVE` : 'PASSES DRUG-DRUG AUDIT'}
-            </p>
-          </div>
-        </div>
+        <h3 className="font-bold flex items-center gap-2"><Pill size={16} /> Medication review coverage</h3>
+        <p>{coverage ? 'Limited local checks only' : 'Medication review has not run for the current assessment.'}</p>
+        {coverage && <>
+          <p>Comprehensive interaction provider: not configured</p>
+          <p>Medication history: {coverage.medication_history === 'NOT_RECORDED' ? 'Not recorded' : 'Recorded; reconciliation not verified'}</p>
+          <p>Allergy history: {coverage.allergy_history === 'NOT_RECORDED' ? 'Not recorded' : 'Recorded; confirmation required'}</p>
+          <ul className="list-disc pl-5 text-sm space-y-2">
+            {coverage.limitations.map((item, index) => <li key={index}>{item}</li>)}
+          </ul>
+        </>}
       </div>
 
       {/* Safety Flags List */}
@@ -152,7 +110,7 @@ export const SafetyPage: React.FC = () => {
             })
           ) : (
             <div className="bg-white border border-[#DCD8BE] rounded-2xl p-12 text-center text-xs font-mono text-[#8C8A7B]">
-              No pharmacological contraindications or drug interaction flags detected for this session.
+              No local alerts are available. This does not establish medication safety.
             </div>
           )}
         </div>
