@@ -214,3 +214,26 @@ Verification covers no-imaging/optional continuation, existing reports, required
 report blocking, unknown/unavailable handoff, explicit overrides, validation,
 clinician ownership, persistence, and urgency precedence. The Phase 4 research
 manuscript remains a historical snapshot; it was not rewritten for Phase 5.
+
+## Phase 6: reproducible evaluation and expansion gate
+
+Added an offline synthetic replay corpus and runner that execute the real graph,
+including urgency and acquisition resumption, with isolated memory checkpoints.
+The 49 scenarios span all nine presentation groups, three calculator pathways,
+contextual assertions, conflicts, targeted questions, incomplete/unsupported
+cases, urgency boundaries and acknowledgement, and optional/required imaging.
+Expected outputs are explicit and the generated report retains mismatches,
+source/corpus hashes, dependency versions, and rule configuration.
+
+Initial result: 47 expectations satisfied and two documented language-coverage
+gaps. The extractor does not recognize “pain in my chest,” and partial symptom
+recognition can miss an unsupported concurrent complaint. These remain visible
+known gaps, not successful clinical cases. Unexpected failures, runtime errors,
+and unexpectedly fixed gaps fail the regression gate. A strict mode also fails
+while any known gap remains. No new clinical pathway was added; expansion remains
+blocked pending independent review and an annotated corpus.
+
+See `docs/evaluation/README.md` for commands, scope, limitations, and entry
+criteria for a new pathway. `docs/evaluation/triage-report.json` and `.md` record
+the baseline. No database migration or frontend change is required. The research
+paper remains the earlier Phase 4 snapshot, not a claim of these later results.

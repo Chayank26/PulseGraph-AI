@@ -1,0 +1,1815 @@
+[
+  {
+    "id": "unsupported-abdominal_pain",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "abdominal pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "gastrointestinal"
+      ],
+      "symptoms": {
+        "abdominal_pain": "present"
+      },
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "unsupported-headache",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "headache",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "neurological"
+      ],
+      "symptoms": {
+        "headache": "present"
+      },
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "unsupported-rash",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "skin"
+      ],
+      "symptoms": {
+        "rash": "present"
+      },
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "unsupported-dysuria",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "painful urination",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "urinary"
+      ],
+      "symptoms": {
+        "dysuria": "present"
+      },
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "unsupported-back_pain",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "back pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "musculoskeletal_or_injury"
+      ],
+      "symptoms": {
+        "back_pain": "present"
+      },
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "unsupported-fever",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "fever",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "systemic"
+      ],
+      "symptoms": {
+        "fever": "present"
+      },
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "candidate-cardiovascular",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "groups": [
+        "cardiovascular"
+      ],
+      "scores": {},
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Assessment applicability",
+          "fields": [
+            "pathway_decision_heart"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "candidate-respiratory",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "shortness of breath",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "groups": [
+        "respiratory"
+      ],
+      "scores": {},
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Assessment applicability",
+          "fields": [
+            "pathway_decision_curb65",
+            "pathway_decision_wells"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "candidate-vascular",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "leg swelling",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "groups": [
+        "vascular"
+      ],
+      "scores": {},
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Assessment applicability",
+          "fields": [
+            "pathway_decision_wells"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "assertion-denied",
+    "category": "assertion context",
+    "inputs": {
+      "complaint": "Denies chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "symptoms": {
+        "chest_pain": "absent"
+      },
+      "groups": [],
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "assertion-historical",
+    "category": "assertion context",
+    "inputs": {
+      "complaint": "Previous episode of chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "symptoms": {
+        "chest_pain": "historical"
+      },
+      "groups": [],
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "assertion-relative",
+    "category": "assertion context",
+    "inputs": {
+      "complaint": "Father has chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "symptoms": {
+        "chest_pain": "other_person"
+      },
+      "groups": [],
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "assertion-uncertain",
+    "category": "assertion context",
+    "inputs": {
+      "complaint": "Possible chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "symptoms": {
+        "chest_pain": "uncertain"
+      },
+      "groups": [],
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "negation-boundary",
+    "category": "assertion context",
+    "inputs": {
+      "complaint": "No chest pain but cough",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "symptoms": {
+        "chest_pain": "absent",
+        "cough": "present"
+      },
+      "groups": [
+        "respiratory"
+      ],
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Assessment applicability",
+          "fields": [
+            "pathway_decision_curb65"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "conflict-pauses",
+    "category": "conflicts",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "notes": [
+        "No chest pain"
+      ]
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "symptoms": {
+        "chest_pain": "conflicting"
+      },
+      "scores": {},
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Presentation clarification",
+          "fields": [
+            "symptom_present_chest_pain"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "conflict-absent",
+    "category": "conflicts",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "notes": [
+        "No chest pain"
+      ]
+    },
+    "responses": [
+      {
+        "symptom_present_chest_pain": false
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "symptoms": {
+        "chest_pain": "absent"
+      },
+      "scores": {}
+    }
+  },
+  {
+    "id": "conflict-uncertain",
+    "category": "conflicts",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "notes": [
+        "No chest pain"
+      ]
+    },
+    "responses": [
+      {
+        "symptom_present_chest_pain": "__unavailable__"
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "symptoms": {
+        "chest_pain": "uncertain"
+      },
+      "scores": {}
+    }
+  },
+  {
+    "id": "heart-complete",
+    "category": "supported calculations",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "human_review",
+      "scores": {
+        "HEART Score": 1.0
+      },
+      "imaging_status": "SKIPPED",
+      "questions": []
+    }
+  },
+  {
+    "id": "curb-complete",
+    "category": "supported calculations",
+    "inputs": {
+      "complaint": "cough",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "curb65": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: confusion = False",
+        "[ACQUIRED CLINICAL DATA]: bun_mg_dl = 14"
+      ],
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "human_review",
+      "scores": {
+        "CURB-65 Score": 0.0
+      },
+      "imaging_status": "SKIPPED",
+      "questions": []
+    }
+  },
+  {
+    "id": "wells-complete",
+    "category": "supported calculations",
+    "inputs": {
+      "complaint": "leg swelling",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "wells": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: pe_most_likely = False",
+        "[ACQUIRED CLINICAL DATA]: clinical_signs_dvt = False",
+        "[ACQUIRED CLINICAL DATA]: immobilization_surgery = False",
+        "[ACQUIRED CLINICAL DATA]: previous_dvt_pe = False",
+        "[ACQUIRED CLINICAL DATA]: hemoptysis = False",
+        "[ACQUIRED CLINICAL DATA]: malignancy = False"
+      ],
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "human_review",
+      "scores": {
+        "Wells Score (PE)": 0.0
+      },
+      "questions": []
+    }
+  },
+  {
+    "id": "multiple-concerns",
+    "category": "coverage boundaries",
+    "inputs": {
+      "complaint": "chest pain and abdominal pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "cardiovascular",
+        "gastrointestinal"
+      ],
+      "scores": {
+        "HEART Score": 1.0
+      },
+      "imaging_status": null
+    }
+  },
+  {
+    "id": "applicability-not_applicable",
+    "category": "coverage boundaries",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "not_applicable"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "applicability-unknown",
+    "category": "coverage boundaries",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "unknown"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "scores": {},
+      "questions": []
+    }
+  },
+  {
+    "id": "excluded-child",
+    "category": "coverage boundaries",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "age": 12
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "scores": {},
+      "pathways": {
+        "heart": "UNSUPPORTED",
+        "curb65": "NOT_APPLICABLE",
+        "wells": "NOT_APPLICABLE"
+      }
+    }
+  },
+  {
+    "id": "excluded-pregnancy",
+    "category": "coverage boundaries",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": true,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "scores": {},
+      "pathways": {
+        "heart": "UNSUPPORTED",
+        "curb65": "NOT_APPLICABLE",
+        "wells": "NOT_APPLICABLE"
+      }
+    }
+  },
+  {
+    "id": "missing-age",
+    "category": "data acquisition",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "age": null
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "scores": {}
+    }
+  },
+  {
+    "id": "unavailable-age",
+    "category": "data acquisition",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "age": null
+    },
+    "responses": [
+      {
+        "age": "__unavailable__"
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "scores": {}
+    }
+  },
+  {
+    "id": "heart-targeted-questions",
+    "category": "data acquisition",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [
+      {
+        "history_score": 0,
+        "ecg_score": 0,
+        "troponin_score": 0,
+        "cardiac_risk_factors_count": 0
+      }
+    ],
+    "expected": {
+      "next_node": "human_review",
+      "scores": {
+        "HEART Score": 1.0
+      },
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "HEART Score Assessment",
+          "fields": [
+            "cardiac_risk_factors_count",
+            "ecg_score",
+            "history_score",
+            "troponin_score"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "unavailable-score",
+    "category": "data acquisition",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      }
+    },
+    "responses": [
+      {
+        "history_score": 0,
+        "ecg_score": 0,
+        "troponin_score": "__unavailable__",
+        "cardiac_risk_factors_count": 0
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "scores": {},
+      "step": "triage_manual_review_required"
+    }
+  },
+  {
+    "id": "urgency-heart_rate_bpm-40",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 40,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgency-heart_rate_bpm-131",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 131,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgency-respiratory_rate-8",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 8,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgency-respiratory_rate-25",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 25,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgency-blood_pressure_sys-90",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 90,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgency-blood_pressure_sys-220",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 220,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgency-temperature_c-35",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 35,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgency-spo2_percent-91",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 91
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "data_request_review",
+      "urgency_status": "URGENT_REVIEW",
+      "scores": {},
+      "questions": [
+        {
+          "agent": "urgency_check",
+          "pathway": "Urgent clinician review",
+          "fields": [
+            "$urgency_ack"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "urgent-ack-resumes",
+    "category": "urgency precedence",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": true,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [
+      {
+        "$urgency_ack": true
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "urgency_status": "URGENT_REVIEW",
+      "groups": [
+        "skin"
+      ]
+    }
+  },
+  {
+    "id": "individualized-oxygen",
+    "category": "urgency scope",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 89
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "individualized"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "urgency_status": "INCOMPLETE",
+      "next_node": "END"
+    }
+  },
+  {
+    "id": "unknown-pregnancy",
+    "category": "urgency scope",
+    "inputs": {
+      "complaint": "rash",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": null,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "urgency_status": "OUTSIDE_SCOPE",
+      "next_node": "END"
+    }
+  },
+  {
+    "id": "imaging-no_imaging",
+    "category": "imaging decisions",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "human_review",
+      "imaging_status": "SKIPPED"
+    }
+  },
+  {
+    "id": "imaging-optional",
+    "category": "imaging decisions",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "optional",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "human_review",
+      "imaging_status": "SKIPPED"
+    }
+  },
+  {
+    "id": "imaging-uncertain",
+    "category": "imaging decisions",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "uncertain",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "imaging_status": "REQUIRES_CLINICIAN_ASSESSMENT"
+    }
+  },
+  {
+    "id": "required-report_provided",
+    "category": "imaging decisions",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "required",
+        "reason": "Synthetic assessment-dependent study",
+        "modality": "Ultrasound",
+        "anatomy": "abdomen"
+      }
+    },
+    "responses": [
+      {
+        "imaging_action": "submit_report",
+        "imaging_report": "Existing clinician report."
+      }
+    ],
+    "expected": {
+      "next_node": "human_review",
+      "imaging_status": "REPORT_PROVIDED"
+    }
+  },
+  {
+    "id": "required-requires_clinician_assessment",
+    "category": "imaging decisions",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "required",
+        "reason": "Synthetic assessment-dependent study",
+        "modality": "Ultrasound",
+        "anatomy": "abdomen"
+      }
+    },
+    "responses": [
+      {
+        "imaging_action": "submit_report",
+        "imaging_report": "__unavailable__"
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "imaging_status": "REQUIRES_CLINICIAN_ASSESSMENT"
+    }
+  },
+  {
+    "id": "required-overridden",
+    "category": "imaging decisions",
+    "inputs": {
+      "complaint": "chest pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "required",
+        "reason": "Synthetic assessment-dependent study",
+        "modality": "Ultrasound",
+        "anatomy": "abdomen"
+      }
+    },
+    "responses": [
+      {
+        "imaging_action": "proceed_without_imaging",
+        "imaging_override_reason": "Documented synthetic override"
+      }
+    ],
+    "expected": {
+      "next_node": "human_review",
+      "imaging_status": "OVERRIDDEN"
+    }
+  },
+  {
+    "id": "unknown-complaint",
+    "category": "coverage boundaries",
+    "inputs": {
+      "complaint": "Unusual sensation",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "scores": {},
+      "symptoms": {},
+      "step": "triage_manual_review_required"
+    }
+  },
+  {
+    "id": "gap-paraphrase",
+    "category": "language challenges",
+    "inputs": {
+      "complaint": "pain in my chest",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "symptoms": {
+        "chest_pain": "present"
+      }
+    },
+    "known_gap": "Common paraphrase is outside the extraction vocabulary; current behavior is handoff without recognition."
+  },
+  {
+    "id": "gap-partial-recognition",
+    "category": "language challenges",
+    "inputs": {
+      "complaint": "chest pain and blurred vision",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      },
+      "pathway_decisions": {
+        "heart": "applicable"
+      },
+      "notes": [
+        "[ACQUIRED CLINICAL DATA]: history_score = 0",
+        "[ACQUIRED CLINICAL DATA]: ecg_score = 0",
+        "[ACQUIRED CLINICAL DATA]: troponin_score = 0",
+        "[ACQUIRED CLINICAL DATA]: cardiac_risk_factors_count = 0"
+      ],
+      "imaging_decision": {
+        "decision": "no_imaging",
+        "reason": "Synthetic clinician decision"
+      }
+    },
+    "responses": [],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required"
+    },
+    "known_gap": "An unrecognized concurrent concern is not detected when another symptom is recognized; supported work can proceed."
+  }
+]
