@@ -80,3 +80,51 @@ source removal, review-date expiry, version requirements, and CLI no-write/error
 behavior. These are contract tests, not an independently annotated support-quality
 benchmark. Phase 9B2 remains: authenticated review workflow, controlled ingestion,
 expanded source coverage and independent claim-support/retrieval evaluation.
+
+## Phase 9B2 — authenticated session judgments and retrieval benchmark
+
+The evidence page now offers a passage/candidate selector, a judgment with no
+preselected answer, and a required rationale. POST and GET
+`/api/clinical/sessions/{session_id}/evidence-reviews` require the authenticated
+session owner. The server supplies reviewer identity and timestamp; request bodies
+cannot supply them. Submission is allowed only at the human-review checkpoint.
+Missing sessions return 404, ownership failures 403, malformed payloads 422, and
+stale/unavailable sources or wrong workflow checkpoints 409.
+
+Each judgment binds the candidate ID/text, document ID, corpus/passage hashes and
+diagnostic input fingerprint. The service checks those bindings against current
+graph state and the active local collection, including source review dates. A
+judgment is a clinician's recorded opinion, not a model verification or clinical
+session approval. Automated evidence items remain RELATED_CONTEXT_ONLY.
+
+Judgments are stored under presentation.evidence_review.clinician_reviews in the
+existing JSON result field and checkpoint, with corresponding audit entries.
+Revisions append records; the dedicated GET endpoint returns CURRENT, SUPERSEDED
+or STALE after checking bindings against the current state/source. Do not treat
+raw records from the general results endpoint as a freshness decision. Missing
+checkpoints or sources are reported as stale. Reevaluation clears current judgments
+with other derived results; prior records remain in the audit history. Old stored
+sessions require no schema migration. New reviews cannot be added after approval.
+
+Run `venv/bin/python -m scripts.evaluate_evidence` for a reproducible ten-case
+synthetic retrieval regression report, including corpus and fixture hashes. The
+committed report is docs/evaluation/evidence-report.json. Cases cover two topics,
+case folding, unsupported topics, source-date boundaries, and documented synonym
+and negation limitations. Matching the expected failure-to-recognize a synonym is
+a software contract pass, not clinical success. No independent clinician-annotated
+support benchmark or sensitivity/specificity estimate is claimed.
+
+Verification: 330 focused tests passed, including owner enforcement, identity
+spoof rejection, wrong checkpoint, malformed rationale/verdict, stale claims and
+hashes, missing/changed collections, revision history, reevaluation, persistence,
+and compatibility with approval. Frontend production build passed. Browser
+interaction, production authentication infrastructure, PostgreSQL recovery and
+concurrent submissions were not exercised. Existing checkpoint/database writes
+remain separate transactions; this change does not add cross-store atomicity or
+idempotent submission. Concurrent writers require the later infrastructure phase.
+
+The local two-source collection is unchanged. The update-report workflow is still
+manual, with no automated source fetch or content expansion. Qualified clinical
+annotation and source review remain external prerequisites. Next engineering phase
+is Phase 10: bounded differential-agent contracts and grounded generation, with
+provider/data-handling choices made before using external model services.

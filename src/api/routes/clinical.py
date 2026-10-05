@@ -16,6 +16,7 @@ from src.api.schemas.sessions import (
 from src.db.models import DoctorModel
 from src.db.repositories.session_repository import SessionRepository
 from src.services.clinical_workflow import ClinicalWorkflowService
+from src.services.evidence_review import EvidenceReviewService, EvidenceReviewPayload
 
 router = APIRouter(prefix="/api/clinical/sessions", tags=["Clinical Decision Support Execution"])
 
@@ -168,3 +169,29 @@ def get_session_audit_logs(
     """Retrieve append-only audit trail for a clinical assessment session."""
     sess_repo = SessionRepository(db)
     return sess_repo.get_audit_logs(session_id)
+
+
+
+
+@router.post('/{session_id}/evidence-reviews', summary='Record an authenticated evidence judgment')
+def submit_evidence_review(session_id: str, payload: EvidenceReviewPayload,
+    db: Session = Depends(get_db), current_clinician: DoctorModel = Depends(get_current_clinician)):
+    try:
+        return EvidenceReviewService(db).submit(session_id, current_clinician.doctor_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.get('/{session_id}/evidence-reviews', summary='Read evidence judgments with current freshness status')
+def list_evidence_reviews(session_id: str, db: Session = Depends(get_db),
+    current_clinician: DoctorModel = Depends(get_current_clinician)):
+    try:
+        return EvidenceReviewService(db).list(session_id, current_clinician.doctor_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))

@@ -434,3 +434,23 @@ runtime evidence support. No new medical content or live network access introduc
 triage evaluation. No frontend change. Source expansion and independent clinical
 support-quality evaluation remain incomplete. Next Phase 9B2 adds authenticated
 review integration and ingestion/evaluation work; live matches remain context only.
+
+## Phase 9B2: authenticated evidence review and retrieval evaluation (completed)
+
+Added session-owner-only evidence judgment endpoints and a frontend review form.
+Identity/time come from the server; judgments bind the actual candidate, passage,
+corpus and diagnostic inputs. Stale or unavailable bindings are rejected. Stored
+revisions are rechecked on read, and reevaluation clears current judgments while
+retaining audit history. No automatic upgrade of evidence support or session
+approval. Existing JSON storage is reused; no migration.
+
+Added a ten-case developer-authored retrieval benchmark and hash-bearing report.
+Synonym/negation limitations are explicitly documented, not presented as clinical
+success. 330 focused tests passed and frontend build passed; browser interaction,
+concurrency and independent clinical quality were not evaluated.
+
+Phase 9's bounded engineering implementation is complete. Source expansion,
+independent clinical annotation and automated ingestion are not implemented; the
+manual source-update review process and two-source collection remain in place.
+Next: Phase 10, bounded differential-agent implementation. Clinical effectiveness
+and automated claim entailment remain unestablished.

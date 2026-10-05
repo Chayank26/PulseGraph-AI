@@ -1,0 +1,12 @@
+[
+  {"id":"pe-topic","claim":"Pulmonary Embolism","date":"2026-10-05","documents":["nice-ng158-1.1.17"]},
+  {"id":"acs-topic","claim":"Acute Coronary Syndrome / NSTEMI","date":"2026-10-05","documents":["aha-chest-pain-2021-summary"]},
+  {"id":"case-insensitive","claim":"PULMONARY EMBOLISM","date":"2026-10-05","documents":["nice-ng158-1.1.17"]},
+  {"id":"unsupported-neurology","claim":"Migraine","date":"2026-10-05","documents":[]},
+  {"id":"unsupported-renal","claim":"Renal injury","date":"2026-10-05","documents":[]},
+  {"id":"expiry-inclusive","claim":"Pulmonary Embolism","date":"2027-01-03","documents":["nice-ng158-1.1.17"]},
+  {"id":"expired","claim":"Pulmonary Embolism","date":"2027-01-04","documents":[]},
+  {"id":"before-verification","claim":"Pulmonary Embolism","date":"2026-10-04","documents":[]},
+  {"id":"synonym-gap","claim":"Lung clot","date":"2026-10-05","documents":[],"limitation":"Current token matching does not recognize this paraphrase; no assertion of clinical adequacy."},
+  {"id":"negated-topic-is-not-support","claim":"No pulmonary embolism","date":"2026-10-05","documents":["nice-ng158-1.1.17"],"limitation":"Topic retrieval is assertion-insensitive; a match is not support."}
+]

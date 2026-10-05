@@ -78,6 +78,8 @@ export interface ImagingData {
 }
 
 export interface ClinicalEvidence {
+  claim_id?: string;
+  document_id?: string;
   claim?: string;
   support_status?: string;
   source_version?: string;
@@ -205,7 +207,7 @@ export interface ImagingPlan {
 }
 
 export interface ClinicalPresentation {
-  evidence_review?: { status: string; reason?: string; limitations: string[]; claims: { claim: string; status: string; reason: string }[] };
+  evidence_review?: { corpus_sha256?: string; status: string; reason?: string; limitations: string[]; claims: { claim: string; status: string; reason: string }[] };
   symbolic_review?: { status: string; limitations: string[]; rules: { rule_id: string; status: string; reason: string }[] };
   diagnostic_review?: { status: string; input_fingerprint?: string; limitations?: string[] };
   imaging_plan?: ImagingPlan | null;

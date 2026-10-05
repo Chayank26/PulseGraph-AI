@@ -1,0 +1,103 @@
+{
+  "corpus_sha256": "0975b2c2aee2489bd23d48af46b36d41f8b8773662d5d59488744fb80fcff237",
+  "cases_sha256": "7337dcb8d23240e81e31bd312e81be2dd43f1aff67057c95862a5f56da931e64",
+  "total": 10,
+  "passed": 10,
+  "clinical_validation": false,
+  "limitations": [
+    "Developer-authored expectations test declared behavior, not clinical retrieval quality.",
+    "Synonym and negation cases document limitations; they are not successful clinical assessments."
+  ],
+  "cases": [
+    {
+      "id": "pe-topic",
+      "passed": true,
+      "expected_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "actual_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "limitation": null
+    },
+    {
+      "id": "acs-topic",
+      "passed": true,
+      "expected_documents": [
+        "aha-chest-pain-2021-summary"
+      ],
+      "actual_documents": [
+        "aha-chest-pain-2021-summary"
+      ],
+      "limitation": null
+    },
+    {
+      "id": "case-insensitive",
+      "passed": true,
+      "expected_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "actual_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "limitation": null
+    },
+    {
+      "id": "unsupported-neurology",
+      "passed": true,
+      "expected_documents": [],
+      "actual_documents": [],
+      "limitation": null
+    },
+    {
+      "id": "unsupported-renal",
+      "passed": true,
+      "expected_documents": [],
+      "actual_documents": [],
+      "limitation": null
+    },
+    {
+      "id": "expiry-inclusive",
+      "passed": true,
+      "expected_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "actual_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "limitation": null
+    },
+    {
+      "id": "expired",
+      "passed": true,
+      "expected_documents": [],
+      "actual_documents": [],
+      "limitation": null
+    },
+    {
+      "id": "before-verification",
+      "passed": true,
+      "expected_documents": [],
+      "actual_documents": [],
+      "limitation": null
+    },
+    {
+      "id": "synonym-gap",
+      "passed": true,
+      "expected_documents": [],
+      "actual_documents": [],
+      "limitation": "Current token matching does not recognize this paraphrase; no assertion of clinical adequacy."
+    },
+    {
+      "id": "negated-topic-is-not-support",
+      "passed": true,
+      "expected_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "actual_documents": [
+        "nice-ng158-1.1.17"
+      ],
+      "limitation": "Topic retrieval is assertion-insensitive; a match is not support."
+    }
+  ]
+}

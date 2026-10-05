@@ -2,6 +2,7 @@ import React from 'react';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { ExternalLink, CheckCircle2, BookOpen } from 'lucide-react';
 import './EvidencePage.css';
+import { EvidenceReviewPanel } from './EvidenceReviewPanel';
 
 import { Link } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
@@ -58,6 +59,11 @@ export const EvidencePage: React.FC = () => {
         {session.state.presentation?.evidence_review?.limitations.map((text, i) => <p key={i}>{text}</p>)}
         {session.state.presentation?.evidence_review?.claims.map((claim, i) => <p key={i}>{claim.claim}: {claim.status} — {claim.reason}</p>)}
       </div>
+      <EvidenceReviewPanel key={`${session.session_id}:${session.state.presentation?.diagnostic_review?.input_fingerprint}:${session.state.presentation?.evidence_review?.corpus_sha256}`}
+        sessionId={session.session_id} evidence={evidenceList}
+        corpusHash={session.state.presentation?.evidence_review?.corpus_sha256}
+        fingerprint={session.state.presentation?.diagnostic_review?.input_fingerprint}
+        canReview={session.status === 'WAITING_FOR_CLINICIAN_REVIEW'} />
       {/* Main Evidence Workspace */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
