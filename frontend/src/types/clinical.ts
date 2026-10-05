@@ -58,6 +58,9 @@ export interface DiagnosticDifferential {
   icd10_code?: string | null;
   likelihood: string;
   supporting_evidence?: string[];
+  conflicting_evidence?: string[];
+  missing_information?: string[];
+  evidence_references?: { document_id: string; url: string; source_version: string; passage: string }[];
   rationale: string;
   recommended_workup: string[];
 }
@@ -209,7 +212,7 @@ export interface ImagingPlan {
 export interface ClinicalPresentation {
   evidence_review?: { corpus_sha256?: string; status: string; reason?: string; limitations: string[]; claims: { claim: string; status: string; reason: string }[] };
   symbolic_review?: { status: string; limitations: string[]; rules: { rule_id: string; status: string; reason: string }[] };
-  diagnostic_review?: { status: string; input_fingerprint?: string; limitations?: string[] };
+  diagnostic_review?: { generation?: { status: string; reason: string; model?: string; backend: string; prompt_version: string }; status: string; input_fingerprint?: string; limitations?: string[] };
   imaging_plan?: ImagingPlan | null;
   routing?: {
     groups: Record<string, string[]>;

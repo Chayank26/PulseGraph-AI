@@ -79,6 +79,9 @@ class DiagnosticDifferential(BaseModel):
     icd10_code: Optional[str] = None
     likelihood: str = Field(description="High, Moderate, Low, or Percentage")
     rationale: str
+    conflicting_evidence: List[str] = Field(default_factory=list)
+    missing_information: List[str] = Field(default_factory=list)
+    evidence_references: List[Dict[str, str]] = Field(default_factory=list)
     supporting_evidence: List[str] = Field(default_factory=list)
     recommended_workup: List[str] = Field(default_factory=list)
 

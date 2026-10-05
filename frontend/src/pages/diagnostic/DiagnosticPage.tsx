@@ -41,7 +41,7 @@ export const DiagnosticPage: React.FC = () => {
             DIFFERENTIAL DIAGNOSIS AGENT
           </h1>
           <p className="diagnostic-banner-subtitle">
-            Shows limited symptom-based candidates and their recorded source evidence.
+            Shows model-proposed candidates with recorded findings and source references.
           </p>
         </div>
 
@@ -55,11 +55,12 @@ export const DiagnosticPage: React.FC = () => {
       <div className="bg-[#FAF8F2] border border-[#E2DFC9] rounded-xl p-4 flex items-center gap-3 text-xs text-[#66655C]">
         <AlertTriangle size={18} className="text-[#E19B4C] flex-shrink-0" />
         <p>
-          <strong className="font-bold text-black uppercase">Decision Support Disclaimer:</strong> These candidates use unvalidated demonstration rules; likelihood is not estimated. Final diagnosis requires attending physician evaluation.
+          <strong className="font-bold text-black uppercase">Decision Support Disclaimer:</strong> These proposals require clinical review; model output is not a validated diagnosis and likelihood is not estimated. Final diagnosis requires attending physician evaluation.
         </p>
       </div>
 
       <ul className="text-xs space-y-2">{session.state.presentation?.diagnostic_review?.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul>
+      <p className="text-xs">Generation: {session.state.presentation?.diagnostic_review?.generation?.status || 'NOT RUN'} — {session.state.presentation?.diagnostic_review?.generation?.reason}</p>
       {/* Differentials List */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -94,6 +95,11 @@ export const DiagnosticPage: React.FC = () => {
                 </div>
 
                 <ul>{diff.supporting_evidence?.map((item, i) => <li key={i} className="text-xs">{item}</li>)}</ul>
+                <div className="text-xs space-y-2">
+                  <p>Conflicting or absent findings: {diff.conflicting_evidence?.join('; ') || 'None linked; this does not establish absence of conflicting evidence.'}</p>
+                  <p>Missing information: {diff.missing_information?.join(', ') || 'None selected by the model; completeness is not established.'}</p>
+                  {diff.evidence_references?.map(ref => <div key={ref.document_id}><a href={ref.url} target="_blank" rel="noreferrer" className="underline">{ref.document_id}</a><p>{ref.passage}</p><p>{ref.source_version} — context only; support requires review.</p></div>)}
+                </div>
                 <div className="space-y-2 font-sans">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#66655C]">
                     Clinical Rationale

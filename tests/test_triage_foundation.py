@@ -57,6 +57,8 @@ def test_fractional_age_is_rejected():
 
 @pytest.fixture
 def client(monkeypatch):
+    from differential_fixture import install
+    install(monkeypatch)
     monkeypatch.setattr(settings, 'checkpoint_backend', 'memory')
     engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)

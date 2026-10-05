@@ -55,7 +55,8 @@ def test_context_preserves_unknowns_history_and_report_without_parsing():
     assert 'spo2_percent' in context.missing_observations
     assert context.presentation.unrecognized_fragments
     assert any('Uninterpreted' in item for item in context.limitations)
-    assert len(diagnostic_agent_node(state)['differentials']) == 1
+    assert diagnostic_agent_node(state)['differentials'] == []
+    assert diagnostic_agent_node(state)['presentation']['diagnostic_review']['generation']['reason'] == 'outside_scope'
 
 
 @pytest.mark.parametrize('status', ['SKIPPED', 'WAITING_FOR_REPORT', 'OVERRIDDEN', 'REQUIRES_CLINICIAN_ASSESSMENT'])
@@ -85,3 +86,9 @@ def test_real_graph_replaces_previous_candidates_including_empty_result():
     assert len(second['differentials']) == 1
     second['presentation'] = extract_presentation('No chest pain', []).model_dump(mode='json')
     assert graph.invoke(second)['differentials'] == []
+
+
+@pytest.fixture(autouse=True)
+def synthetic_model(monkeypatch):
+    from differential_fixture import install
+    install(monkeypatch)

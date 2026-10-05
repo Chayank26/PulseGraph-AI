@@ -454,3 +454,25 @@ independent clinical annotation and automated ingestion are not implemented; the
 manual source-update review process and two-source collection remain in place.
 Next: Phase 10, bounded differential-agent implementation. Clinical effectiveness
 and automated claim entailment remain unestablished.
+
+## Phase 10: bounded differential agent (implemented; activation pending)
+
+Replaced production keyword diagnosis with a provider-independent, schema-validated
+proposal contract. Added local Ollama adapter, bounded requests/responses, explicit
+abstention/failure, grounded finding/document references, model/prompt/corpus audit
+metadata and clinician-visible source/missing/conflicting information. Unknown
+references and wrong assertion statuses reject the output; no probabilities or
+automatic workup are generated. Structural grounding is not clinical entailment.
+
+Generation is disabled by default until a deployment/model is selected. No live
+model or external patient-data transfer was used. Test-only synthetic providers
+keep workflow regressions deterministic; they are not a production fallback.
+See `docs/clinical/differential-generation.md` for configuration and limitations.
+
+Next Phase 11: validated targeted follow-up questions and bounded clarification.
+Actual model activation and independent clinical evaluation remain required before
+claiming model-backed diagnostic quality or real-world benefit.
+
+Phase 10 verification: 357 focused tests passed; 49/49 strict workflow cases passed;
+frontend production build passed. The local adapter was tested with a stub transport,
+not a running model. Actual activation remains pending the deployment selection.

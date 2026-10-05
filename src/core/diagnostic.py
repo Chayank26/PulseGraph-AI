@@ -21,7 +21,7 @@ def build_diagnostic_context(state) -> DiagnosticContext:
         extract_presentation(getattr(demographics, 'chief_complaint', '') or '', state.get('raw_notes', [])))
     vitals = state.get('vitals')
     limitations = list(presentation.limitations)
-    limitations.append('Legacy candidate rules are not a validated diagnostic model; likelihood is not estimated.')
+    limitations.append('Differential proposals are not clinically validated; likelihood is not estimated.')
     if not saved:
         limitations.append('No completed triage presentation was available; context was extracted from intake.')
     plan = presentation.imaging_plan or {}

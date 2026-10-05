@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import model_validator, Field
 from src.core.urgency import UrgencyRules
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     debug: bool = False
 
+    diagnostic_backend: Literal['disabled', 'ollama'] = 'disabled'
+    diagnostic_endpoint: str = 'http://127.0.0.1:11434'
+    diagnostic_model: str = ''
+    diagnostic_timeout_seconds: float = Field(default=30, gt=0, le=60)
+
     # LLM Configuration
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
@@ -24,7 +29,7 @@ class Settings(BaseSettings):
     # Guardrails & Safety
     urgency_rules: UrgencyRules = Field(default_factory=UrgencyRules)
     enable_safety_guardrails: bool = True
-    max_diagnostic_candidates: int = 5
+    max_diagnostic_candidates: int = Field(default=5, ge=1, le=5)
     
     # External APIs
     rxnorm_api_base_url: str = "https://rxnav.nlm.nih.gov/REST"
