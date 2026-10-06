@@ -46,3 +46,8 @@ approval/evidence and duplicate-response races across independent service proces
 reconciliation/fencing design, and idempotent audit persistence. Independent clinical
 annotations and usability evaluation are separate outstanding work. No atomic
 approval, automatic recovery or clinical safety claim follows from this lock probe.
+
+Phase 16B3B update: detected ownership loss now stops guarded ORM/checkpoint writes;
+the guard is permanently closed after loss or operation completion. Live PostgreSQL
+backend termination and both PostgresSaver recovery probes passed. The check/write
+race and cross-store atomicity remain unresolved; see `lock-loss.md`.

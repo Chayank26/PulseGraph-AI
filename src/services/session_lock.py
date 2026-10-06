@@ -2,12 +2,53 @@
 from contextlib import contextmanager
 from functools import wraps
 import hashlib
-from threading import Lock
-from sqlalchemy import text
+from threading import Lock, RLock
+from sqlalchemy import text, event
 
 
 class WorkflowConflictError(ValueError):
     """The requested transition conflicts with current workflow state."""
+
+
+class OperationGuard:
+    """A detected loss is sticky; it must never reacquire and continue old work."""
+    def __init__(self, probe=lambda: True):
+        self.probe = probe
+        self.failed = False
+        self.mutex = RLock()
+
+    def check(self):
+        with self.mutex:
+            if not self.failed:
+                try:
+                    self.failed = not self.probe()
+                except Exception:
+                    self.failed = True
+            if self.failed:
+                raise WorkflowConflictError('Session lock was lost or operation ended. Stop and reload; recovery may be required.')
+
+    def close(self):
+        with self.mutex:
+            self.failed = True
+
+
+@contextmanager
+def guarded_writes(db, guard):
+    def check(*args, **kwargs):
+        guard.check()
+    event.listen(db, 'before_commit', check)
+    event.listen(db, 'before_flush', check)
+    try:
+        guard.check()
+        yield guard
+        guard.check()
+    except BaseException:
+        db.rollback()
+        raise
+    finally:
+        guard.close()
+        event.remove(db, 'before_commit', check)
+        event.remove(db, 'before_flush', check)
 
 
 _LOCAL_GUARD = Lock()
@@ -21,19 +62,32 @@ def session_operation(db, session_id):
         key = int.from_bytes(hashlib.sha256(session_id.encode()).digest()[:8], 'big', signed=True)
         # Dedicated connection: repository commits must not release the workflow lock.
         with engine.connect() as connection:
-            acquired = connection.execute(text('SELECT pg_try_advisory_lock(:key)'), {'key':key}).scalar()
+            acquired, pid = connection.execute(text('SELECT pg_try_advisory_lock(:key), pg_backend_pid()'), {'key':key}).one()
             if not acquired:
                 raise WorkflowConflictError('Another operation is updating this session. Reload and retry.')
+            unsigned = key & ((1 << 64) - 1)
+            def still_owned():
+                if connection.closed or connection.invalidated:
+                    return False
+                return bool(connection.execute(text(
+                    "SELECT pg_backend_pid() = :pid AND EXISTS (SELECT 1 FROM pg_locks "
+                    "WHERE pid = pg_backend_pid() AND locktype = 'advisory' AND granted "
+                    "AND classid::bigint = :hi AND objid::bigint = :lo AND objsubid = 1)"),
+                    {'pid':pid, 'hi':unsigned >> 32, 'lo':unsigned & 0xffffffff}).scalar())
+            guard = OperationGuard(still_owned)
             try:
                 db.expire_all()
-                yield
+                with guarded_writes(db, guard):
+                    yield guard
             finally:
                 try:
-                    connection.execute(text('SELECT pg_advisory_unlock(:key)'), {'key':key})
+                    if connection.closed or connection.invalidated:
+                        connection.invalidate()
+                    else:
+                        connection.execute(text('SELECT pg_advisory_unlock(:key)'), {'key':key})
                 except Exception:
-                    # Never return a possibly locked physical connection to the pool.
+                    # Preserve the original conflict; discard uncertain lock ownership.
                     connection.invalidate()
-                    raise
     elif engine.dialect.name == 'sqlite':
         # Isolated development/test support only, not cross-process serialization.
         with _LOCAL_GUARD:
@@ -44,7 +98,8 @@ def session_operation(db, session_id):
             if not acquired:
                 raise WorkflowConflictError('Another operation is updating this session. Reload and retry.')
             db.expire_all()
-            yield
+            with guarded_writes(db, OperationGuard()) as guard:
+                yield guard
         finally:
             if acquired:
                 lock.release()
@@ -62,6 +117,12 @@ def serialized_session(method):
     @wraps(method)
     def wrapped(self, session_id, *args, **kwargs):
         workflow = getattr(self, 'workflow', self)
-        with session_operation(workflow.db, session_id):
-            return method(self, session_id, *args, **kwargs)
+        from src.core.guarded_checkpointer import GuardedCheckpointer
+        with session_operation(workflow.db, session_id) as guard:
+            original = workflow.graph.checkpointer
+            workflow.graph.checkpointer = GuardedCheckpointer(original, guard)
+            try:
+                return method(self, session_id, *args, **kwargs)
+            finally:
+                workflow.graph.checkpointer = original
     return wrapped

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-06T07:44:46.292552+00:00",
+  "generated_at": "2026-10-06T12:59:37.031274+00:00",
   "gate_passed": true,
   "backend": "PostgresSaver + PostgreSQL",
   "clinical_validation": false,
@@ -19,5 +19,6 @@
       "exit_code": 0
     }
   ],
+  "scenario": "projection",
   "status": "PASS"
 }

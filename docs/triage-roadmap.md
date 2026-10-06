@@ -689,3 +689,22 @@ Next Phase 16B3B: lock-connection-loss fencing, other mid-transition protocols a
 full service-process races. Cross-store atomicity and clinical validation remain
 outstanding. Export remains a stub; real delivery would require a separate receipt
 and idempotency design before using this recovery policy.
+
+## Phase 16B3B: detected lock-loss fail-stop guards (completed)
+
+Serialized operations now verify PostgreSQL backend identity and advisory ownership
+before ORM flush/commit, synchronous checkpoint mutations and operation completion.
+Loss is sticky: the operation refuses subsequent writes rather than reacquiring and
+continuing. Uncommitted application work is rolled back, late checkpoint writes use
+closed guards, and listeners/saver adapters are removed after the operation.
+
+464 selected tests and 28 recovery checks passed. A disposable PostgreSQL backend-
+termination probe passed checkpoint-write refusal, application rollback and new-worker
+lock acquisition. Both real PostgresSaver fresh-process recovery probes also passed
+with the adapter. The temporary container was stopped and removed. No frontend change
+or schema migration. See `docs/evaluation/lock-loss.md` and its JSON probe report.
+
+This is detection/fail-stop behavior, not storage-level fencing: loss between a check
+and the next write is still possible. Next Phase 16B3C must design and enforce atomic
+ownership/fencing at both persistence stores and test that precise race. Other
+mid-transition protocols and independent clinical evaluation remain outstanding.
