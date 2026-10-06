@@ -65,3 +65,7 @@ prevents duplicate events from such writers. Legacy duplicate audit rows remain.
 Approval/evidence races across full independent services, interrupted approval
 persistence, process-kill/power-loss tests and independent clinical evaluation remain
 outstanding. These limits must not be hidden behind a general 'recovery passed' claim.
+
+Phase 16B3A update: attributable, current interrupted approvals at human_review or
+before the export stub can now return to fresh review through explicit owner recovery.
+Other mid-transition cases remain refused. See `approval-recovery.md`.

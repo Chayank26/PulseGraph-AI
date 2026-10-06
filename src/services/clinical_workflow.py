@@ -326,10 +326,27 @@ class ClinicalWorkflowService:
         values = snapshot.values
         if not values:
             raise WorkflowConflictError('Checkpoint unavailable; automatic reconstruction is not supported.')
+        recovered_approval = False
+        if snapshot.next in (('human_review',), ('ehr_export',)) and values.get('approved_by_clinician'):
+            record = values.get('approval_record')
+            if not record or record.get('doctor_id') != doctor_id or not record.get('review_version') or not record.get('approved_at'):
+                raise WorkflowConflictError('Interrupted approval has no attributable record; operator recovery is required.')
+            if values.get('diagnostic_fingerprint') != input_fingerprint(values):
+                raise WorkflowConflictError('Interrupted approval inputs are stale; operator recovery is required.')
+            # Re-enter the review interruption without invoking any clinical or export node.
+            config = {'configurable': {'thread_id':session.thread_id}}
+            self.graph.update_state(config, {
+                'approved_by_clinician': False, 'approval_record': None,
+                're_evaluation_requested': False, 'current_step':'clinician_review_recovered',
+                'audit_trail':[AuditEntry(agent_name='HumanReviewNode', action='INTERRUPTED_APPROVAL_RESET',
+                    summary='Owner returned interrupted approval to fresh review; prior intent was not replayed.',
+                    metadata={'doctor_id':doctor_id, 'prior_approval':record})]
+            }, as_node='symbolic_guardrail')
+            snapshot = self.graph.get_state(config)
+            values = snapshot.values
+            recovered_approval = True
         if snapshot.next not in ((), ('human_review',), ('data_request_review',)):
             raise WorkflowConflictError('Checkpoint is mid-transition; operator recovery is required. No action was replayed.')
-        if snapshot.next == ('human_review',) and values.get('approved_by_clinician'):
-            raise WorkflowConflictError('Approval is interrupted; operator recovery is required.')
         step = values.get('current_step', 'unknown')
         if snapshot.next == ('data_request_review',):
             status = 'WAITING_FOR_CLINICAL_DATA'
@@ -345,9 +362,10 @@ class ClinicalWorkflowService:
             raise WorkflowConflictError('Checkpoint has no recognized stable outcome; operator recovery is required.')
         self.sess_repo.update_session_status(session_id, status, current_step=step,
             iteration_count=values.get('iteration_count', 0), approved=status == 'APPROVED',
-            completed=status in ('APPROVED', 'REJECTED_MANUAL_TAKEOVER'))
+            completed=status in ('APPROVED', 'REJECTED_MANUAL_TAKEOVER'),
+            clear_approval=status == 'WAITING_FOR_CLINICIAN_REVIEW')
         self._sync_audit_and_results(session, values)
-        return {'session_id':session_id, 'status':status, 'recovery':'PROJECTIONS_RECONCILED',
+        return {'session_id':session_id, 'status':status, 'recovery':'FRESH_REVIEW_REQUIRED' if recovered_approval else 'PROJECTIONS_RECONCILED',
                 'clinical_actions_replayed':False}
 
     @serialized_session
@@ -371,11 +389,13 @@ class ClinicalWorkflowService:
         package = {key:_to_json_serializable(values.get(key)) for key in fields}
         binding = {'session_id':session_id, 'checkpoint':snapshot.config, 'package':package}
         version = sha256(json.dumps(binding, sort_keys=True, default=str).encode()).hexdigest()
-        eligible = (snapshot.next == ('human_review',) and bool(values.get('diagnostic_fingerprint'))
+        interrupted_approval = snapshot.next in (('human_review',), ('ehr_export',)) and bool(values.get('approved_by_clinician'))
+        eligible = (not interrupted_approval and snapshot.next == ('human_review',) and bool(values.get('diagnostic_fingerprint'))
                     and values['diagnostic_fingerprint'] == input_fingerprint(values))
         return {**package, 'session_id':session_id, 'patient_id':session.patient_id,
                 'status':session.status, 'review_version':version, 'can_approve':eligible,
-                'at_review_checkpoint':snapshot.next == ('human_review',),
+                'at_review_checkpoint':snapshot.next == ('human_review',) and not interrupted_approval,
+                'recovery_required':interrupted_approval,
                 'approval':values.get('approval_record'),
                 'limitations':['Approval records clinician review; it is not clinical validation or proof of EHR delivery.']}
 
@@ -393,6 +413,8 @@ class ClinicalWorkflowService:
             raise ValueError(f"Session '{session_id}' not found.")
 
         package = self._review_package(session_id, clinician.doctor_id)
+        if package['recovery_required']:
+            raise WorkflowConflictError('Approval was interrupted. Recover this session and review the new package before approving.')
         thread_config = {"configurable": {"thread_id": session.thread_id}}
         if self.graph.get_state(thread_config).next != ("human_review",):
             raise ValueError("Clinical review actions require the human-review checkpoint; pending data or urgency review must be completed first.")

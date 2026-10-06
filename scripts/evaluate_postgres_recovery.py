@@ -28,7 +28,49 @@ def worker(stage, identifier):
         saver.setup()
         service=ClinicalWorkflowService(db,checkpointer=saver)
         # Corpus/model outputs are unnecessary for this incomplete-applicability handoff.
-        if stage=='seed_failure':
+        if stage=='approval_seed':
+            from src.core.state import ClinicianIdentity
+            db.add(DoctorModel(doctor_id=identifier,full_name='Synthetic',department='Test',password_hash='unused'))
+            db.add(PatientModel(patient_id=identifier,doctor_id=identifier,age=50,chief_complaint='back pain'))
+            db.commit()
+            service.sess_repo.create_session(identifier,identifier,identifier,identifier,
+                intake_data={'pathway_decisions':{'low_back':'applicable'},
+                             'imaging_decision':{'decision':'no_imaging','reason':'Synthetic clinician decision'}})
+            service.run_session(identifier)
+            request=service.sess_repo.get_pending_data_requests(identifier)[0]
+            service.resolve_data_request(identifier,request.request_id,
+                {'back_review_scope':'confirmed','back_review_serious_cause':'not_suspected'},reviewing_doctor_id=identifier)
+            version=service.review_package(identifier,identifier)['review_version']
+            def fail(*args, **kwargs): raise RuntimeError('injected approval interruption')
+            service.graph.invoke=fail
+            try:
+                service.approve_session(identifier,ClinicianIdentity(doctor_id=identifier,full_name='Synthetic',department='Test'),review_version=version)
+            except RuntimeError as exc:
+                if str(exc)!='injected approval interruption': raise
+            else: raise AssertionError('Approval fault was not reached')
+        elif stage=='approval_recover':
+            from src.services.clinical_workflow import WorkflowConflictError
+            from src.core.state import ClinicianIdentity
+            prior=service.review_package(identifier,identifier)
+            assert prior['recovery_required'] and not prior['can_approve']
+            assert service.recover_session(identifier,identifier)['recovery']=='FRESH_REVIEW_REQUIRED'
+            current=service.review_package(identifier,identifier)
+            assert current['review_version']!=prior['review_version']
+            assert current['can_approve'] and current['approval'] is None
+            identity=ClinicianIdentity(doctor_id=identifier,full_name='Synthetic',department='Test')
+            try: service.approve_session(identifier,identity,review_version=prior['review_version'])
+            except WorkflowConflictError: pass
+            else: raise AssertionError('Old version was accepted')
+            assert service.approve_session(identifier,identity,review_version=current['review_version'])['status']=='APPROVED'
+        elif stage=='approval_verify':
+            assert service.recover_session(identifier,identifier)['status']=='APPROVED'
+            audit=service.sess_repo.get_audit_logs(identifier)
+            assert sum(row.action=='INTERRUPTED_APPROVAL_RESET' for row in audit)==1
+            assert sum(row.action=='EHR_PACKAGE_EXPORT' for row in audit)==1
+            service.recover_session(identifier,identifier)
+            assert len(service.sess_repo.get_audit_logs(identifier))==len(audit)
+            assert service.sess_repo.get_cds_result(identifier).clinician_approval['approved'] is True
+        elif stage=='seed_failure':
             db.add(DoctorModel(doctor_id=identifier,full_name='Synthetic',department='Test',password_hash='unused'))
             db.add(PatientModel(patient_id=identifier,doctor_id=identifier,age=50,chief_complaint='shortness of breath'))
             db.commit()
@@ -74,8 +116,9 @@ def worker(stage, identifier):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--stage',choices=['seed_failure','recover_pending','recover_terminal'])
+    parser.add_argument('--stage',choices=['seed_failure','recover_pending','recover_terminal','approval_seed','approval_recover','approval_verify'])
     parser.add_argument('--identifier')
+    parser.add_argument('--scenario',choices=['projection','approval'],default='projection')
     parser.add_argument('--output',type=Path,default=Path('docs/evaluation/postgres-recovery-report.json'))
     args=parser.parse_args()
     if args.stage:
@@ -87,8 +130,10 @@ def main():
         report['status']='NOT_RUN_DATABASE_NOT_SUPPLIED'
     else:
         identifier='RECOVERY-'+uuid4().hex
-        env={**os.environ,'DEBUG':'false','CHECKPOINT_BACKEND':'memory','PYTHONDONTWRITEBYTECODE':'1'}
-        for stage in ('seed_failure','recover_pending','recover_terminal'):
+        env={**os.environ,'DEBUG':'false','CHECKPOINT_BACKEND':'memory','DIAGNOSTIC_BACKEND':'disabled','PYTHONDONTWRITEBYTECODE':'1'}
+        stages = ('approval_seed','approval_recover','approval_verify') if args.scenario == 'approval' else ('seed_failure','recover_pending','recover_terminal')
+        report['scenario']=args.scenario
+        for stage in stages:
             result=subprocess.run([sys.executable,'-m','scripts.evaluate_postgres_recovery','--stage',stage,'--identifier',identifier],
                 env=env,capture_output=True,text=True,timeout=90)
             report['stages'].append({'stage':stage,'exit_code':result.returncode})

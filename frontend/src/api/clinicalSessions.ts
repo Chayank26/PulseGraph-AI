@@ -60,6 +60,11 @@ export const clinicalSessionsApi = {
     return response.data;
   },
 
+  recoverSession: async (sessionId: string): Promise<any> => {
+    const response = await apiClient.post(`/clinical/sessions/${sessionId}/recover`);
+    return response.data;
+  },
+
   getReviewPackage: async (sessionId: string): Promise<any> => {
     const response = await apiClient.get(`/clinical/sessions/${sessionId}/review`);
     return response.data;

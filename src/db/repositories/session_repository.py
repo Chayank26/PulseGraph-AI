@@ -63,12 +63,16 @@ class SessionRepository:
         iteration_count: Optional[int] = None,
         clinician_notes: Optional[str] = None,
         completed: bool = False,
-        approved: bool = False
+        approved: bool = False,
+        clear_approval: bool = False
     ) -> Optional[ClinicalSessionModel]:
         session = self.get_by_session_id(session_id)
         if not session:
             return None
 
+        if clear_approval:
+            session.approved_at = None
+            session.completed_at = None
         session.status = status
         if current_step:
             session.current_step = current_step

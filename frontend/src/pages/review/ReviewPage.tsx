@@ -4,7 +4,7 @@ import { clinicalSessionsApi } from '../../api/clinicalSessions';
 import { Link } from 'react-router-dom';
 import './ReviewPage.css';
 
-type Package = Record<string, unknown> & {session_id: string; review_version: string; can_approve: boolean; at_review_checkpoint: boolean};
+type Package = Record<string, unknown> & {session_id: string; review_version: string; can_approve: boolean; at_review_checkpoint: boolean; recovery_required: boolean};
 const sections = [
   ['demographics', 'Patient and recorded history'], ['vitals', 'Observations'], ['urgency', 'Urgency assessment'],
   ['presentation', 'Presentation, coverage and limitations'], ['risk_scores', 'All calculated scores'],
@@ -53,6 +53,17 @@ export const ReviewPage: React.FC = () => {
       setError('The action was not completed. Reload the package and review it again; it may have changed.');
     } finally {setBusy(false);}
   }
+  async function recoverApproval() {
+    if (!id || !current) return;
+    setBusy(true); setError(''); setAcknowledged(false);
+    try {
+      await clinicalSessionsApi.recoverSession(id);
+      setReload(n=>n+1);
+    } catch {
+      setError('Recovery could not complete. Reload to check the current state; operator assistance may be required.');
+      setReview(null);
+    } finally {setBusy(false);}
+  }
   return <div className="review-shell font-sans">
     <header className="review-banner"><div><h1 className="review-banner-title">Clinician review</h1>
       <p>Review the full assessment and its limitations before recording your decision.</p><p>Session status: {session.status}</p></div></header>
@@ -60,6 +71,11 @@ export const ReviewPage: React.FC = () => {
     <button disabled={busy} onClick={()=>setReload(n=>n+1)} className="underline">Reload review package</button>
     {!current && !error && <p>Loading review package…</p>}
     {current && review && <>
+      {review.recovery_required && <section className="review-card" role="alert">
+        <h2 className="font-bold">Approval was interrupted</h2>
+        <p>Return this session to review. The previous approval intent stays in the audit history; you must review and approve a new version.</p>
+        <button disabled={busy} className="border rounded p-3" onClick={recoverApproval}>Return to fresh review</button>
+      </section>}
       <p className="text-sm">Review version: {review.review_version.slice(0,12)}. Approval is tied to this loaded package.</p>
       <div className="review-grid">{sections.map(([key,title]) => <section className="review-card text-sm" key={key}>
         <h2 className="font-bold text-lg">{title}</h2><Details value={review[key]} />

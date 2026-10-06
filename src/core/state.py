@@ -5,6 +5,7 @@ from typing_extensions import TypedDict
 from pydantic import BaseModel, Field, model_validator, ConfigDict, field_validator
 
 WorkflowStep = Literal[
+    "clinician_review_recovered",
     "init",
     "initialized",
     "intake_age_required",

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-06T10:13:06.731182+00:00",
+  "generated_at": "2026-10-06T11:20:20.748389+00:00",
   "python": "3.13.9",
   "backend": "SQLite fixtures and in-memory checkpoints",
   "provider": "synthetic",
@@ -69,12 +69,29 @@
     {
       "name": "test_checkpoint_write_failure_does_not_consume_database_response",
       "outcome": "PASS"
+    },
+    {
+      "name": "test_interrupted_approval_requires_new_review[human_review]",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_interrupted_approval_requires_new_review[ehr_export]",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_retry_after_projection_failure_does_not_reset_twice",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_completed_approval_is_not_reset",
+      "outcome": "PASS"
     }
   ],
   "test_sha256": {
     "tests/test_recovery_boundaries.py": "c4f04ef560b6c21f3dff29a8e2f628d1a12b98eb8f0525a70301a6921299da28",
     "tests/test_versioned_approval.py": "a39a7486bc77b40c5d691f82752ad2cd79fa50fc2fafa782e3e209200dc9aaa6",
-    "tests/test_projection_recovery.py": "44ea87cfb072043937fcadbaeb855e960d57c27292901f55b85c55d2cc049ed2"
+    "tests/test_projection_recovery.py": "44ea87cfb072043937fcadbaeb855e960d57c27292901f55b85c55d2cc049ed2",
+    "tests/test_approval_recovery.py": "f888415e2a4cb4b07f7e85e23e82426d587725ccedf6ce9d0d5bdc028b3d4a9a"
   },
   "limitations": [
     "Service reconstruction shares an in-process saver; it is not process-crash persistence.",

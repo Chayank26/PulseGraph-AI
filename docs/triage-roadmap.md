@@ -669,3 +669,23 @@ focused recovery tests after final refusal checks. See
 Next Phase 16B3: mid-transition/approval recovery protocol, lock-connection-loss fencing
 and full service-process races. Cross-store atomicity, abrupt-crash recovery and
 independent clinical validation remain outstanding; Phase 16 is not complete.
+
+## Phase 16B3A: interrupted approval recovery (completed)
+
+Owner recovery now returns attributable/current approval interruptions at human_review
+or before the export stub to a new review checkpoint. Prior intent remains in the
+audit trail; active approval is cleared and a fresh review version is required.
+Completed approvals are preserved. Projection retries do not reset the review twice.
+The workspace displays an explicit return-to-review action for interrupted approval.
+Unattributed/stale approval and other mid-transition checkpoints remain refused.
+
+457 selected tests, 19 recovery gate checks and frontend build passed. A disposable
+PostgreSQL/PostgresSaver probe passed three fresh-process stages: injected approval
+interruption, recovery/new approval, and terminal verification. The container was
+stopped and removed. See `docs/evaluation/approval-recovery.md` and the committed
+`postgres-approval-recovery-report.json`. No schema migration or live model use.
+
+Next Phase 16B3B: lock-connection-loss fencing, other mid-transition protocols and
+full service-process races. Cross-store atomicity and clinical validation remain
+outstanding. Export remains a stub; real delivery would require a separate receipt
+and idempotency design before using this recovery policy.
