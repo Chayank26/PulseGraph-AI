@@ -2,7 +2,7 @@
 
 Developer-authored synthetic graph replay; not clinical accuracy, independent validation, API authorization, or persistence testing.
 
-Cases: **49**. Outcomes: `{"PASS": 49}`.
+Cases: **51**. Outcomes: `{"PASS": 51}`.
 
 Passing regression checks does not authorize clinical deployment or new pathways.
 
@@ -14,7 +14,7 @@ Passing regression checks does not authorize clinical deployment or new pathways
 | data acquisition | 4 | 0 | 0 |
 | imaging decisions | 6 | 0 | 0 |
 | language challenges | 2 | 0 | 0 |
-| presentation groups | 9 | 0 | 0 |
+| presentation groups | 11 | 0 | 0 |
 | supported calculations | 3 | 0 | 0 |
 | urgency precedence | 9 | 0 | 0 |
 | urgency scope | 2 | 0 | 0 |
@@ -27,7 +27,7 @@ Passing regression checks does not authorize clinical deployment or new pathways
 | unsupported-headache | PASS |  |
 | unsupported-rash | PASS |  |
 | unsupported-dysuria | PASS |  |
-| unsupported-back_pain | PASS |  |
+| back-pain-applicability | PASS |  |
 | unsupported-fever | PASS |  |
 | candidate-cardiovascular | PASS |  |
 | candidate-respiratory | PASS |  |
@@ -72,6 +72,8 @@ Passing regression checks does not authorize clinical deployment or new pathways
 | unknown-complaint | PASS |  |
 | gap-paraphrase | PASS |  |
 | gap-partial-recognition | PASS |  |
+| back-pain-handoff-suspected | PASS |  |
+| back-pain-handoff-__unavailable__ | PASS |  |
 
 ## Expansion gate
 

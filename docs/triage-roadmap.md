@@ -573,3 +573,23 @@ See `docs/clinical/medication-coverage.md` for scope and deployment limitations.
 Next Phase 14: a clinically specified non-cardiopulmonary pathway. Phase 13's bounded
 engineering work is complete; live provider selection/activation and independent
 clinical review remain outstanding and are not implied by test success.
+
+## Phase 14: bounded adult low-back assessment (implemented; clinical review pending)
+
+Added a non-cardiopulmonary pathway for clinician-confirmed adult low-back pain,
+informed by NICE NG59 assessment principles. General back-pain extraction nominates
+it; clinician confirmation establishes location and non-pregnant adult scope.
+Recorded pediatric/pregnancy exclusions are enforced before entry. The owner records
+scope and suspicion of a specific/serious cause. Unknown, unavailable, outside-scope
+or concerning answers hand off before imaging/diagnosis; completed assessment records
+clinician judgment without a score, diagnosis, low-risk claim or treatment advice.
+
+The assessment binds to current inputs and is renewed after changes. Unsupported
+co-complaints remain visible. The frontend displays answers, limitations and source.
+Existing persistence is reused. No new model knowledge corpus or automatic imaging
+recommendation was added. See `docs/clinical/low-back-assessment.md` for the clinical
+specification, implementation boundaries and independent-review requirement.
+
+436 selected tests and frontend build passed. The synthetic evaluation collection
+now contains 51 cases. Next Phase 15: consolidated clinician review workspace and
+versioned approval. Clinical review of this new pathway remains outstanding.

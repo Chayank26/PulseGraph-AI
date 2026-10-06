@@ -265,6 +265,7 @@ class ClinicalState(TypedDict):
     imaging_model_suggestion: Optional[Dict[str, Any]]
     imaging_suggestion_reviewed: bool
     medication_reconciliation: Optional[Dict[str, Any]]
+    back_pain_review: Optional[Dict[str, Any]]
     imaging_decision: Optional[Dict[str, Any]]
     imaging_response: Optional[Dict[str, Any]]
     image_path: Optional[str]

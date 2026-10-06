@@ -11,6 +11,7 @@ class PathwayDecisions(BaseModel):
     heart: Decision | None = None
     curb65: Decision | None = None
     wells: Decision | None = None
+    low_back: Decision | None = None
 
 
 class PathwayDefinition(BaseModel):
@@ -37,6 +38,9 @@ PATHWAYS = [
         applicability='Clinician suspects pulmonary embolism in this adult and confirms this assessment is appropriate. A symptom or elevated pulse alone does not establish suspected PE.',
         required_fields={'heart_rate_gt_100','pe_most_likely','clinical_signs_dvt','immobilization_surgery','previous_dvt_pe','hemoptysis','malignancy'}, score_name='Wells Score (PE)',
         source='https://www.nice.org.uk/guidance/ng158/chapter/Recommendations'),
+    PathwayDefinition(key='low_back', name='Low-back clinical assessment', symptoms={'back_pain'}, covered_symptoms={'back_pain'},
+        applicability='Clinician confirms an adult low-back-pain presentation suitable for a bounded assessment record. This is not a risk calculator and does not exclude serious disease.',
+        required_fields=set(), score_name='', source='https://www.nice.org.uk/guidance/ng59/chapter/recommendations'),
 ]
 GROUPS = {
     'cardiovascular': {'chest_pain'}, 'respiratory': {'breathlessness','cough'},
@@ -62,7 +66,7 @@ class RoutingPlan(BaseModel):
     requires_clinician_assessment: bool
     limitations: list[str] = Field(default_factory=lambda: [
         'Presentation groups are descriptive, not diagnoses.',
-        'Only the listed calculators are implemented; no score establishes low risk.',
+        'Only the listed assessments are implemented; completion does not establish low risk.',
         'Applicability requires clinician judgement. This router is not clinically validated.',
     ])
 

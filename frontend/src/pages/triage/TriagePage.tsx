@@ -52,6 +52,15 @@ export const TriagePage: React.FC = () => {
         </div>
       </div>
 
+      {state.presentation?.back_pain_assessment && (
+        <section className="bg-white border border-[#DCD8BE] rounded-xl p-5 space-y-3" aria-label="Low-back assessment">
+          <h2 className="font-bold">Low-back clinician assessment</h2>
+          <p>{state.presentation.back_pain_assessment.status.replaceAll('_', ' ')}</p>
+          {Object.entries(state.presentation.back_pain_assessment.answers).map(([key, value]) => <p key={key}>{key.replace('back_review_', '').replaceAll('_', ' ')}: {value.replaceAll('_', ' ')}</p>)}
+          {state.presentation.back_pain_assessment.limitations.map(text => <p className="text-sm" key={text}>{text}</p>)}
+          <a href={state.presentation.back_pain_assessment.source} target="_blank" rel="noreferrer" className="underline">Assessment source: NICE NG59</a>
+        </section>
+      )}
       {state.presentation?.routing && (
         <section className="bg-white border border-[#DCD8BE] rounded-xl p-5 space-y-3" aria-label="Assessment routing">
           <h3 className="triage-panel-title">ASSESSMENT ROUTING</h3>

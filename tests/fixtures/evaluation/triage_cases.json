@@ -136,7 +136,7 @@
     }
   },
   {
-    "id": "unsupported-back_pain",
+    "id": "back-pain-applicability",
     "category": "presentation groups",
     "inputs": {
       "complaint": "back pain",
@@ -157,8 +157,8 @@
     },
     "responses": [],
     "expected": {
-      "next_node": "END",
-      "step": "triage_manual_review_required",
+      "next_node": "data_request_review",
+      "step": "waiting_for_clinical_data",
       "groups": [
         "musculoskeletal_or_injury"
       ],
@@ -166,7 +166,15 @@
         "back_pain": "present"
       },
       "scores": {},
-      "questions": []
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Assessment applicability",
+          "fields": [
+            "pathway_decision_low_back"
+          ]
+        }
+      ]
     }
   },
   {
@@ -869,7 +877,8 @@
       "pathways": {
         "heart": "UNSUPPORTED",
         "curb65": "NOT_APPLICABLE",
-        "wells": "NOT_APPLICABLE"
+        "wells": "NOT_APPLICABLE",
+        "low_back": "NOT_APPLICABLE"
       }
     }
   },
@@ -903,7 +912,8 @@
       "pathways": {
         "heart": "UNSUPPORTED",
         "curb65": "NOT_APPLICABLE",
-        "wells": "NOT_APPLICABLE"
+        "wells": "NOT_APPLICABLE",
+        "low_back": "NOT_APPLICABLE"
       }
     }
   },
@@ -1823,6 +1833,122 @@
     "expected": {
       "next_node": "END",
       "step": "triage_manual_review_required"
+    }
+  },
+  {
+    "id": "back-pain-handoff-suspected",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "back pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [
+      {
+        "pathway_decision_low_back": "applicable"
+      },
+      {
+        "back_review_scope": "confirmed",
+        "back_review_serious_cause": "suspected"
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "musculoskeletal_or_injury"
+      ],
+      "symptoms": {
+        "back_pain": "present"
+      },
+      "scores": {},
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Assessment applicability",
+          "fields": [
+            "pathway_decision_low_back"
+          ]
+        },
+        {
+          "agent": "triage",
+          "pathway": "Low-back clinical assessment",
+          "fields": [
+            "back_review_scope",
+            "back_review_serious_cause"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "back-pain-handoff-__unavailable__",
+    "category": "presentation groups",
+    "inputs": {
+      "complaint": "back pain",
+      "vitals": {
+        "heart_rate_bpm": 80,
+        "respiratory_rate": 18,
+        "blood_pressure_sys": 120,
+        "blood_pressure_dia": 80,
+        "temperature_c": 37,
+        "spo2_percent": 98
+      },
+      "urgency_context": {
+        "pregnant": false,
+        "clinician_concern": false,
+        "new_confusion": false,
+        "oxygen_scale": "standard"
+      }
+    },
+    "responses": [
+      {
+        "pathway_decision_low_back": "applicable"
+      },
+      {
+        "back_review_scope": "confirmed",
+        "back_review_serious_cause": "__unavailable__"
+      }
+    ],
+    "expected": {
+      "next_node": "END",
+      "step": "triage_manual_review_required",
+      "groups": [
+        "musculoskeletal_or_injury"
+      ],
+      "symptoms": {
+        "back_pain": "present"
+      },
+      "scores": {},
+      "questions": [
+        {
+          "agent": "triage",
+          "pathway": "Assessment applicability",
+          "fields": [
+            "pathway_decision_low_back"
+          ]
+        },
+        {
+          "agent": "triage",
+          "pathway": "Low-back clinical assessment",
+          "fields": [
+            "back_review_scope",
+            "back_review_serious_cause"
+          ]
+        }
+      ]
     }
   }
 ]

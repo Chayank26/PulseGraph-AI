@@ -13,7 +13,7 @@ def evaluate(complaint, decisions=None, notes=None, age=45, pregnant=None):
 
 @pytest.mark.parametrize('complaint,group', [
     ('abdominal pain', 'gastrointestinal'), ('headache', 'neurological'), ('rash', 'skin'),
-    ('painful urination', 'urinary'), ('back pain', 'musculoskeletal_or_injury'), ('fever', 'systemic')])
+    ('painful urination', 'urinary'), ('fever', 'systemic')])
 def test_unsupported_groups_do_not_get_chest_questionnaires(complaint,group):
     result = evaluate(complaint)
     assert result['current_step'] == 'triage_manual_review_required'

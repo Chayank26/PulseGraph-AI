@@ -44,6 +44,7 @@ class ClinicalPresentation(BaseModel):
     evidence_review: dict | None = None
     symbolic_review: dict | None = None
     safety_review: dict | None = None
+    back_pain_assessment: dict | None = None
     diagnostic_review: dict | None = None
     imaging_plan: dict | None = None
     routing: RoutingPlan | None = None

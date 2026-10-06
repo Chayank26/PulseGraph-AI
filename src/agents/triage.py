@@ -445,10 +445,22 @@ def triage_agent_node(state: ClinicalState) -> Dict[str, Any]:
         else:
             selected = {p.key for p in plan.pathways if p.status == "READY"}
             result = _calculate_triage(state, presentation, selected)
+            if 'low_back' in selected:
+                from src.core.back_pain import assess
+                request, assessment = assess(state)
+                presentation.back_pain_assessment = assessment
+                if request:
+                    result.setdefault('pending_data_requests', []).append(request)
+                    result['current_step'] = 'waiting_for_clinical_data'
+                elif assessment['status'] == 'REQUIRES_CLINICIAN_ASSESSMENT':
+                    plan.handoff_reasons.append('Low-back assessment: scope or serious-cause assessment requires clinician action. Do not delay evaluation for imaging upload.')
+                    plan.requires_clinician_assessment = True
             scores = {s.score_name for s in result.get("risk_scores", [])}
             for pathway in plan.pathways:
                 definition = next(p for p in PATHWAYS if p.key == pathway.key)
-                if definition.score_name in scores:
+                if pathway.key == 'low_back' and presentation.back_pain_assessment:
+                    pathway.status = 'COMPLETE' if presentation.back_pain_assessment['status'] == 'CLINICIAN_ASSESSED' else 'INCOMPLETE'
+                elif definition.score_name in scores:
                     pathway.status = "COMPLETE"
                 elif any(r.pathway_name == pathway.name for r in result.get("pending_data_requests", [])):
                     pathway.status = "NEEDS_DATA"

@@ -66,6 +66,15 @@ def validate_response(
     if not response_data:
         return False, ["Response data cannot be empty."]
 
+    if any(k.startswith('back_review_') for k in response_data) or request.pathway_name == 'Low-back clinical assessment':
+        if request.requesting_agent != 'triage' or request.pathway_name != 'Low-back clinical assessment':
+            return False, ['Low-back answers require the matching assessment request.']
+        from src.core.back_pain import validate_answer
+        try:
+            validate_answer(response_data)
+        except ValueError as exc:
+            return False, [str(exc)]
+
     if any(k.startswith('medication_review_') for k in response_data) or request.pathway_name == 'Medication reconciliation':
         if request.requesting_agent != 'safety' or request.pathway_name != 'Medication reconciliation':
             return False, ['Medication history controls require the reconciliation request.']
@@ -207,6 +216,12 @@ def apply_response_to_state(
     """
     Applies validated clinician responses to state vitals, demographics, and clinical notes.
     """
+    if any(k.startswith('back_review_') for k in response_data):
+        from src.core.back_pain import validate_answer, fingerprint
+        validate_answer(response_data)
+        return {'back_pain_review':{**response_data, 'input_fingerprint':fingerprint(state)},
+            'audit_trail':[AuditEntry(agent_name='TriageAgent', action='LOW_BACK_ASSESSMENT_RECORDED',
+                summary='Clinician recorded low-back scope and serious-cause assessment.', metadata=dict(response_data))]}
     if any(k.startswith('medication_review_') for k in response_data):
         from src.core.medication_review import apply_reconciliation
         return apply_reconciliation(state, response_data)
