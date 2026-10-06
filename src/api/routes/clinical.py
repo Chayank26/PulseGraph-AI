@@ -114,6 +114,8 @@ def reevaluate_session(
         return workflow_service.reevaluate_session(session_id, clinician_identity, payload.notes)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
+    except WorkflowConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -133,6 +135,8 @@ def reject_session(
         return workflow_service.reject_session(session_id, clinician_identity, notes)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
+    except WorkflowConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

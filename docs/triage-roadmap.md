@@ -629,3 +629,24 @@ Next Phase 16B: disposable PostgreSQL failure injection, coordinated concurrent
 mutations and transaction/serialization fixes, plus independent clinical evaluation
 preparation. Automatic recovery, atomic approval, exactly-once audit persistence and
 independent clinical validation remain unestablished. Phase 16 is not complete.
+
+## Phase 16B1: per-session serialization and PostgreSQL lock probe (completed)
+
+Added PostgreSQL advisory locking around workflow mutations, evidence submission and
+versioned review reads. A dedicated connection holds the lock across repository
+commits; competing operations conflict instead of interleaving, while separate
+sessions can progress. SQLite supports process-local development/test locks only.
+Approval now validates its version inside the shared operation lock. Reassessment
+and rejection return HTTP 409 for workflow conflicts.
+
+447 selected regression tests passed, along with all nine offline recovery gate
+checks. A real PostgreSQL 16 disposable container passed the independent-process
+probe: conflict survives application commits, different sessions remain independent,
+and worker termination releases the lock. The temporary container was stopped and
+removed. See `docs/evaluation/postgres-lock-report.json` and
+`docs/evaluation/session-serialization.md`. No frontend changes.
+
+Next Phase 16B2: full PostgreSQL workflow restart/partial-commit injection and
+reconciliation, lock-connection-loss fencing, service-level process races and
+idempotent audit persistence. Advisory locking is not an atomic application/checkpoint
+transaction; automatic recovery and clinical validation remain unestablished.

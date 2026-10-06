@@ -8,6 +8,7 @@ from src.core.evidence import CORPUS_PATH
 from src.core.evidence_review import ClaimReview, validate_claim_review
 from src.core.diagnostic import input_fingerprint
 from src.core.state import AuditEntry
+from src.services.session_lock import serialized_session
 from src.services.clinical_workflow import ClinicalWorkflowService, WorkflowConflictError
 
 
@@ -53,6 +54,7 @@ class EvidenceReviewService:
         config = {'configurable': {'thread_id': session.thread_id}}
         return session, config, self.workflow.graph.get_state(config)
 
+    @serialized_session
     def submit(self, session_id, doctor_id, payload):
         session, config, snapshot = self.session(session_id, doctor_id)
         if snapshot.next != ('human_review',):

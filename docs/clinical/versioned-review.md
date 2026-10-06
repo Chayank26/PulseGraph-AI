@@ -46,3 +46,9 @@ race requiring shared transaction/serialization design and recovery tests. This
 phase does not claim exactly-once approval or delivery. Audit synchronization can
 still duplicate rows. Independent review annotations, human factors and real
 PostgreSQL crash/concurrency experiments remain outstanding.
+
+Phase 16B1 update: application service operations now share a per-session PostgreSQL
+advisory lock, including evidence updates and approval version validation. This closes
+ordinary interleaving through those methods while the lock connection remains alive.
+It does not make application/checkpoint commits atomic or fence a worker whose lock
+connection is lost. See `../evaluation/session-serialization.md` for verified scope.

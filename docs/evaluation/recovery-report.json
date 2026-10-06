@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-06T04:10:05.048236+00:00",
+  "generated_at": "2026-10-06T07:06:54.905791+00:00",
   "python": "3.13.9",
   "backend": "SQLite fixtures and in-memory checkpoints",
   "provider": "synthetic",

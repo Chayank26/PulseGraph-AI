@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-10-06T07:06:24.176329+00:00",
+  "backend": "postgresql",
+  "gate_passed": true,
+  "clinical_validation": false,
+  "workflow_crash_recovery_tested": false,
+  "atomic_database_checkpoint_transaction": false,
+  "checks": [
+    "cross_process_conflict_after_repository_commit",
+    "independent_session_progress",
+    "lock_released_after_worker_termination"
+  ],
+  "status": "PASS"
+}

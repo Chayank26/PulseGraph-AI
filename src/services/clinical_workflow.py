@@ -38,8 +38,7 @@ def _to_json_serializable(obj: Any) -> Any:
     return obj
 
 
-class WorkflowConflictError(ValueError):
-    """A started session must use its existing request/review lifecycle."""
+from src.services.session_lock import WorkflowConflictError, serialized_session
 
 
 class ClinicalWorkflowService:
@@ -94,6 +93,7 @@ class ClinicalWorkflowService:
             clinician_approval={"approved": state_values.get("approved_by_clinician"), "notes": state_values.get("clinician_notes"), "record": state_values.get("approval_record")}
         )
 
+    @serialized_session
     def run_session(
         self,
         session_id: str,
@@ -204,6 +204,7 @@ class ClinicalWorkflowService:
             "pending_requests": _to_json_serializable(state_values.get("pending_data_requests", []))
         }
 
+    @serialized_session
     def resolve_data_request(
         self,
         session_id: str,
@@ -305,7 +306,11 @@ class ClinicalWorkflowService:
             "resolution": "SUCCESS"
         }
 
+    @serialized_session
     def review_package(self, session_id, doctor_id):
+        return self._review_package(session_id, doctor_id)
+
+    def _review_package(self, session_id, doctor_id):
         from hashlib import sha256
         import json
         session = self.sess_repo.get_by_session_id(session_id)
@@ -330,6 +335,7 @@ class ClinicalWorkflowService:
                 'approval':values.get('approval_record'),
                 'limitations':['Approval records clinician review; it is not clinical validation or proof of EHR delivery.']}
 
+    @serialized_session
     def approve_session(
         self,
         session_id: str,
@@ -342,7 +348,7 @@ class ClinicalWorkflowService:
         if not session:
             raise ValueError(f"Session '{session_id}' not found.")
 
-        package = self.review_package(session_id, clinician.doctor_id)
+        package = self._review_package(session_id, clinician.doctor_id)
         thread_config = {"configurable": {"thread_id": session.thread_id}}
         if self.graph.get_state(thread_config).next != ("human_review",):
             raise ValueError("Clinical review actions require the human-review checkpoint; pending data or urgency review must be completed first.")
@@ -393,6 +399,7 @@ class ClinicalWorkflowService:
             "message": "Clinical review approval recorded. External EHR delivery is not implemented."
         }
 
+    @serialized_session
     def reevaluate_session(
         self,
         session_id: str,
@@ -454,6 +461,7 @@ class ClinicalWorkflowService:
             "next_node": next_step
         }
 
+    @serialized_session
     def reject_session(
         self,
         session_id: str,

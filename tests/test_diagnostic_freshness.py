@@ -69,5 +69,5 @@ def test_api_reevaluation_limit_does_not_clear_current_results(client):
     for _ in range(2):
         assert client.post(path+'/reevaluate', json={'notes':'chest pain'}).status_code == 200
     before = client.get(path+'/results').json()
-    assert client.post(path+'/reevaluate', json={'notes':'headache'}).status_code == 400
+    assert client.post(path+'/reevaluate', json={'notes':'headache'}).status_code == 409
     assert client.get(path+'/results').json() == before
