@@ -611,3 +611,21 @@ writes; concurrent approval safety and failure recovery remain Phase 16 work.
 Next Phase 16: independent clinical annotation, workflow/human-factors evaluation
 and recovery/concurrency testing. Clinical validation and real-provider activation
 remain outstanding across earlier phases.
+
+## Phase 16A: offline recovery-boundary gate (completed)
+
+Added a reproducible JUnit-backed recovery report with test hashes, backend identity
+and explicit untested-concurrency/clinical flags. Loss of checkpoint state now returns
+a review conflict instead of an empty package; pending answers remain unconsumed.
+Resolved request retries return conflicts without resuming. Explicit PostgreSQL
+requests cannot silently fall back to memory; implicit development fallback remains.
+
+Nine recovery/versioned-approval checks passed, 445 selected regression tests passed,
+and 51/51 synthetic workflow cases passed. No frontend changes. Reconstruction tests
+share an in-process saver and must not be reported as PostgreSQL crash recovery.
+See `docs/evaluation/recovery-protocol.md` and `recovery-report.json`.
+
+Next Phase 16B: disposable PostgreSQL failure injection, coordinated concurrent
+mutations and transaction/serialization fixes, plus independent clinical evaluation
+preparation. Automatic recovery, atomic approval, exactly-once audit persistence and
+independent clinical validation remain unestablished. Phase 16 is not complete.

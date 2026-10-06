@@ -222,15 +222,22 @@ class ClinicalWorkflowService:
         thread_config = {"configurable": {"thread_id": session.thread_id}}
         snapshot = self.graph.get_state(thread_config)
         if not snapshot.values:
-            raise ValueError(f"No active LangGraph checkpoint found for session [{session_id}].")
+            raise WorkflowConflictError(f"Checkpoint unavailable for session [{session_id}]; recovery is required before continuing.")
 
         pending_requests = snapshot.values.get("pending_data_requests", [])
         target_req = next((r for r in pending_requests if (r.request_id if hasattr(r, "request_id") else r.get("request_id")) == request_id), None)
         if not target_req:
+            if any((r.request_id if hasattr(r, 'request_id') else r.get('request_id')) == request_id
+                   for r in snapshot.values.get('resolved_data_requests', [])):
+                raise WorkflowConflictError('This clinical data request has already been resolved. Reload the session.')
             raise ValueError(f"ClinicalDataRequest [{request_id}] not found in session pending requests.")
 
         if (target_req.requesting_agent in ("urgency_check", "imaging", "diagnostic", "safety") or target_req.pathway_name == "Low-back clinical assessment") and reviewing_doctor_id != session.doctor_id:
             raise ValueError("Urgency, imaging and diagnostic decisions must be reviewed by the session's authenticated clinician.")
+
+        request_status = target_req.status if hasattr(target_req, 'status') else target_req.get('status')
+        if request_status != 'PENDING':
+            raise WorkflowConflictError('This clinical data request has already been resolved. Reload the session.')
 
         # Validate clinician input against field requirements
         validate_response(target_req, response_data)
@@ -308,6 +315,8 @@ class ClinicalWorkflowService:
             raise PermissionError('Only the session owner may review or approve this package.')
         snapshot = self.graph.get_state({'configurable': {'thread_id': session.thread_id}})
         values = snapshot.values
+        if not values:
+            raise WorkflowConflictError('Checkpoint unavailable; recovery is required before clinical review.')
         fields = ('demographics', 'vitals', 'urgency', 'presentation', 'risk_scores', 'differentials',
                   'imaging_data', 'evidence', 'safety_flags', 'symbolic_overrides', 'medication_reconciliation')
         package = {key:_to_json_serializable(values.get(key)) for key in fields}

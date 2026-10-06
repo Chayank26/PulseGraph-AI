@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-10-06T04:10:05.048236+00:00",
+  "python": "3.13.9",
+  "backend": "SQLite fixtures and in-memory checkpoints",
+  "provider": "synthetic",
+  "clinical_validation": false,
+  "postgres_recovery_tested": false,
+  "concurrency_tested": false,
+  "atomic_approval_established": false,
+  "gate_passed": true,
+  "exit_code": 0,
+  "tests": [
+    {
+      "name": "test_explicit_postgres_failure_never_falls_back",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_lost_checkpoint_cannot_approve_persisted_package",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_lost_checkpoint_does_not_consume_pending_response",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_duplicate_response_does_not_resume_twice",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_service_reconstruction_retains_review_version",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_version_required_and_recorded",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_evidence_judgment_invalidates_displayed_version",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_other_owner_cannot_read_or_approve",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_reassessment_changes_version",
+      "outcome": "PASS"
+    }
+  ],
+  "test_sha256": {
+    "tests/test_recovery_boundaries.py": "c4f04ef560b6c21f3dff29a8e2f628d1a12b98eb8f0525a70301a6921299da28",
+    "tests/test_versioned_approval.py": "a39a7486bc77b40c5d691f82752ad2cd79fa50fc2fafa782e3e209200dc9aaa6"
+  },
+  "limitations": [
+    "Service reconstruction shares an in-process saver; it is not process-crash persistence.",
+    "Lost-checkpoint tests prove refusal to proceed, not automatic recovery.",
+    "Concurrent writes and checkpoint/application transaction failures require separate experiments."
+  ]
+}

@@ -55,7 +55,7 @@ def get_default_checkpointer(force_backend: Optional[str] = None) -> Any:
 
         except Exception as e:
             logger.exception(f"Failed to initialize PostgresSaver checkpointer: {e}")
-            if is_production:
+            if is_production or force_backend is not None:
                 raise RuntimeError(f"Critical failure: PostgresSaver checkpointer initialization failed in production: {e}") from e
             logger.warning("Falling back to MemorySaver for development due to PostgreSQL checkpointer initialization failure.")
             _GLOBAL_CHECKPOINTER = MemorySaver()

@@ -54,6 +54,8 @@ def resolve_data_request(
             reviewing_doctor_id=current_clinician.doctor_id
         )
         return result
+    except WorkflowConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
@@ -71,6 +73,8 @@ def get_review_package(
         return ClinicalWorkflowService(db).review_package(session_id, current_clinician.doctor_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
+    except WorkflowConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
