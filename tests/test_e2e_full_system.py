@@ -88,7 +88,7 @@ def test_master_e2e_system_flow():
     # 8. Approve Session
     approve_resp = client.post(
         f"/api/clinical/sessions/{session_id}/approve",
-        json={"notes": "E2E Master Verification Passed. Approved for discharge."},
+        json={"notes": "E2E Master Verification Passed. Approved for discharge.", "review_version": client.get(f"/api/clinical/sessions/{session_id}/review", headers=headers).json()["review_version"]},
         headers=headers
     )
     assert approve_resp.status_code == 200

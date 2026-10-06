@@ -21,7 +21,7 @@ interface WorkflowContextType {
   createClinicalSession: (patientId: string, rawNotes?: string[], intake?: Pick<CreateSessionPayload, 'vitals' | 'image_path' | 'urgency_context'>) => Promise<ClinicalSession>;
   runWorkflow: (targetSession?: ClinicalSession) => Promise<void>;
   resolveDataRequest: (requestId: string, responseData: Record<string, any>) => Promise<void>;
-  approveSession: (notes?: string) => Promise<void>;
+  approveSession: (notes?: string, reviewVersion?: string) => Promise<void>;
   rejectSession: (notes?: string) => Promise<void>;
   reevaluateSession: (notes?: string) => Promise<void>;
   resetDemoSession: () => void;
@@ -363,11 +363,11 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const approveSession = async (notes?: string) => {
+  const approveSession = async (notes?: string, reviewVersion?: string) => {
     if (!session) return;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     
-    await clinicalSessionsApi.approveSession(session.session_id, { notes });
+    await clinicalSessionsApi.approveSession(session.session_id, { notes, review_version: reviewVersion });
 
     setSession(prev => {
       if (!prev) return null;

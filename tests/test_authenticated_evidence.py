@@ -25,7 +25,7 @@ def test_authenticated_review_persists_without_changing_retrieval_or_checkpoint(
     result=client.get(path+'/results').json()
     assert result['presentation']['evidence_review']['clinician_reviews'][0]['rationale']==payload['rationale']
     assert result['evidence'][0]['support_status']=='RELATED_CONTEXT_ONLY'
-    assert client.post(path+'/approve',json={}).status_code==200
+    assert client.post(path+'/approve',json={'review_version':client.get(path+'/review').json()['review_version']}).status_code==200
     assert client.post(path+'/evidence-reviews',json=payload).status_code==409
 
 

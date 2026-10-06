@@ -106,4 +106,4 @@ def test_api_persists_unavailable_symbolic_review(client):
     assert result['symbolic_overrides'] == []
     assert result['presentation']['symbolic_review']['status'] == 'UNAVAILABLE_PENDING_CLINICAL_REVIEW'
     # Downstream availability metadata must not invalidate current diagnostic inputs.
-    assert client.post(path + '/approve', json={}).status_code == 200
+    assert client.post(path + '/approve', json={'review_version':client.get(path+'/review').json()['review_version']}).status_code == 200

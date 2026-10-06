@@ -1,339 +1,81 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWorkflow } from '../../context/WorkflowContext';
-import { useAuth } from '../../context/AuthContext';
-import { UserCheck, CheckCircle, XCircle, RotateCcw, FileCode, AlertOctagon, ShieldCheck } from 'lucide-react';
-import { EhrExportModal } from '../../components/common/EhrExportModal';
+import { clinicalSessionsApi } from '../../api/clinicalSessions';
+import { Link } from 'react-router-dom';
 import './ReviewPage.css';
 
-import { Link } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+type Package = Record<string, unknown> & {session_id: string; review_version: string; can_approve: boolean; at_review_checkpoint: boolean};
+const sections = [
+  ['demographics', 'Patient and recorded history'], ['vitals', 'Observations'], ['urgency', 'Urgency assessment'],
+  ['presentation', 'Presentation, coverage and limitations'], ['risk_scores', 'All calculated scores'],
+  ['differentials', 'All differential proposals'], ['imaging_data', 'Supplied imaging report'],
+  ['evidence', 'Evidence and provenance'], ['safety_flags', 'Medication alerts'],
+  ['medication_reconciliation', 'Medication history review'], ['symbolic_overrides', 'Symbolic outputs'],
+  ['approval', 'Recorded approval'], ['limitations', 'Approval limitations'],
+];
+function Details({value}: {value: unknown}): React.ReactNode {
+  if (value == null) return <p>Not available.</p>;
+  if (Array.isArray(value)) return value.length ? <ul className="space-y-3">{value.map((item,i) => <li className="border-l pl-3" key={i}><Details value={item} /></li>)}</ul> : <p>No entries. This does not establish a negative finding.</p>;
+  if (typeof value === 'object') return <dl className="space-y-2">{Object.entries(value).filter(([key]) => !['input_fingerprint','assessment_fingerprint','prompt_sha256','response_sha256','corpus_sha256'].includes(key)).map(([key,item]) => <div key={key}><dt className="font-semibold">{key.replaceAll('_',' ')}</dt><dd className="pl-3 break-words"><Details value={item} /></dd></div>)}</dl>;
+  return <span>{String(value)}</span>;
+}
 
 export const ReviewPage: React.FC = () => {
-  const { doctor } = useAuth();
-  const { session, activePatient, approveSession, rejectSession, reevaluateSession } = useWorkflow();
-
-  if (!activePatient || !session) {
-    return (
-      <div className="bg-white border-2 border-black rounded-2xl p-12 text-center max-w-2xl mx-auto my-12 shadow-sm font-sans">
-        <AlertTriangle size={36} className="mx-auto text-[#E19B4C] mb-3" />
-        <h2 className="font-serif text-2xl font-bold text-black">No Active Patient Selected</h2>
-        <p className="text-sm text-[#66655C] mt-2">
-          Please select or register a patient from the Physician Patient Directory to conduct human-in-the-loop clinical review.
-        </p>
-        <Link
-          to="/dashboard"
-          className="mt-6 inline-flex items-center gap-2 bg-[#1A1A1C] text-white font-mono text-xs font-bold uppercase px-6 py-3 rounded-full hover:bg-black transition"
-        >
-          <span>Go to Patient Directory &rarr;</span>
-        </Link>
-      </div>
-    );
+  const {session, approveSession, rejectSession, reevaluateSession} = useWorkflow();
+  const [review,setReview] = useState<Package|null>(null);
+  const [notes,setNotes] = useState('');
+  const [acknowledged,setAcknowledged] = useState(false);
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState('');
+  const [reload,setReload] = useState(0);
+  const id=session?.session_id;
+  useEffect(() => {
+    let cancelled=false;
+    setReview(null); setAcknowledged(false); setError(''); setNotes('');
+    if (id) clinicalSessionsApi.getReviewPackage(id).then(data => {if(!cancelled) setReview(data);})
+      .catch(() => {if(!cancelled) setError('Unable to load the review package.');});
+    return () => {cancelled=true;};
+  },[id,session?.status,reload]);
+  if (!session) return <div className="review-card">Select a patient to review. <Link to="/dashboard">Patient directory</Link></div>;
+  const current=review?.session_id===id;
+  const canAct=current && review?.at_review_checkpoint && !busy;
+  async function act(action: 'approve'|'reject'|'reevaluate') {
+    if(!review || !current) return;
+    setBusy(true);setError('');
+    try {
+      if(action==='approve') await approveSession(notes,review.review_version);
+      else if(action==='reject') await rejectSession(notes);
+      else await reevaluateSession(notes);
+      setReload(n=>n+1);
+    } catch {
+      setAcknowledged(false);
+      setReview(null);
+      setError('The action was not completed. Reload the package and review it again; it may have changed.');
+    } finally {setBusy(false);}
   }
-
-  const state = session.state;
-
-  const [reviewNotes, setReviewNotes] = useState<string>('');
-  const [reevalNotes, setReevalNotes] = useState<string>('');
-  const [activeActionTab, setActiveActionTab] = useState<'APPROVE' | 'REEVAL' | 'REJECT'>('APPROVE');
-  const [submitting, setSubmitting] = useState<boolean>(false);
-  const [isEhrModalOpen, setIsEhrModalOpen] = useState<boolean>(false);
-
-  const primaryDiff = state.differentials?.[0];
-  const topRiskScore = state.risk_scores?.[0];
-
-  const handleApprove = async () => {
-    setSubmitting(true);
-    try {
-      await approveSession(reviewNotes);
-      setIsEhrModalOpen(true);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleReevaluate = async () => {
-    setSubmitting(true);
-    try {
-      await reevaluateSession(reevalNotes);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    setSubmitting(true);
-    try {
-      await rejectSession(reviewNotes);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="review-shell animate-fade-in font-sans">
-      {/* Header Banner */}
-      <div className="review-banner">
-        <div>
-          <div className="review-banner-meta">
-            <UserCheck size={16} />
-            <span>MANDATORY CLINICAL CHECKPOINT</span>
-          </div>
-          <h1 className="review-banner-title">
-            HUMAN-IN-THE-LOOP REVIEW WORKBENCH
-          </h1>
-          <p className="review-banner-subtitle">
-            Attending physician verification, decision sign-off, and FHIR R4 EHR export authorization.
-          </p>
+  return <div className="review-shell font-sans">
+    <header className="review-banner"><div><h1 className="review-banner-title">Clinician review</h1>
+      <p>Review the full assessment and its limitations before recording your decision.</p><p>Session status: {session.status}</p></div></header>
+    {error && <p role="alert">{error}</p>}
+    <button disabled={busy} onClick={()=>setReload(n=>n+1)} className="underline">Reload review package</button>
+    {!current && !error && <p>Loading review package…</p>}
+    {current && review && <>
+      <p className="text-sm">Review version: {review.review_version.slice(0,12)}. Approval is tied to this loaded package.</p>
+      <div className="review-grid">{sections.map(([key,title]) => <section className="review-card text-sm" key={key}>
+        <h2 className="font-bold text-lg">{title}</h2><Details value={review[key]} />
+      </section>)}</div>
+      <section className="review-card space-y-3">
+        <h2 className="font-bold">Clinician decision</h2>
+        <p>Approval records your review. It does not certify clinical validity or deliver records to an external EHR.</p>
+        {!review.can_approve && <p>This assessment is not currently eligible for approval. Complete pending requests or resolve stale assessment inputs.</p>}
+        <label>Review notes or reassessment instructions<textarea className="block w-full border p-3" value={notes} onChange={e=>setNotes(e.target.value)} /></label>
+        <label className="block"><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} /> I reviewed this package, including incomplete assessments and coverage limitations.</label>
+        <div className="flex gap-4 flex-wrap">
+          <button disabled={!canAct || !review.can_approve || !acknowledged} onClick={()=>act('approve')} className="border rounded p-3 disabled:opacity-40">Record approval</button>
+          <button disabled={!canAct || !notes.trim()} onClick={()=>act('reevaluate')} className="border rounded p-3 disabled:opacity-40">Request reassessment</button>
+          <button disabled={!canAct} onClick={()=>act('reject')} className="border rounded p-3 disabled:opacity-40">Reject and take over</button>
         </div>
-
-        <div className="review-banner-badge">
-          <span>STATUS: {session.status}</span>
-        </div>
-      </div>
-
-      {/* Review Package Summary Grid */}
-      <div className="review-grid">
-        {/* Left Column: Differential & Findings Summary Package */}
-        <div className="review-card">
-          <h3 className="font-serif uppercase tracking-widest text-xs font-bold text-[#66655C] flex items-center justify-between">
-            <span>CLINICAL PACKAGE SUMMARY FOR APPROVAL</span>
-            <span className="font-mono text-black">PATIENT: {session.patient_id}</span>
-          </h3>
-
-          {/* Primary Hypothesis */}
-          <div className="space-y-3">
-            <h4 className="font-serif italic text-xl font-bold text-black">Primary Diagnostic Hypothesis</h4>
-            {primaryDiff ? (
-              <div className="bg-white border-2 border-black rounded-xl p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-base text-black">{primaryDiff.condition_name}</span>
-                  <span className="font-mono text-xs font-bold text-black bg-[#D6E3F5] px-3 py-1 rounded-full border border-black">
-                    ICD-10: {primaryDiff.icd10_code || 'Not assigned'} • {primaryDiff.likelihood}
-                  </span>
-                </div>
-                <p className="text-xs text-[#4A4943] leading-relaxed font-sans">
-                  {primaryDiff.rationale}
-                </p>
-              </div>
-            ) : (
-              <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 text-xs font-mono text-[#8C8A7B]">
-                Awaiting diagnostic synthesis. Run the clinical pipeline to generate hypotheses.
-              </div>
-            )}
-          </div>
-
-          {/* Risk Score Summary */}
-          <div className="space-y-3">
-            <h4 className="font-serif italic text-xl font-bold text-black">Calculated Risk Stratification</h4>
-            {topRiskScore ? (
-              <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-2 text-xs">
-                <div className="flex items-center justify-between font-mono font-bold text-black">
-                  <span>{topRiskScore.score_name} Score: {topRiskScore.score_value}</span>
-                  <span className="bg-[#F7D8D8] text-[#8C2A2A] px-2.5 py-0.5 rounded border border-[#EAAFA0] font-bold">
-                    {topRiskScore.risk_level}
-                  </span>
-                </div>
-                <p className="text-[#66655C]">{topRiskScore.recommendation}</p>
-              </div>
-            ) : (
-              <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 text-xs font-mono text-[#8C8A7B]">
-                Awaiting risk score computation. Run the clinical pipeline to calculate scores.
-              </div>
-            )}
-          </div>
-
-          {/* Safety & Guardrail Compliance */}
-          <div className="space-y-3">
-            <h4 className="font-serif italic text-xl font-bold text-black">Safety & Guardrail Compliance</h4>
-            <div className="bg-white border border-[#DCD8BE] rounded-xl p-4 space-y-2 text-xs font-mono">
-              <div className="flex items-center justify-between text-black font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-green-700" />
-                  <span>Deterministic Symbolic Overrides:</span>
-                </span>
-                <span className="font-bold">{state.symbolic_overrides?.length || 0} Rule(s) Evaluated</span>
-              </div>
-              <div className="flex items-center justify-between text-black font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <AlertOctagon size={14} className="text-red-700" />
-                  <span>Pharmacological Safety Flags:</span>
-                </span>
-                <span className="font-bold">{state.safety_flags?.length || 0} Flag(s) Flagged</span>
-              </div>
-            </div>
-          </div>
-
-          {session.status === 'APPROVED' && (
-            <button
-              onClick={() => setIsEhrModalOpen(true)}
-              className="w-full bg-[#2A2B2E] text-white py-3 rounded-full font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black shadow-md"
-            >
-              <FileCode size={15} className="text-[#E19B4C]" />
-              <span>Inspect FHIR R4 EHR Export Bundle</span>
-            </button>
-          )}
-        </div>
-
-        {/* Right Column: Interactive Clinician Action Workbench */}
-        <div className="review-card">
-          <h3 className="font-serif uppercase tracking-widest text-xs font-bold text-[#66655C]">
-            PHYSICIAN DECISION & AUTHORIZATION
-          </h3>
-
-          {/* Action Tabs */}
-          <div className="grid grid-cols-3 gap-2 p-1 bg-[#EAE7DA] rounded-xl font-mono text-xs font-bold">
-            <button
-              onClick={() => setActiveActionTab('APPROVE')}
-              className={`py-2 rounded-lg transition ${
-                activeActionTab === 'APPROVE' ? 'bg-[#2A2B2E] text-white shadow-sm' : 'text-[#66655C] hover:text-black'
-              }`}
-            >
-              1. Approve
-            </button>
-            <button
-              onClick={() => setActiveActionTab('REEVAL')}
-              className={`py-2 rounded-lg transition ${
-                activeActionTab === 'REEVAL' ? 'bg-[#2A2B2E] text-white shadow-sm' : 'text-[#66655C] hover:text-black'
-              }`}
-            >
-              2. Re-Evaluate
-            </button>
-            <button
-              onClick={() => setActiveActionTab('REJECT')}
-              className={`py-2 rounded-lg transition ${
-                activeActionTab === 'REJECT' ? 'bg-[#2A2B2E] text-white shadow-sm' : 'text-[#66655C] hover:text-black'
-              }`}
-            >
-              3. Reject
-            </button>
-          </div>
-
-          {/* Tab 1: Approve & Persist */}
-          {activeActionTab === 'APPROVE' && (
-            <div className="space-y-4 text-xs font-sans">
-              <div className="p-4 rounded-xl border border-[#98A885] bg-[#E8EFE2] space-y-1">
-                <h5 className="font-bold text-[#2C421C] uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle size={15} />
-                  <span>Option 1: Approve & Export to EHR</span>
-                </h5>
-                <p className="text-[#2C421C]/80 leading-relaxed">
-                  Persists final CDS recommendations to PostgreSQL, appends attending clinician digital signature to audit trail, and exports payload to hospital EHR (FHIR R4).
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono uppercase text-[#66655C] mb-1 font-bold">
-                  Attending Physician Verification Notes
-                </label>
-                <textarea
-                  rows={3}
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
-                  className="w-full bg-white border border-[#DCD8BE] rounded-xl p-3 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
-                />
-              </div>
-
-              {doctor && (
-                <div className="bg-white border border-[#DCD8BE] rounded-xl p-3 text-[11px] font-mono text-[#66655C] flex items-center justify-between">
-                  <span>Digital Signature: {doctor.full_name} ({doctor.department})</span>
-                  <span>{new Date().toLocaleDateString()}</span>
-                </div>
-              )}
-
-              <p className="text-xs">{state.presentation?.symbolic_review?.limitations?.join(' ')}</p>
-              <ul className="text-xs space-y-1">{state.presentation?.diagnostic_review?.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul>
-              <button
-                onClick={handleApprove}
-                disabled={submitting || session.status !== 'WAITING_FOR_CLINICIAN_REVIEW' || state.presentation?.diagnostic_review?.status !== 'CURRENT'}
-                className="w-full bg-[#1C3829] text-white py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black transition shadow-lg"
-              >
-                <CheckCircle size={15} className="text-[#9DB08F]" />
-                <span>{submitting ? 'Persisting to PostgreSQL & Exporting EHR...' : session.status === 'APPROVED' ? 'Session Approved & Persisted' : 'Approve Recommendations & Export EHR'}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Tab 2: Request Re-Evaluation */}
-          {activeActionTab === 'REEVAL' && (
-            <div className="space-y-4 text-xs font-sans">
-              <div className="p-4 rounded-xl border border-[#DCD8BE] bg-white space-y-1">
-                <h5 className="font-bold text-black uppercase tracking-wider flex items-center gap-1.5">
-                  <RotateCcw size={15} />
-                  <span>Option 2: Request Graph Re-Evaluation Loop</span>
-                </h5>
-                <p className="text-[#66655C] leading-relaxed">
-                  Appends physician feedback notes to graph state, increments iteration counter, and re-invokes multi-agent execution pipeline.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono uppercase text-[#66655C] mb-1 font-bold">
-                  Physician Feedback Instructions for Graph Re-Run
-                </label>
-                <textarea
-                  rows={3}
-                  value={reevalNotes}
-                  onChange={(e) => setReevalNotes(e.target.value)}
-                  className="w-full bg-white border border-[#DCD8BE] rounded-xl p-3 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
-                />
-              </div>
-
-              <button
-                onClick={handleReevaluate}
-                disabled={submitting}
-                className="w-full bg-[#2A2B2E] text-white py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black transition shadow-lg"
-              >
-                <RotateCcw size={15} className="text-[#E19B4C]" />
-                <span>{submitting ? 'Re-Invoking LangGraph Pipeline...' : 'Submit Feedback & Re-Evaluate'}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Tab 3: Reject & Manual Takeover */}
-          {activeActionTab === 'REJECT' && (
-            <div className="space-y-4 text-xs font-sans">
-              <div className="p-4 rounded-xl border border-[#EAAFA0] bg-[#F7D8D8] space-y-1">
-                <h5 className="font-bold text-[#8C2A2A] uppercase tracking-wider flex items-center gap-1.5">
-                  <XCircle size={15} />
-                  <span>Option 3: Reject AI CDS & Manual Takeover</span>
-                </h5>
-                <p className="text-[#8C2A2A]/80 leading-relaxed">
-                  Overrides AI decision support recommendations entirely and transfers patient session directly to manual attending physician management.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono uppercase text-[#66655C] mb-1 font-bold">
-                  Rejection & Manual Takeover Rationale
-                </label>
-                <textarea
-                  rows={3}
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
-                  placeholder="State reason for overriding decision support recommendations..."
-                  className="w-full bg-white border border-[#DCD8BE] rounded-xl p-3 text-xs text-black focus:outline-none focus:ring-2 focus:ring-black"
-                />
-              </div>
-
-              <button
-                onClick={handleReject}
-                disabled={submitting || session.status === 'REJECTED_MANUAL_TAKEOVER'}
-                className="w-full bg-[#8C2A2A] text-white py-3.5 rounded-full font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black transition shadow-lg"
-              >
-                <XCircle size={15} />
-                <span>{submitting ? 'Processing Manual Takeover...' : session.status === 'REJECTED_MANUAL_TAKEOVER' ? 'Session Rejected (Manual Takeover)' : 'Reject Recommendations & Take Over'}</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* FHIR EHR Export Modal */}
-      <EhrExportModal
-        isOpen={isEhrModalOpen}
-        onClose={() => setIsEhrModalOpen(false)}
-        session={session}
-      />
-    </div>
-  );
+      </section>
+    </>}
+  </div>;
 };

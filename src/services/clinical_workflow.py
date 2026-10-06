@@ -91,7 +91,7 @@ class ClinicalWorkflowService:
             safety_flags=_to_json_serializable(state_values.get("safety_flags", [])),
             symbolic_overrides=_to_json_serializable(state_values.get("symbolic_overrides", [])),
             final_status=session.status,
-            clinician_approval={"approved": state_values.get("approved_by_clinician"), "notes": state_values.get("clinician_notes")}
+            clinician_approval={"approved": state_values.get("approved_by_clinician"), "notes": state_values.get("clinician_notes"), "record": state_values.get("approval_record")}
         )
 
     def run_session(
@@ -298,17 +298,42 @@ class ClinicalWorkflowService:
             "resolution": "SUCCESS"
         }
 
+    def review_package(self, session_id, doctor_id):
+        from hashlib import sha256
+        import json
+        session = self.sess_repo.get_by_session_id(session_id)
+        if not session:
+            raise ValueError('Session not found.')
+        if session.doctor_id != doctor_id:
+            raise PermissionError('Only the session owner may review or approve this package.')
+        snapshot = self.graph.get_state({'configurable': {'thread_id': session.thread_id}})
+        values = snapshot.values
+        fields = ('demographics', 'vitals', 'urgency', 'presentation', 'risk_scores', 'differentials',
+                  'imaging_data', 'evidence', 'safety_flags', 'symbolic_overrides', 'medication_reconciliation')
+        package = {key:_to_json_serializable(values.get(key)) for key in fields}
+        binding = {'session_id':session_id, 'checkpoint':snapshot.config, 'package':package}
+        version = sha256(json.dumps(binding, sort_keys=True, default=str).encode()).hexdigest()
+        eligible = (snapshot.next == ('human_review',) and bool(values.get('diagnostic_fingerprint'))
+                    and values['diagnostic_fingerprint'] == input_fingerprint(values))
+        return {**package, 'session_id':session_id, 'patient_id':session.patient_id,
+                'status':session.status, 'review_version':version, 'can_approve':eligible,
+                'at_review_checkpoint':snapshot.next == ('human_review',),
+                'approval':values.get('approval_record'),
+                'limitations':['Approval records clinician review; it is not clinical validation or proof of EHR delivery.']}
+
     def approve_session(
         self,
         session_id: str,
         clinician: ClinicianIdentity,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        review_version: Optional[str] = None
     ) -> Dict[str, Any]:
         """Clinician approves CDS recommendations, resuming graph to ehr_export node."""
         session = self.sess_repo.get_by_session_id(session_id)
         if not session:
             raise ValueError(f"Session '{session_id}' not found.")
 
+        package = self.review_package(session_id, clinician.doctor_id)
         thread_config = {"configurable": {"thread_id": session.thread_id}}
         if self.graph.get_state(thread_config).next != ("human_review",):
             raise ValueError("Clinical review actions require the human-review checkpoint; pending data or urgency review must be completed first.")
@@ -318,9 +343,17 @@ class ClinicalWorkflowService:
         if not snapshot.values.get('diagnostic_fingerprint') or snapshot.values['diagnostic_fingerprint'] != input_fingerprint(snapshot.values):
             raise WorkflowConflictError('Diagnostic results are stale. Request reevaluation before approval.')
 
+        if not review_version or review_version != package['review_version']:
+            raise WorkflowConflictError('Review package changed or no version was supplied. Reload and review before approval.')
+        approval_record = {'review_version':review_version, 'doctor_id':clinician.doctor_id,
+                           'approved_at':datetime.now(timezone.utc).isoformat()}
+
         self.graph.update_state(
             thread_config,
             {
+                "approval_record": approval_record,
+                "audit_trail": [AuditEntry(agent_name='HumanReviewNode', action='VERSIONED_APPROVAL',
+                    summary='Session owner approved the displayed review package.', metadata=approval_record)],
                 "authenticated_clinician": clinician,
                 "approved_by_clinician": True,
                 "re_evaluation_requested": False,
@@ -348,7 +381,7 @@ class ClinicalWorkflowService:
             "session_id": session_id,
             "status": "APPROVED",
             "current_step": "ehr_exported",
-            "message": "CDS package successfully approved by clinician and exported to EHR."
+            "message": "Clinical review approval recorded. External EHR delivery is not implemented."
         }
 
     def reevaluate_session(
@@ -361,6 +394,9 @@ class ClinicalWorkflowService:
         session = self.sess_repo.get_by_session_id(session_id)
         if not session:
             raise ValueError(f"Session '{session_id}' not found.")
+
+        if session.doctor_id != clinician.doctor_id:
+            raise PermissionError('Only the session owner may make clinical review decisions.')
 
         thread_config = {"configurable": {"thread_id": session.thread_id}}
         if self.graph.get_state(thread_config).next != ("human_review",):
@@ -419,6 +455,9 @@ class ClinicalWorkflowService:
         session = self.sess_repo.get_by_session_id(session_id)
         if not session:
             raise ValueError(f"Session '{session_id}' not found.")
+
+        if session.doctor_id != clinician.doctor_id:
+            raise PermissionError('Only the session owner may make clinical review decisions.')
 
         thread_config = {"configurable": {"thread_id": session.thread_id}}
 

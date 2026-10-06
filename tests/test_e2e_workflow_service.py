@@ -76,7 +76,7 @@ def test_full_workflow_service_e2e_lifecycle(db_session):
         full_name="Dr. Workflow",
         department="ER"
     )
-    res3 = workflow_service.approve_session(session_id, clinician_identity, notes="Approved for PE protocol.")
+    res3 = workflow_service.approve_session(session_id, clinician_identity, notes="Approved for PE protocol.", review_version=workflow_service.review_package(session_id, doc_id)["review_version"])
 
     assert res3["status"] == "APPROVED"
     assert res3["current_step"] == "ehr_exported"

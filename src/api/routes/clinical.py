@@ -15,7 +15,7 @@ from src.api.schemas.sessions import (
 )
 from src.db.models import DoctorModel
 from src.db.repositories.session_repository import SessionRepository
-from src.services.clinical_workflow import ClinicalWorkflowService
+from src.services.clinical_workflow import ClinicalWorkflowService, WorkflowConflictError
 from src.services.evidence_review import EvidenceReviewService, EvidenceReviewPayload
 
 router = APIRouter(prefix="/api/clinical/sessions", tags=["Clinical Decision Support Execution"])
@@ -67,30 +67,12 @@ def get_review_package(
     current_clinician: DoctorModel = Depends(get_current_clinician)
 ):
     """Retrieve complete CDS review package for attending physician review."""
-    sess_repo = SessionRepository(db)
-    session = sess_repo.get_by_session_id(session_id)
-    if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session '{session_id}' not found.")
-
-    cds_result = sess_repo.get_cds_result(session_id)
-    if not cds_result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No CDS result generated for review yet.")
-
-    return {
-        "session_id": session_id,
-        "patient_id": session.patient_id,
-        "doctor_id": session.doctor_id,
-        "status": session.status,
-        "current_step": session.current_step,
-        "urgency": cds_result.urgency,
-        "presentation": cds_result.presentation,
-        "risk_scores": cds_result.risk_scores,
-        "differentials": cds_result.differentials,
-        "imaging_findings": cds_result.imaging_findings,
-        "evidence": cds_result.evidence,
-        "safety_flags": cds_result.safety_flags,
-        "symbolic_overrides": cds_result.symbolic_overrides
-    }
+    try:
+        return ClinicalWorkflowService(db).review_package(session_id, current_clinician.doctor_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.post("/{session_id}/approve", summary="Clinician Approval")
@@ -105,7 +87,11 @@ def approve_session(
     clinician_identity = to_clinician_identity(current_clinician)
     notes = payload.notes if payload else None
     try:
-        return workflow_service.approve_session(session_id, clinician_identity, notes)
+        return workflow_service.approve_session(session_id, clinician_identity, notes, payload.review_version if payload else None)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except WorkflowConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -122,6 +108,8 @@ def reevaluate_session(
     clinician_identity = to_clinician_identity(current_clinician)
     try:
         return workflow_service.reevaluate_session(session_id, clinician_identity, payload.notes)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -139,6 +127,8 @@ def reject_session(
     notes = payload.notes if payload else None
     try:
         return workflow_service.reject_session(session_id, clinician_identity, notes)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

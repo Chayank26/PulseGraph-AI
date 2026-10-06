@@ -593,3 +593,21 @@ specification, implementation boundaries and independent-review requirement.
 436 selected tests and frontend build passed. The synthetic evaluation collection
 now contains 51 cases. Next Phase 15: consolidated clinician review workspace and
 versioned approval. Clinical review of this new pathway remains outstanding.
+
+## Phase 15: consolidated review and versioned approval (completed)
+
+The review workspace now displays one versioned checkpoint package with all clinical
+outputs and coverage limitations. Approval submits that displayed version, rejects
+missing/stale versions, and records the authenticated owner, server time and version
+in state/results/audit. Review package access, reassessment and rejection also require
+the session owner. UI acknowledgement is explicit and failed actions require reload.
+Export remains a stub and is no longer described as actual EHR delivery in review.
+
+440 selected tests and frontend build passed. No migration. See
+`docs/clinical/versioned-review.md` for the changed API contract and remaining
+limitations. Version checking is optimistic, not atomic across database/checkpoint
+writes; concurrent approval safety and failure recovery remain Phase 16 work.
+
+Next Phase 16: independent clinical annotation, workflow/human-factors evaluation
+and recovery/concurrency testing. Clinical validation and real-provider activation
+remain outstanding across earlier phases.

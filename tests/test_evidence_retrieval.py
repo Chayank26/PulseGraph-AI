@@ -64,4 +64,4 @@ def test_api_persists_retrieval_provenance_and_preserves_approval(client):
     assert result['presentation']['evidence_review']['corpus_sha256']
     assert result['evidence'][0]['source_version']
     assert result['evidence'][0]['support_status']=='RELATED_CONTEXT_ONLY'
-    assert client.post(path+'/approve',json={}).status_code==200
+    assert client.post(path+'/approve',json={'review_version':client.get(path+'/review').json()['review_version']}).status_code==200

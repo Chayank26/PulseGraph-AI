@@ -85,7 +85,7 @@ def test_postgres_checkpointer_reconstruction_and_thread_persistence(db_session)
 
     # 6. Clinician Approves on Service Instance C after process restart
     clinician_identity = ClinicianIdentity(doctor_id=doc_id, full_name="Dr. Postgres Checkpoint", department="ER")
-    res3 = service_c.approve_session(session_id, clinician_identity, notes="Approved after restart.")
+    res3 = service_c.approve_session(session_id, clinician_identity, notes="Approved after restart.", review_version=service_c.review_package(session_id, doc_id)["review_version"])
 
     assert res3["status"] == "APPROVED"
     assert res3["current_step"] == "ehr_exported"

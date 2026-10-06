@@ -123,8 +123,8 @@ def ehr_export_node(state: ClinicalState) -> Dict[str, Any]:
     audit_entry = AuditEntry(
         agent_name="EHRExportNode",
         action="EHR_PACKAGE_EXPORT",
-        summary=f"Clinical decision support package successfully approved by {doc_id} and exported to EHR.",
-        metadata={"export_status": "SUCCESS"}
+        summary=f"Clinical decision support package successfully approved by {doc_id} with an export placeholder; external delivery is not implemented.",
+        metadata={"export_status": "NOT_IMPLEMENTED"}
     )
     return {
         "audit_trail": [audit_entry],

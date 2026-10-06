@@ -21,6 +21,7 @@ export interface ResolveDataRequestPayload {
 }
 
 export interface ReviewActionPayload {
+  review_version?: string;
   notes?: string;
 }
 

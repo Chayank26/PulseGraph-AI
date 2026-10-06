@@ -49,7 +49,7 @@ def test_append_only_audit_log_persistence_e2e():
     assert "ImagingAgent" in agents_logged or "DiagnosticAgent" in agents_logged or "SafetyAgent" in agents_logged
 
     # 5. Clinician approves session
-    client.post(f"/api/clinical/sessions/{session_id}/approve", json={"notes": "Audit verification approved."}, headers=headers)
+    client.post(f"/api/clinical/sessions/{session_id}/approve", json={"notes": "Audit verification approved.", "review_version": client.get(f"/api/clinical/sessions/{session_id}/review", headers=headers).json()["review_version"]}, headers=headers)
 
     # Fetch final audit trail
     audit3 = client.get(f"/api/clinical/sessions/{session_id}/audit-trail", headers=headers).json()

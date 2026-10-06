@@ -53,14 +53,14 @@ def test_api_unchanged_reassessment_replaces_evidence_and_can_approve(client):
     assert len(after['differentials']) == len(before['differentials'])
     assert len(after['evidence']) == len(before['evidence'])
     assert after['presentation']['diagnostic_review']['input_fingerprint'] != before['presentation']['diagnostic_review']['input_fingerprint']
-    assert client.post(path+'/approve', json={}).status_code == 200
+    assert client.post(path+'/approve', json={'review_version':client.get(path+'/review').json()['review_version']}).status_code == 200
 
 
 def test_api_rejects_changed_fingerprint_at_review(client, monkeypatch):
     path = start(client, decision('no_imaging'))
     monkeypatch.setattr('src.services.clinical_workflow.input_fingerprint', lambda state: 'changed')
     response = client.post(path+'/approve', json={})
-    assert response.status_code == 400
+    assert response.status_code == 409
     assert 'stale' in response.text
 
 

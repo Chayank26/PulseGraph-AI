@@ -39,7 +39,7 @@ def test_hitl_api_review_approval_lifecycle():
     # Clinician approves session
     approve_resp = client.post(
         f"/api/clinical/sessions/{session_id}/approve",
-        json={"notes": "Differentials and safety checks verified. Approved."},
+        json={"notes": "Differentials and safety checks verified. Approved.", "review_version": client.get(f"/api/clinical/sessions/{session_id}/review", headers=headers).json()["review_version"]},
         headers=headers
     )
     assert approve_resp.status_code == 200

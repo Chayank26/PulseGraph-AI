@@ -52,6 +52,7 @@ class DataRequestResolvePayload(BaseModel):
 
 
 class ClinicianReviewPayload(BaseModel):
+    review_version: Optional[str] = Field(default=None, min_length=64, max_length=64)
     notes: Optional[str] = Field(default=None, json_schema_extra={"example": "Risk scores and imaging findings reviewed. Proceeding with PE protocol."}, description="Attending physician notes")
 
 

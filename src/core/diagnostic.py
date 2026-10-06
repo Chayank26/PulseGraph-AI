@@ -65,5 +65,5 @@ def invalidate_diagnostics(state):
         presentation['evidence_review'] = {'status': 'STALE', 'claims': [], 'limitations': ['Reassessment required.']}
         presentation['diagnostic_review'] = {'status': 'STALE', 'limitations': ['Inputs changed; reassessment is required.']}
     return {'differentials': [], 'evidence': [], 'safety_flags': [], 'symbolic_overrides': [],
-            'approved_by_clinician': False, 'diagnostic_fingerprint': None,
+            'approved_by_clinician': False, 'approval_record': None, 'diagnostic_fingerprint': None,
             'presentation': presentation or None}
