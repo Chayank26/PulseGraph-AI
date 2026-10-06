@@ -135,3 +135,10 @@ class CDSResultModel(Base):
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
     session = relationship("ClinicalSessionModel", back_populates="cds_result")
+
+
+class WorkflowOperationFenceModel(Base):
+    """Durable ownership token; intentionally independent of clinical session creation."""
+    __tablename__ = 'workflow_operation_fences'
+    session_id = Column(String(128), primary_key=True)
+    token = Column(String(64), nullable=False)

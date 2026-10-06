@@ -11,7 +11,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
-TESTS = ['tests/test_recovery_boundaries.py', 'tests/test_versioned_approval.py', 'tests/test_projection_recovery.py', 'tests/test_approval_recovery.py', 'tests/test_lock_loss.py', 'tests/test_session_serialization.py']
+TESTS = ['tests/test_recovery_boundaries.py', 'tests/test_versioned_approval.py', 'tests/test_projection_recovery.py', 'tests/test_approval_recovery.py', 'tests/test_lock_loss.py', 'tests/test_session_serialization.py', 'tests/test_write_fence.py']
 
 
 def main():

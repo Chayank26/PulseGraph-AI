@@ -708,3 +708,24 @@ This is detection/fail-stop behavior, not storage-level fencing: loss between a 
 and the next write is still possible. Next Phase 16B3C must design and enforce atomic
 ownership/fencing at both persistence stores and test that precise race. Other
 mid-transition protocols and independent clinical evaluation remain outstanding.
+
+## Phase 16B3C: transaction-level operation fencing (completed)
+
+Added a durable per-session ownership token and migration d36b951af825. Application
+transactions and synchronous PostgreSQL checkpoint cursor transactions acquire a
+shared row lock and validate that token inside the transaction containing their
+writes. Takeover updates wait for earlier transactions; stale-token writes fail.
+The adapter refuses memory fallback, external pipelines and a mismatched checkpoint
+database. SQLite remains isolated-process test support only.
+
+468 selected tests and 32 recovery checks passed. A live PostgreSQL probe passed
+application/checkpoint writes racing with takeover after a successful ownership
+probe, plus takeover blocking on an existing transaction. Both real PostgresSaver
+recovery probes passed. Offline Alembic SQL generation passed. The disposable
+container was removed; the development database was not migrated. Deployment requires
+`alembic upgrade head` and a PostgreSQL checkpoint backend on the application database.
+See `docs/evaluation/transaction-fencing.md` for the compatibility changes and limits.
+
+Next: full service-process race tests and remaining mid-transition recovery policies.
+Individual writes are fenced; the complete application/checkpoint workflow still
+isn't one atomic transaction. Clinical/human-factors evaluation remains outstanding.

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-06T12:40:57.470362+00:00",
+  "generated_at": "2026-10-06T16:57:23.341352+00:00",
   "python": "3.13.9",
   "backend": "SQLite fixtures and in-memory checkpoints",
   "provider": "synthetic",
@@ -121,6 +121,22 @@
     {
       "name": "test_mutation_conflicts_do_not_change_approval",
       "outcome": "PASS"
+    },
+    {
+      "name": "test_missing_or_superseded_token_is_rejected[None]",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_missing_or_superseded_token_is_rejected[old-token]",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_matching_token_is_locked_for_transaction",
+      "outcome": "PASS"
+    },
+    {
+      "name": "test_postgres_workflow_cannot_use_memory_checkpoint_fallback",
+      "outcome": "PASS"
     }
   ],
   "test_sha256": {
@@ -129,7 +145,8 @@
     "tests/test_projection_recovery.py": "44ea87cfb072043937fcadbaeb855e960d57c27292901f55b85c55d2cc049ed2",
     "tests/test_approval_recovery.py": "f888415e2a4cb4b07f7e85e23e82426d587725ccedf6ce9d0d5bdc028b3d4a9a",
     "tests/test_lock_loss.py": "f017d06ac6d844a389921496381de7261fddbe6e293b9ee52f2ef9768e0f70e6",
-    "tests/test_session_serialization.py": "fa47f604fbcf971ab2d6974cf51bd963f3ccdcd56af15131d1d32fb3f70d7c79"
+    "tests/test_session_serialization.py": "fa47f604fbcf971ab2d6974cf51bd963f3ccdcd56af15131d1d32fb3f70d7c79",
+    "tests/test_write_fence.py": "dedcc116e3a23dba5aaeb669522bda24a197cc3241f5b72a1b5b846b24d177d6"
   },
   "limitations": [
     "Service reconstruction shares an in-process saver; it is not process-crash persistence.",

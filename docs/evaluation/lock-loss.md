@@ -57,3 +57,9 @@ including LangGraph pending writes/checkpoints and application records. It must
 cover lock loss specifically between check and write, partial commits and fresh-worker
 takeover. Mid-transition replay policies and independent clinical validation also
 remain outstanding. Adding a token without enforcing it in every store is insufficient.
+
+Phase 16B3C update: participating PostgreSQL application and checkpoint transactions
+now lock/validate a durable ownership token inside each transaction, addressing the
+check/write gap for those adapters. See `transaction-fencing.md` for deployment and
+remaining cross-store/mixed-worker limitations. Earlier detection-only results above
+remain historical verification of the preliminary guard.

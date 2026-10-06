@@ -4,6 +4,8 @@ from functools import wraps
 import hashlib
 from threading import Lock, RLock
 from sqlalchemy import text, event
+from uuid import uuid4
+from src.services.write_fence import verify_fence, IDENTITY_SQL
 
 
 class WorkflowConflictError(ValueError):
@@ -65,6 +67,7 @@ def session_operation(db, session_id):
             acquired, pid = connection.execute(text('SELECT pg_try_advisory_lock(:key), pg_backend_pid()'), {'key':key}).one()
             if not acquired:
                 raise WorkflowConflictError('Another operation is updating this session. Reload and retry.')
+            connection.commit()
             unsigned = key & ((1 << 64) - 1)
             def still_owned():
                 if connection.closed or connection.invalidated:
@@ -75,12 +78,39 @@ def session_operation(db, session_id):
                     "AND classid::bigint = :hi AND objid::bigint = :lo AND objsubid = 1)"),
                     {'pid':pid, 'hi':unsigned >> 32, 'lo':unsigned & 0xffffffff}).scalar())
             guard = OperationGuard(still_owned)
+            listener = None
             try:
+                if db.new or db.dirty or db.deleted:
+                    raise WorkflowConflictError('Start workflow operations without pending application changes.')
+                db.rollback()  # Close any pre-operation read transaction before attaching the fence.
+                guard.session_id = session_id
+                guard.token = uuid4().hex
+                guard.database_identity = tuple(connection.execute(text(IDENTITY_SQL)).one())
+                connection.execute(text("SET LOCAL lock_timeout = '2s'"))
+                try:
+                    connection.execute(text(
+                        'INSERT INTO public.workflow_operation_fences (session_id, token) VALUES (:session_id, :token) '
+                        'ON CONFLICT (session_id) DO UPDATE SET token = EXCLUDED.token'),
+                        {'session_id':session_id, 'token':guard.token})
+                    connection.commit()
+                except Exception as exc:
+                    if getattr(getattr(exc, 'orig', None), 'sqlstate', None) == '55P03':
+                        raise WorkflowConflictError('An older session transaction is still active; takeover must wait.') from exc
+                    raise
+                def listener(session, transaction, application_connection):
+                    guard.check()
+                    verify_fence(application_connection, session_id, guard.token)
+                event.listen(db, 'after_begin', listener)
                 db.expire_all()
                 with guarded_writes(db, guard):
                     yield guard
             finally:
+                # Read transactions also hold row locks; never leave one across operations.
+                db.rollback()
+                if listener is not None and event.contains(db, 'after_begin', listener):
+                    event.remove(db, 'after_begin', listener)
                 try:
+                    connection.rollback()
                     if connection.closed or connection.invalidated:
                         connection.invalidate()
                     else:
@@ -120,7 +150,11 @@ def serialized_session(method):
         from src.core.guarded_checkpointer import GuardedCheckpointer
         with session_operation(workflow.db, session_id) as guard:
             original = workflow.graph.checkpointer
-            workflow.graph.checkpointer = GuardedCheckpointer(original, guard)
+            if hasattr(guard, 'token'):
+                from src.core.fenced_checkpointer import FencedPostgresSaver
+                workflow.graph.checkpointer = FencedPostgresSaver(original, guard)
+            else:
+                workflow.graph.checkpointer = GuardedCheckpointer(original, guard)
             try:
                 return method(self, session_id, *args, **kwargs)
             finally:

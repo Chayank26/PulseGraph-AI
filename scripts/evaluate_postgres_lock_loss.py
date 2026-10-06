@@ -24,6 +24,9 @@ def main():
         report['status']='NOT_RUN_DATABASE_NOT_SUPPLIED'
     else:
         engine=create_engine(url)
+        os.environ['DEBUG'] = 'false'
+        from src.db.models import WorkflowOperationFenceModel
+        WorkflowOperationFenceModel.__table__.create(engine, checkfirst=True)
         if engine.dialect.name!='postgresql' or engine.url.database!='pulsegraph_recovery_test':
             raise ValueError('Use a disposable PostgreSQL database named pulsegraph_recovery_test')
         key='loss-probe-'+uuid4().hex

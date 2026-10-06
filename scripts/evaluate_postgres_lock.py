@@ -35,6 +35,9 @@ def main():
         report['status']='NOT_RUN_DATABASE_NOT_SUPPLIED'
     else:
         engine=create_engine(url)
+        os.environ['DEBUG'] = 'false'
+        from src.db.models import WorkflowOperationFenceModel
+        WorkflowOperationFenceModel.__table__.create(engine, checkfirst=True)
         if engine.dialect.name!='postgresql': raise ValueError('PostgreSQL is required; no fallback is permitted')
         key='pulsegraph-lock-probe-'+uuid4().hex
         context=mp.get_context('spawn'); parent,child=context.Pipe()
