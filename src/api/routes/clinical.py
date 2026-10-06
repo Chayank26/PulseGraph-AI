@@ -193,3 +193,16 @@ def list_evidence_reviews(session_id: str, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail=str(exc))
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
+
+
+@router.post('/{session_id}/recover', summary='Reconcile records from a stable checkpoint')
+def recover_session(session_id: str, db: Session = Depends(get_db),
+                    current_clinician: DoctorModel = Depends(get_current_clinician)):
+    try:
+        return ClinicalWorkflowService(db).recover_session(session_id, current_clinician.doctor_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except WorkflowConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

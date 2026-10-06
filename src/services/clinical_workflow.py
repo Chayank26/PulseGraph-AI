@@ -1,4 +1,6 @@
 import logging
+import hashlib
+import json
 from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
@@ -53,18 +55,21 @@ class ClinicalWorkflowService:
         """Persists audit logs and CDS recommendations from state snapshot into PostgreSQL."""
         # 1. Sync Audit Trail
         audit_trail = state_values.get("audit_trail", [])
-        for entry in audit_trail:
+        for event_index, entry in enumerate(audit_trail):
             entry_dict = _to_json_serializable(entry)
+            event_id = hashlib.sha256(json.dumps({'index':event_index, 'entry':entry_dict}, sort_keys=True).encode()).hexdigest()
             self.sess_repo.add_audit_log(
                 session_id=session.session_id,
                 agent_name=entry_dict.get("agent_name", "WorkflowSystem"),
                 action=entry_dict.get("action", "STATE_UPDATE"),
                 summary=entry_dict.get("summary", ""),
-                metadata_json=entry_dict.get("metadata", {})
+                metadata_json={**entry_dict.get("metadata", {}), "checkpoint_event_id":event_id},
+                timestamp=datetime.fromisoformat(entry_dict["timestamp"])
             )
 
         # 2. Sync Pending Data Requests
-        pending_reqs = state_values.get("pending_data_requests", [])
+        all_requests = state_values.get('pending_data_requests', []) + state_values.get('resolved_data_requests', [])
+        pending_reqs = list({r.request_id:r for r in all_requests}.values())
         for req in pending_reqs:
             req_dict = _to_json_serializable(req)
             self.sess_repo.create_data_request(
@@ -75,7 +80,11 @@ class ClinicalWorkflowService:
                 reason=req_dict["reason"],
                 required_fields=req_dict["required_fields"],
                 optional_fields=req_dict.get("optional_fields", []),
-                priority=req_dict.get("priority", "HIGH")
+                priority=req_dict.get("priority", "HIGH"),
+                request_status=req_dict['status'],
+                clinician_response=req_dict.get('clinician_response'),
+                resolved_at=datetime.fromisoformat(req_dict['resolved_at']) if req_dict.get('resolved_at') else None,
+                created_at=datetime.fromisoformat(req_dict['created_at']) if req_dict.get('created_at') else None
             )
 
         # 3. Sync CDS Recommendations
@@ -245,7 +254,6 @@ class ClinicalWorkflowService:
 
         # Mark resolved in core model and DB repository
         resolved_req = core_resolve_request(target_req, response_data)
-        self.sess_repo.resolve_data_request(request_id, response_data)
 
         # Apply response data to state and update checkpoint
         state_updates = apply_response_to_state(snapshot.values, response_data)
@@ -305,6 +313,42 @@ class ClinicalWorkflowService:
             "request_id": request_id,
             "resolution": "SUCCESS"
         }
+
+    @serialized_session
+    def recover_session(self, session_id, doctor_id):
+        """Rebuild projections only at stable graph boundaries; never replay clinical actions."""
+        session = self.sess_repo.get_by_session_id(session_id)
+        if session is None:
+            raise ValueError('Session not found.')
+        if session.doctor_id != doctor_id:
+            raise PermissionError('Only the session owner may recover this session.')
+        snapshot = self.graph.get_state({'configurable': {'thread_id':session.thread_id}})
+        values = snapshot.values
+        if not values:
+            raise WorkflowConflictError('Checkpoint unavailable; automatic reconstruction is not supported.')
+        if snapshot.next not in ((), ('human_review',), ('data_request_review',)):
+            raise WorkflowConflictError('Checkpoint is mid-transition; operator recovery is required. No action was replayed.')
+        if snapshot.next == ('human_review',) and values.get('approved_by_clinician'):
+            raise WorkflowConflictError('Approval is interrupted; operator recovery is required.')
+        step = values.get('current_step', 'unknown')
+        if snapshot.next == ('data_request_review',):
+            status = 'WAITING_FOR_CLINICAL_DATA'
+        elif snapshot.next == ('human_review',):
+            status = 'WAITING_FOR_CLINICIAN_REVIEW'
+        elif step in ('triage_manual_review_required', 'imaging_manual_review_required'):
+            status = 'REQUIRES_CLINICIAN_ASSESSMENT'
+        elif step == 'ehr_exported' and values.get('approved_by_clinician'):
+            status = 'APPROVED'
+        elif step == 'clinician_rejected_manual_takeover':
+            status = 'REJECTED_MANUAL_TAKEOVER'
+        else:
+            raise WorkflowConflictError('Checkpoint has no recognized stable outcome; operator recovery is required.')
+        self.sess_repo.update_session_status(session_id, status, current_step=step,
+            iteration_count=values.get('iteration_count', 0), approved=status == 'APPROVED',
+            completed=status in ('APPROVED', 'REJECTED_MANUAL_TAKEOVER'))
+        self._sync_audit_and_results(session, values)
+        return {'session_id':session_id, 'status':status, 'recovery':'PROJECTIONS_RECONCILED',
+                'clinical_actions_replayed':False}
 
     @serialized_session
     def review_package(self, session_id, doctor_id):

@@ -98,7 +98,11 @@ class SessionRepository:
         reason: str,
         required_fields: List[Dict[str, Any]],
         optional_fields: Optional[List[Dict[str, Any]]] = None,
-        priority: str = "HIGH"
+        priority: str = "HIGH",
+        request_status: str = "PENDING",
+        clinician_response: Optional[Dict[str, Any]] = None,
+        resolved_at: Optional[datetime] = None,
+        created_at: Optional[datetime] = None
     ) -> ClinicalDataRequestModel:
         req = ClinicalDataRequestModel(
             request_id=request_id,
@@ -109,8 +113,10 @@ class SessionRepository:
             priority=priority,
             required_fields=required_fields,
             optional_fields=optional_fields or [],
-            status="PENDING",
-            created_at=utc_now()
+            status=request_status,
+            clinician_response=clinician_response,
+            resolved_at=resolved_at,
+            created_at=created_at or utc_now()
         )
         self.db.merge(req)
         self.db.commit()
@@ -153,6 +159,13 @@ class SessionRepository:
         metadata_json: Optional[Dict[str, Any]] = None,
         timestamp: Optional[datetime] = None
     ) -> AuditLogModel:
+        event_id = (metadata_json or {}).get('checkpoint_event_id')
+        if event_id:
+            existing = self.db.query(AuditLogModel).filter(
+                AuditLogModel.session_id == session_id,
+                AuditLogModel.metadata_json['checkpoint_event_id'].as_string() == event_id).first()
+            if existing:
+                return existing
         audit = AuditLogModel(
             session_id=session_id,
             agent_name=agent_name,

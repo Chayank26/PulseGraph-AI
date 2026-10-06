@@ -650,3 +650,22 @@ Next Phase 16B2: full PostgreSQL workflow restart/partial-commit injection and
 reconciliation, lock-connection-loss fencing, service-level process races and
 idempotent audit persistence. Advisory locking is not an atomic application/checkpoint
 transaction; automatic recovery and clinical validation remain unestablished.
+
+## Phase 16B2: stable-checkpoint projection recovery (completed)
+
+Request resolution now persists the checkpoint before database response status.
+Synchronization preserves actual resolved/pending states and timestamps and deduplicates
+checkpoint audit events under the session lock. Added owner-only POST /recover to
+reconcile database projections at stable graph boundaries without replaying clinical
+actions. Missing, mid-transition and interrupted-approval checkpoints are refused.
+Historical audit duplicates remain; no database migration or frontend change.
+
+A disposable PostgreSQL 16 / PostgresSaver experiment passed three fresh-process stages
+with injected result-write failures, reconstruction, request resolution and repeat
+reconciliation. The container was removed. 451 selected tests passed, followed by six
+focused recovery tests after final refusal checks. See
+`docs/evaluation/projection-recovery.md` and `postgres-recovery-report.json`.
+
+Next Phase 16B3: mid-transition/approval recovery protocol, lock-connection-loss fencing
+and full service-process races. Cross-store atomicity, abrupt-crash recovery and
+independent clinical validation remain outstanding; Phase 16 is not complete.
